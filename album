@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	1.13
+# Version:	1.14
 # Description:	Makes a photo album
 # Assumes:	'Back' for the top of the album is '..'
 use strict;
@@ -20,6 +20,8 @@ my $IDENTIFY	= "identify";	# Undef if you don't have identify
 
 # Default directory page
 my $HTML	= "index.html";
+my $HEADER	= "header.txt";
+my $FOOTER	= "footer.txt";
 my $NO_ALBUM	= ".no_album";		# Don't run album on these directories
 my $NOT_IMG	= $NO_ALBUM;		# Postfix for files that aren't images
 
@@ -31,6 +33,7 @@ my %DEFAULTS	= (
 	'force'		=> 0,		# Force thumbnail generation
 	'type'		=> "gif",	# Thumbnail image type
 	'dir'		=> "tn",	# Thumbnail directory
+	'known_images'	=> 0,		# I'd rather keep my album clean
 	# Album stuff
 	'columns'	=> 4,		# Number of images per row
 	'sizes'		=> 0,		# Show image sizes
@@ -40,6 +43,17 @@ my %DEFAULTS	= (
 	# deprecated, it's automated now
 	'identify'	=> 1,		# Use identify or convert for get_size?
 	);
+
+# As of "ImageMagick 4.2.9 99/09/01"
+# May not be the same as your version of convert, but damn it's alot!
+my $IMAGE_TYPES	=
+	"AVS|BMP|BMP24|CMYK|DCM|DCX|DIB|EPDF|EPI|EPS|EPS2|EPSF|EPSI|EPT|FAX".
+	"FITS|G3|GIF|GIF87|GRADATION|GRANITE|GRAY|HDF|HISTOGRAM|ICB|ICC|ICO".
+	"IPTC|JPG|JPEG|JPEG24|LABEL|LOGO|MAP|MATTE|MIFF|MNG|MONO|MTV|NULL|P7".
+	"PBM|PCD|PCDS|PCL|PCT|PCX|PDF|PIC|PICT|PICT24|PIX|PLASMA|PGM|PM|PNG".
+	"PNM|PPM|PREVIEW|PS|PS2|PS3|PSD|PTIF|PWP|RAS|RGB|RGBA|RLA|RLE|SCT|SFW".
+	"SGI|SHTML|STEGANO|SUN|TEXT|TGA|TIF|TIFF|TIFF24|TILE|TIM|TTF|TXT|UIL".
+	"UYVY|VDA|VICAR|VID|VIFF|VST|X|XBM|XC|XPM|XV|XWD|YUV";
 
 #########################
 # URLs for these scripts
@@ -70,6 +84,7 @@ sub usage {
   print "\t-clean           Clean unused thumbnails out of thumbnail dirs\n";
   print "\t-captions        Specify captions filename\n";
   print "\t-fix_urls        Convert spaces to %20 in URLs\n";
+  print "\t-known_images    Don't thumbnail that aren't known image types\n";
   print "\n";
   print "Thumbnail Options:\n";
   print "\t-geometry=geom   Size of thumbnail  [default ${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
@@ -168,7 +183,7 @@ sub header {
   <hr />
 END_OF_HEADER
 
-  if (-f "$dir/header.txt" && open(HEADER,"<$dir/header.txt")) {
+  if (-f "$dir/$HEADER" && open(HEADER,"<$dir/$HEADER")) {
     while(<HEADER>) { print HTML; }
     print HTML "<hr />\n";
   }
@@ -176,7 +191,7 @@ END_OF_HEADER
 
 sub footer {
   my ($dir) = @_;
-  if (-f "$dir/footer.txt" && open(FOOTER,"<$dir/footer.txt")) {
+  if (-f "$dir/$FOOTER" && open(FOOTER,"<$dir/$FOOTER")) {
     while(<FOOTER>) { print HTML; }
     print HTML "<hr />\n";
   }
@@ -372,8 +387,17 @@ sub do_album {
   closedir(DIR);
 
   my @new_dirs = grep(-d "$dir/$_" && $_ ne $opt_H->{'dir'}, @dir);
-  # Bad heuristic
-  my @pics = grep(-f "$dir/$_" && !/\.html?$/ && !/\Q$NOT_IMG\E$/, @dir);
+
+  # Ignore:
+  my @pics = grep(-f "$dir/$_" && 
+                  !/\Q$NOT_IMG\E$/ &&	# The "file.$NOT_IMG" files
+                  !/\.txt$/ &&		# Per image captions
+                  !/~$/ &&		# Emacs backup files
+                  $_ ne $HTML &&	# Index html
+                  $_ ne $HEADER &&	# Header/footer
+                  $_ ne $FOOTER &&      
+                  $_ ne $opt_H->{'captions'},	# Captions file
+                  @dir);
 
   # Clean out thumbnail directory of images we don't have anymore
   clean_thumb_dir($opt_H,"$dir/$opt_H->{'dir'}",@pics)
@@ -421,9 +445,6 @@ sub do_album {
   if (@pics) {
     start_table();
     foreach my $pic ( sort @pics ) {
-      next if ($pic =~ /\.txt$/);	# Don't thumbnail captions  ;)
-      next if ($pic =~ /~$/);		#   or emacs backup files
-      next if ($pic eq $opt_H->{'captions'});	#   or the captions file
       my $name = clean_name($pic,$caps_H);
       # Image caption file (image_name.txt)
       my $img_cap = "$dir/$pic";  $img_cap =~ s/\.[^\.]+$//;  $img_cap.=".txt";
@@ -445,6 +466,16 @@ sub do_album {
       } elsif ($pic =~ /\.(mov|mpg|mpeg)$/) {
         # Movie clip - should we have a movie button?
         print HTML "        <font size='+1'><b>Movie Clip:</b></font>\n";
+        print HTML "        <p>\n";
+        print HTML "        <a href=".quote($pic,$opt_H).">\n";
+        print HTML "          $name\n";
+        print HTML "          <font size='-1'><i>[$size]</i></font>\n"
+          if ($opt_H->{'sizes'});
+        print HTML "        </a><br />\n";
+      } elsif ($pic =~ /\.html?$/i ||
+               ($opt_H->{'known_images'} && $pic !~ /\.($IMAGE_TYPES)$/i)) {
+        my $type = ($pic =~ /\.([^\.]+)$/) ? $1 : "??";
+        print HTML "        <font size='+1'><b>$type file:</b></font>\n";
         print HTML "        <p>\n";
         print HTML "        <a href=".quote($pic,$opt_H).">\n";
         print HTML "          $name\n";
@@ -548,7 +579,9 @@ sub get_size {
       return ($1,$2);
     }
   }
-  die("[$PROGNAME] Can't get [$img] size from 'convert -verbose' output\n");
+  print STDERR "[$PROGNAME] Can't get [$img] size from 'convert -verbose' output\n";
+  print STDERR "\tTry option:  -known_images\n" unless ($img =~ /\.$IMAGE_TYPES$/i);
+  die("\n");
 }
 
 sub scale {
