@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.11
+# Version:	2.12
 # Description:	Makes a photo album
 use strict;
 
@@ -37,9 +37,10 @@ my %DEFAULTS	= (
 	'type'		=> "gif",	# Thumbnail image type
 	'dir'		=> "tn",	# Thumbnail directory
 	'known_images'	=> 0,		# I'd rather keep my album clean
-	'sample'	=> 0,		# -sample:-convert :: fast:better
+	'sample'	=> 0,		# -sample:-geometry :: fast:better
 
 	# Album stuff
+	'medium'	=> "",		# Make medium size pictures?
 	'image_pages'	=> 1,		# Page per image
 	'index'		=> "index",	# Default index
 	'body'		=> "<body bgcolor='white'>",		# <body> tag
@@ -48,7 +49,7 @@ my %DEFAULTS	= (
 	'file_sizes'	=> 0,		# Show image file sizes
 	'image_sizes'	=> 0,		# Get image sizes (width*height)
 	'clean'		=> 0,		# Clean garbage out of thumbnail dir?
-	'captions'	=> "",		# Captions filename?
+	'captions'	=> "Captions",	# Captions filename?
 	'fix_urls'	=> 1,		# Convert spaces to %20 in URLs?
 	'all'		=> 0,		# Do not hide .directories
 
@@ -112,6 +113,7 @@ sub usage {
   print "\n";
   print "Album Options:\n";
   print "\t-d                Set debug mode\n";
+  print "\t-medium <geom>    Generate medium size images"; default("medium");
   print "\t-image_pages      Create a page for each image"; default("image_pages");
   print "\t-columns          Number of image columns"; default("columns");
   print "\t-file_sizes       Show image file sizes"; default("file_sizes");
@@ -265,7 +267,7 @@ sub parse_args {
       my ($no,$opt) = ($1,$2);
       usage("Unknown option: $opt") unless (defined $DEFAULTS{$opt});
       # Options that take arguments
-      if ($opt =~ /^(dir|type|columns|captions|index|top|body)$/) {
+      if ($opt =~ /^(medium|dir|type|columns|captions|index|top|body)$/) {
         usage("Option [$opt] can't be -no, it needs an argument") if ($no);
         $opt{$opt} = (shift(@theme_args) || shift(@ARGV));
       } elsif ($opt eq "theme") {
@@ -298,6 +300,9 @@ sub parse_args {
     $opt{'image_pages'}=0;
   }
   $opt{'image_pages'}=1 if ($opt{'image.th'});
+
+  # -medium needs image pages
+  $opt{'image_pages'}=1 if ($opt{'medium'});
 
   # We'll add the .html flag
   $opt{'index'} =~ s/\Q$HTML\E$//;
@@ -481,20 +486,26 @@ sub clean_thumb_dir {
 
   # Check each file to make sure it's a currently used thumbnail or image_page
   foreach my $file ( @files ) {
+    my $remove;
     my $name = $file;
     if ($name =~ s/\Q$HTML\E$//) {
-      unless ($opt_H->{'image_pages'} && grep($_ eq $name, @pics)) {
-        print "Remove unused image page: $dir/$file\n";
-        print STDERR "[$PROGNAME] Couldn't erase [$file]\n"
-          unless unlink "$dir/$file"
-      }
+      $remove = "unused image page"
+        unless ($opt_H->{'image_pages'} && grep($_ eq $name, @pics));
+    } elsif ($name  =~ /\.med\./) {
+      $name = $`.".".$';
+      $remove = "unused medium image"
+        unless ($opt_H->{'medium'} && grep($_ eq $name, @pics));
+    } elsif ($name  =~ /\.$opt_H->{'type'}$/) {
+      # Thumbnail?
+      $name = $`;
+      $remove = "unused thumbnail" unless (grep(/^\Q$name.\E/, @pics));
     } else {
-      $name  =~ s/\.$opt_H->{'type'}$//;	# Remove thumbnail postfix
-      unless (grep(/\Q$name.\E/, @pics)) {
-        print "Remove unused thumbnail: $dir/$file\n";
-        print STDERR "[$PROGNAME] Couldn't erase [$file]\n"
-          unless unlink "$dir/$file"
-      }
+      $remove = "unknown file";
+    }
+    if ($remove) {
+      print "Remove $remove: $dir/$file\n";
+      print STDERR "[$PROGNAME] Couldn't erase [$file]\n"
+        unless unlink "$dir/$file"
     }
   }
 }
@@ -994,6 +1005,8 @@ sub write_img_indexes {
 
   for(my $i=0; $i<=$#{$d_H->{'pics'}}; $i++) {
     next unless $d_H->{'image_is_pic'}[$i];
+    my $img = $d_H->{'image_image_urls'}[$i];
+    my $medium = $d_H->{'image_mediums'}[$i] || $img;
     my $pic = $d_H->{'pics'}[$i];
     my $url = $d_H->{'image_page_urls'}[$i];
     my $name = $d_H->{'image_names'}[$i];
@@ -1021,8 +1034,8 @@ PREV_NEXT
     print ALBUM $prev_next;
 
     print ALBUM "<center><i><font size='+1'>\n";
-    print ALBUM "<a href=$d_H->{'image_image_urls'}[$i]>\n";
-    print ALBUM "<img border='0' src=$d_H->{'image_image_urls'}[$i] alt=$d_H->{'image_alts'}[$i]></a><br />\n";
+    print ALBUM "<a href=$img>\n";
+    print ALBUM "<img border='0' src=$medium alt=$d_H->{'image_alts'}[$i]></a><br />\n";
     caption($d_H->{'image_captions'}[$i]);
     print ALBUM "</font></i></center>\n";
 
@@ -1141,8 +1154,13 @@ sub do_album {
                   $pic =~ /\.(mov|mpg|mpeg)$/ ||
                  ($opt_H->{'known_images'} && $pic !~ /\.($IMAGE_TYPES)$/i));
 
-      my ($thumb,$width,$height,$page_thumb);
+      my ($width,$height);
+      my ($thumb,$page_thumb);
+      my ($medium);
       if ($is_a_pic) {
+        # Generate -medium if necessary
+        $medium = medium($opt_H,"$dir/$pic");
+
         # Generate thumbnail
         ($thumb,$width,$height) = thumbnail($opt_H,"$dir/$pic");
         next unless defined $thumb;
@@ -1185,6 +1203,7 @@ sub do_album {
       push(@{$d{'image_image_urls'}}, $image_image_url);
       push(@{$d{'image_page_urls'}}, $image_page_url);
       push(@{$d{'image_names'}}, $name);
+      push(@{$d{'image_mediums'}}, $medium);
       push(@{$d{'image_page_thumbs'}}, $page_thumb);
       push(@{$d{'image_thumbs'}}, $thumb);
       push(@{$d{'image_widths'}}, $width);
@@ -1218,6 +1237,22 @@ sub do_album {
 ##################################################
 # Thumbnail code
 ##################################################
+sub medium_name {
+  my ($opt_H,$img) = @_;
+
+  my $post="";
+  ($img,$post)=($`,$&) if ($img =~ /\.[^\.\/]+$/);
+
+  return "${img}.med$post" unless ($opt_H->{'dir'});
+
+  my $dir = $opt_H->{'dir'};
+  ($dir,$img) = ("$`/$opt_H->{'dir'}",$1) if ($img =~ m|/([^/]*)$|);
+
+  (-d $dir) || mkdir($dir,0755) || die("[$PROGNAME] Couldn't make directory [$dir]\n");
+
+  return "$dir/${img}.med$post"
+}
+
 sub thumb_name {
   my ($opt_H,$img) = @_;
 
@@ -1282,11 +1317,11 @@ sub get_size {
 }
 
 sub scale {
-  my ($opt_H,$img,$x,$y,$new) = @_;
+  my ($opt_H,$img,$scale,$new) = @_;
 
-  my $scale = $opt_H->{'sample'} ? "-sample" : "-geometry";
+  my $scale = $opt_H->{'sample'} ? "-sample $scale" : "-geometry $scale";
 
-  my $cmd = "$CONVERT $opt_H->{'scale_opts'} -verbose \Q$img\E $scale ${x}x${y} \Q$new\E";
+  my $cmd = "$CONVERT $opt_H->{'scale_opts'} -verbose \Q$img\E $scale \Q$new\E";
   print STDERR "scale() run: $cmd\n" if ($MAIN::DEBUG);
   open(SIZE,"$cmd 2>&1 |") || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
@@ -1316,6 +1351,26 @@ sub crop {
 #########################
 # Generate the thumbnail
 #########################
+sub medium {
+  my ($opt_H,$img) = @_;
+
+  return unless $opt_H->{'medium'};
+
+  my $med_path = medium_name($opt_H,$img);
+  my $medium = $med_path;  $medium =~ s|.*/||g;
+
+  # Don't regenerate mediums if we don't need to.
+  return $medium if (-f $med_path && !$opt_H->{'force'} && -M $med_path < -M $img);
+
+  # If the scaling is <width>x<height>, add ">" on the end so that
+  # convert will only shrink the images, never grow them
+  $opt_H->{'medium'}.='\>' if ($opt_H->{'medium'} =~ /^\d+x\d+$/);
+
+  my ($tx,$ty) = scale($opt_H,$img,$opt_H->{'medium'},$med_path);
+  return undef unless $tx;
+  return $medium;
+}
+
 sub thumbnail {
   my ($opt_H,$img) = @_;
 
@@ -1344,9 +1399,7 @@ sub thumbnail {
       $scale_x = $x;
     }
   }
-  my ($tx,$ty) = scale($opt_H,$img,$scale_x,$scale_y,$thumb);
-  #this typo (should be return) breaks perl5.6 when $tx is not defined!
-  #next unless $tx;
+  my ($tx,$ty) = scale($opt_H,$img,$scale_x."x".$scale_y,$thumb);
   return undef unless $tx;
 
   if ($opt_H->{'crop'}) {
