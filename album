@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.00
+# Version:	2.01
 # Description:	Makes a photo album
 # Assumes:	'Back' for the top of the album is '..'
 use strict;
@@ -778,7 +778,7 @@ sub write_index {
     # Picture - thumbnail and all..
     if ($d_H->{'image_is_pic'}[$i]) {
       print ALBUM "        <a href=$d_H->{'image_urls'}[$i]>\n";
-      print ALBUM "          <img width='$opt_H->{'x'}' height='$opt_H->{'y'}' border='0' src=$d_H->{'image_thumbs'}[$i] alt='$d_H->{'image_alts'}[$i]'><br />\n";
+      print ALBUM "          <img width='$opt_H->{'x'}' height='$opt_H->{'y'}' border='0' src=$d_H->{'image_thumbs'}[$i] alt=$d_H->{'image_alts'}[$i]><br />\n";
       print ALBUM "          $d_H->{'image_names'}[$i]\n";
       print ALBUM "          <font size='-1'><i>[$d_H->{'image_filesizes'}[$i]]</i></font>\n"
         if ($opt_H->{'file_sizes'});
@@ -844,7 +844,7 @@ PREV_NEXT
 
     print ALBUM "<center><i><font size='+1'>\n";
     print ALBUM "<a href=$d_H->{'image_image_urls'}[$i]>\n";
-    print ALBUM "<img border='0' src=$d_H->{'image_image_urls'}[$i] alt='$d_H->{'image_alts'}[$i]'></a><br />\n";
+    print ALBUM "<img border='0' src=$d_H->{'image_image_urls'}[$i] alt=$d_H->{'image_alts'}[$i]></a><br />\n";
     caption($d_H->{'image_captions'}[$i]);
     print ALBUM "</font></i></center>\n";
 
@@ -1019,7 +1019,7 @@ sub do_album {
       push(@{$d{'image_heights'}}, $height);
       push(@{$d{'image_filesizes'}}, $size);
       push(@{$d{'image_captions'}}, $img_cap);
-      push(@{$d{'image_alts'}}, quote($alt,$opt_H));
+      push(@{$d{'image_alts'}}, quote($alt));	# Don't do -fix_urls on alt
       push(@{$d{'image_is_pic'}}, $is_a_pic);
     }
   }
