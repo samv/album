@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.06
+# Version:	2.07
 # Description:	Makes a photo album
 use strict;
 
@@ -25,6 +25,7 @@ my $DEFAULT_INDEX = "index";		# Don't need to specify this index
 my $HEADER	= "header.txt";
 my $FOOTER	= "footer.txt";
 my $NO_ALBUM	= ".no_album";		# Don't run album on these directories
+my $HIDE_ALBUM	= ".hide_album";	# Don't even show these directories
 my $NOT_IMG	= $NO_ALBUM;		# Postfix for files that aren't images
 
 my %DEFAULTS	= (
@@ -50,6 +51,8 @@ my %DEFAULTS	= (
 	'fix_urls'	=> 1,		# Convert spaces to %20 in URLs?
 	# deprecated, it's automated now
 	'identify'	=> 1,		# Use identify or convert for get_size?
+	# So that -no_theme works:
+	'theme'		=> "",		# Use identify or convert for get_size?
 	);
 
 # As of "ImageMagick 4.2.9 99/09/01"
@@ -62,6 +65,20 @@ my $IMAGE_TYPES	=
 	"PNM|PPM|PREVIEW|PS|PS2|PS3|PSD|PTIF|PWP|RAS|RGB|RGBA|RLA|RLE|SCT|SFW".
 	"SGI|SHTML|STEGANO|SUN|TEXT|TGA|TIF|TIFF|TIFF24|TILE|TIM|TTF|TXT|UIL".
 	"UYVY|VDA|VICAR|VID|VIFF|VST|X|XBM|XC|XPM|XV|XWD|YUV";
+
+#########################
+# abs_path
+#########################
+use Cwd 'abs_path';
+# If you don't have the Cwd module, use this:
+#sub abs_path {
+#  my ($dir) = @_;
+#  my $pwd=`pwd`; chomp($pwd);
+#  chdir($dir) || usage("Couldn't find [$dir]");
+#  my $name=`pwd`;  chomp($name);
+#  chdir($pwd);
+#  $name;
+#}
 
 #########################
 # URLs for these scripts
@@ -114,6 +131,7 @@ sub usage {
   print "\n";
   print "Theme Options:\n";
   print "\t-theme <dir>      Specify a theme directory\n";
+  print "\t-no_theme         Ignore album's previous theme settings\n";
   print "\n";
   print "Author:  David Ljung Madison, $HOME\n";
   print "\n";
@@ -129,6 +147,11 @@ sub set_size {
 # Theme directories contain album.th and image.th
 sub get_themes {
   my ($opt_H,$dir) = @_;
+
+  $opt_H->{'theme'} = abs_path($dir);
+  $ARG_THEME = $dir;
+
+  my $dir = $opt_H->{'theme'};
 
   my @new_opts;	# Options specified by themes
 
@@ -208,8 +231,7 @@ sub parse_args {
     if ($arg =~ /^-(no_?)?d$/) { $MAIN::DEBUG = $1?0:1; next; }
     if ($arg =~ /^-g(eom(etry)?)?(=(.+))?$/) { set_size(\%opt,$4 ? $4 : (shift(@theme_args) || shift(@ARGV))); next; }
     if ($arg =~ /^-theme(=(.+))?$/) {
-      $ARG_THEME = ($2?$2:(shift(@theme_args) || shift(@ARGV)));
-      @theme_args = get_themes(\%opt,$ARG_THEME);
+      @theme_args = get_themes(\%opt, ($2?$2:(shift(@theme_args) || shift(@ARGV))));
       next;
     }
     if ($arg =~ /^-(no_?)?(.+)$/) {
@@ -219,6 +241,8 @@ sub parse_args {
       if ($opt =~ /^(dir|type|columns|captions|index|top|body)$/) {
         usage("Option [$opt] can't be -no, it needs an argument") if ($no);
         $opt{$opt} = (shift(@theme_args) || shift(@ARGV));
+      } elsif ($opt eq "theme") {
+        $opt{'notheme'} = 1;
       } else {
         $opt{$opt} = $no ? 0 : 1;
         # Need to override image themes
@@ -229,6 +253,12 @@ sub parse_args {
     usage("Can't find directory $arg") unless (-d $arg);
     usage("Too many directories: $arg and $dir") if ($dir);
     $dir=$arg;
+
+    # Did we specify a theme last time?
+    unless ($opt{'notheme'} || $opt{'theme'}) {
+      my $theme = previous_build_theme(\%opt,$dir);
+      @theme_args = get_themes(\%opt,$theme) if ($theme);
+    }
   }
   $dir="." unless ($dir);
 
@@ -431,6 +461,22 @@ sub unknown_html {
   return 0 if $mine;
   print STDERR "[$PROGNAME] Unknown HTML [$file] - skipping\n";
   return 1;
+}
+
+# Return theme if previously defined
+sub previous_build_theme {
+  my ($opt_H,$dir) = @_;
+
+  my $file = "$dir/$opt_H->{'index'}$HTML";
+  open(FILE,"<$file") || return undef;
+  while(<FILE>) {
+    if (/meta\s+NAME='Album_Theme'\s+CONTENT='(.+)'/i) {
+      close(FILE);
+      return $1;
+    }
+  }
+  close(FILE);
+  undef;
 }
 
 #########################
@@ -717,6 +763,7 @@ sub Set_Image_Next {
 sub Meta {
   print "<meta NAME='Generator' CONTENT='$GEN_STRING'>\\n";
   print "<meta NAME='Album_Path' CONTENT='\$ALBUM_PATH'>\\n";
+  print "<meta NAME='Album_Theme' CONTENT='\$OPTIONS{theme}'>\\n";
   \$CALLED_META=1;
 }
 sub Credit {
@@ -900,7 +947,10 @@ sub do_album {
   my (@dir) = grep(!/^\.{1,2}$/, readdir(DIR));
   closedir(DIR);
 
-  my @new_dirs = grep(-d "$dir/$_" && $_ ne $opt_H->{'dir'}, @dir);
+  my @new_dirs = grep(-d "$dir/$_" &&
+                      !-f "$dir/$_/$HIDE_ALBUM" &&
+                      $_ ne $opt_H->{'dir'},
+                      @dir);
 
   # Ignore:
   my @pics = grep(-f "$dir/$_" && 
@@ -1226,13 +1276,8 @@ sub thumbnail {
 sub main {
   my ($opt_H,$dir) = parse_args();
 
-  # Get the true basename (in case they use '..' or some such)
-  my $pwd=`pwd`; chomp($pwd);
-  chdir($dir) || usage("Couldn't find [$dir]");
-  my $name=`pwd`;  chomp($name);
-  chdir($pwd);
+  my $name = abs_path($dir);
   $name =~ s|.*/||;
-
 
   do_album($opt_H,$dir,$name);
 }
