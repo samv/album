@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.14
+# Version:	2.15
 # Description:	Makes a photo album
 use strict;
 
@@ -1211,6 +1211,7 @@ sub do_album {
       }
       my $image_image_url = quote("../$pic",$opt_H);
       my $image_page_url = quote("$pic$page_post_url",$opt_H);
+      $medium = quote($medium,$opt_H) if $medium;
 
       # Add it to our data list
       push(@{$d{'pics'}}, $pic);
