@@ -31,7 +31,7 @@ Footer		= "
 # Header for short index
 Short_Header	= "
 conf(my_head_head)
-        SPACE_OUT(album Documentation)<br>
+        SPACE_OUT(Documentation)<br>
 conf(my_head_head2)
 
 <table width=100%><tr>

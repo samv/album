@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.00';
+  my $VERSION=  '3.01';
 # Rewrite branched off from: 2.53
 # Description:	Makes a photo album.
 use strict;
@@ -1664,7 +1664,7 @@ sub clean_thumb_dir {
   my ($opt,$data) = @_;
 
   my $dir = "$data->{paths}{dir}/$opt->{dir}";
-  my @pics = @{$data->{pics}};
+  my @pics = $data->{pics} ? @{$data->{pics}} : ();
 
   return unless -d $dir;
 
@@ -3337,7 +3337,6 @@ sub gather_contents {
     # Ignore the .no_album/.hide_album/.not_img/.txt.. directive files
     next unless -s $path;		# Ignore zero byte files
     next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
-    next if -f "$path/$opt->{no_album}";	# Ignore dir/.no_album
     next if $bob =~ /\Q$opt->{not_img}\E$/;
     next if $bob =~ /\Q$opt->{no_album}\E$/;
     next if $bob =~ /\Q$opt->{hide_album}\E$/;
