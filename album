@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	1.11
+# Version:	1.12
 # Description:	Makes a photo album
 # Assumes:	'Back' for the top of the album is '..'
 use strict;
@@ -36,6 +36,7 @@ my %DEFAULTS	= (
 	'sizes'		=> 0,		# Show image sizes
 	'clean'		=> 0,		# Clean garbage out of thumbnail dir?
 	'captions'	=> "",		# Captions filename?
+	'fix_urls'	=> 1,		# Convert spaces to %20 in URLs?
 	# deprecated, it's automated now
 	'identify'	=> 1,		# Use identify or convert for get_size?
 	);
@@ -59,6 +60,7 @@ sub usage {
   print "\tMakes a photo album\n";
   print "\n";
   print "\tAll boolean options can be turned off with '-no_option'\n";
+  print "\t(Some of them are already defaulted to on)\n";
   print "\n";
   print "Album Options:\n";
   print "\t-d               Set debug mode\n";
@@ -67,6 +69,7 @@ sub usage {
   print "\t-sizes           Show image sizes\n";
   print "\t-clean           Clean unused thumbnails out of thumbnail dirs\n";
   print "\t-captions        Specify captions filename\n";
+  print "\t-fix_urls        Convert spaces to %20 in URLs\n";
   print "\n";
   print "Thumbnail Options:\n";
   print "\t-geometry=geom   Size of thumbnail  [default ${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
@@ -276,7 +279,7 @@ sub unknown_html {
   return 0 if -z $file;
 
   my $mine;
-  open(FILE,$file) || return 1;
+  open(FILE,"<$file") || return 1;
   while(<FILE>) {
     $mine = 1  if (/$OLD_GEN_RE/);	# Backwards compat
     $mine = 1  if (/meta\s+NAME='Generator'\s+CONTENT='$GEN_STRING'/i);
@@ -314,6 +317,17 @@ sub clean_thumb_dir {
         unless unlink "$dir/$thumb"
     }
   }
+}
+
+#########################
+# Fix urls, maybe
+#########################
+sub fix_urls {
+  my ($opt_H,$path) = @_;
+  return $path unless ($opt_H->{'fix_urls'});
+  # Should probably correct more than just spaces...
+  $path =~ s/ /%20/g;
+  $path;
 }
 
 #########################
@@ -392,7 +406,7 @@ sub do_album {
     foreach my $new ( sort @new_dirs ) {
       my $name = clean_name($new,$caps_H);
       new_element($opt_H);
-      print HTML "<font size='+1'><a href='$new'>$name</a></font>\n";
+      print HTML "<font size='+1'><a href='".fix_urls($opt_H,$new)."'>$name</a></font>\n";
     }
     end_table($opt_H);
     print HTML "<hr />\n";
@@ -420,7 +434,7 @@ sub do_album {
         # Who knows?
         print HTML "        <font size='+1'><b>Unknown file:</b></font>\n";
         print HTML "        <p>\n";
-        print HTML "        <a href='$pic'>\n";
+        print HTML "        <a href='".fix_urls($opt_H,$pic)."'>\n";
         print HTML "          $name\n";
         print HTML "          <font size='-1'><i>[$size]</i></font>\n"
           if ($opt_H->{'sizes'});
@@ -429,7 +443,7 @@ sub do_album {
         # Movie clip - should we have a movie button?
         print HTML "        <font size='+1'><b>Movie Clip:</b></font>\n";
         print HTML "        <p>\n";
-        print HTML "        <a href='$pic'>\n";
+        print HTML "        <a href='".fix_urls($opt_H,$pic)."'>\n";
         print HTML "          $name\n";
         print HTML "          <font size='-1'><i>[$size]</i></font>\n"
           if ($opt_H->{'sizes'});
@@ -439,11 +453,11 @@ sub do_album {
         my $thumb = thumbnail($opt_H,"$dir/$pic");
         next unless ($thumb);	# BUG: This will cause an empty table element!
         # Ugly - remove path component from $thumb
-        $thumb =~ s/^$dir\/?//;
+        $thumb =~ s/^\Q$dir\E\/?//;
 
         # The thumbnail
-        print HTML "        <a href='$pic'>\n";
-        print HTML "          <img width='$opt_H->{'x'}' height='$opt_H->{'y'}' border='0' src='$thumb' alt='$alt'><br \>\n";
+        print HTML "        <a href='".fix_urls($opt_H,$pic)."'>\n";
+        print HTML "          <img width='$opt_H->{'x'}' height='$opt_H->{'y'}' border='0' src='".fix_urls($opt_H,$thumb)."' alt='$alt'><br \>\n";
         print HTML "          $name\n";
         print HTML "          <font size='-1'><i>[$size]</i></font>\n"
           if ($opt_H->{'sizes'});
@@ -498,11 +512,15 @@ sub get_size {
   # Try to use identify if we have it
   if ($IDENTIFY && $opt_H->{'identify'}) {
     print STDERR "get_size() run: $IDENTIFY -ping $img\n" if ($MAIN::DEBUG);
-    open(SIZE,"$IDENTIFY -ping $img 2>&1 |") ||
+    open(SIZE,"$IDENTIFY -ping '$img' 2>&1 |") ||
       die("[$PROGNAME] Couldn't run identify!  [$IDENTIFY]\n");
     while(<SIZE>) {
       print STDERR "get_size(): $_" if ($MAIN::DEBUG);
-      if(/\s(\d+)x(\d+)(\s|\+)/) {
+      if (/command not found/) {	# Kind of kludgy
+        $opt_H->{'identify'} = 0;
+        last;
+      }
+      if (/\s(\d+)x(\d+)(\s|\+)/) {
         close(SIZE);
         return ($1,$2);
       }
@@ -515,7 +533,7 @@ sub get_size {
 
   # Kludgy way to get size, but works with all images that convert reads
   print STDERR "get_size() run: $CONVERT -verbose $img /dev/null\n" if ($MAIN::DEBUG);
-  open(SIZE,"$CONVERT -verbose $img /dev/null 2>&1 |") ||
+  open(SIZE,"$CONVERT -verbose '$img' /dev/null 2>&1 |") ||
     die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
     print STDERR "get_size(): $_" if ($MAIN::DEBUG);
@@ -533,7 +551,7 @@ sub scale {
 
   print STDERR "scale() run: $CONVERT -verbose $img -sample ${x}x${y} $new\n"
     if ($MAIN::DEBUG);
-  open(SIZE,"$CONVERT -verbose $img -sample ${x}x${y} $new 2>&1 |") ||
+  open(SIZE,"$CONVERT -verbose '$img' -sample ${x}x${y} '$new' 2>&1 |") ||
     die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
     print STDERR "scale(): $_" if ($MAIN::DEBUG);
@@ -553,7 +571,7 @@ sub crop {
   my ($img,$x,$y,$off_x,$off_y,$new) = @_;
   print STDERR "crop() run: $CONVERT $img -crop ${x}x${y}+${off_x}+${off_y} $new\n"
     if ($MAIN::DEBUG);
-  system("$CONVERT $img -crop ${x}x${y}+${off_x}+${off_y} $new");
+  system("$CONVERT '$img' -crop ${x}x${y}+${off_x}+${off_y} '$new'");
   return unless ($?);
   print STDERR "[$PROGNAME] Error cropping $img\n";
 }
