@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.01
+# Version:	2.02
 # Description:	Makes a photo album
 # Assumes:	'Back' for the top of the album is '..'
 use strict;
@@ -366,6 +366,9 @@ sub clean_name {
   # Remove postfixes
   $name =~ s/\.($IMAGE_TYPES)$//i;
   $name =~ s/\Q$HTML\E$//i;
+
+  # Remove thumbnail cropping directives
+  $name =~ s/CROP(top|bottom|left|right)$//;
 
   # Underbar = space
   $name =~ s/_/ /g;
@@ -1176,12 +1179,18 @@ sub thumbnail {
   if ($opt_H->{'crop'}) {
     # Now crop the other dimension
     my ($off_x,$off_y) = (0,0);
-    if ( $tx > $opt_H->{'x'} ) {
-      $off_x = int(($tx-$opt_H->{'x'})/2);
+
+    $off_x = int(($tx-$opt_H->{'x'})/2) if ( $tx > $opt_H->{'x'} );
+    $off_y = int(($ty-$opt_H->{'y'})/2) if ($ty > $opt_H->{'y'} );
+
+    # Do they have any cropping directives in the image name?
+    if ($img =~ /CROP(top|bottom|left|right)\.[^\.]+$/) {
+      $off_y = 0 if ($1 eq "top");
+      $off_y = $ty-$opt_H->{'y'} if ($1 eq "bottom");
+      $off_x = 0 if ($1 eq "left");
+      $off_x = $tx-$opt_H->{'x'} if ($1 eq "right");
     }
-    if ($ty > $opt_H->{'y'}) {
-      $off_y = int(($ty-$opt_H->{'y'})/2);
-    }
+
     crop($thumb,$opt_H->{'x'},$opt_H->{'y'},$off_x,$off_y,$thumb)
       unless ($tx==$opt_H->{'x'} && $ty==$opt_H->{'y'});
   }
