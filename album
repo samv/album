@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.06';
+  my $VERSION=  '3.07';
 # Rewrite branched off from: 2.53
 # Description:	Makes a photo album.
 use strict;
@@ -613,7 +613,7 @@ sub parse_arg {
   print STDERR "[ARG] $option $val (<-$ARGV[0]) - $from\n" if $opt->{d};
 
   # Should 'no_' be undef?
-  $val = 0 if ($option =~ s/^no_?//);	# Handle 'no_' options
+  $val = 0 if ($option =~ s/^no[_-]?//);	# Handle 'no_' options
   my $dashdash = ($option =~ s/^-//) ? 1 : 0;
   usage("Unnecessary '--' in options") if $dashdash && !$option;
 
@@ -999,12 +999,6 @@ sub scrub_opts {
   # If the medium scaling is <width>x<height>, add ">" on the end so
   # convert will only shrink the images, never grow them
   $opt->{medium}.='>' if $opt->{medium} =~ /^\d+x\d+$/ && !$opt->{windows};
-
-# Hack!  This doesn't work on Windows - at least on ActivePerl!  :(
-# I think it's because ActivePerl uses DOS for system calls and DOS doesn't
-# let you quote '>' to avoid redirection?  It complains that we need an
-# argument for -geometry option otherwise.  Can we just add '>'??
-  $opt->{medium}="\Q$opt->{medium}\E" unless $opt->{windows};
 
   # -clean and hashes is ugly
   $opt->{hashes}=0 if $opt->{clean} || $opt->{d} || $opt->{q};
@@ -2002,7 +1996,7 @@ sub get_dir_caption {
 # Get pics/dirs caption info
 #########################
 sub get_captions {
-  my ($opt,$data) = @_;
+  my ($opt,$data, $get_exif) = @_;
 
   # First read the captions file
   my $caps = read_captions($opt,$data);
@@ -2014,8 +2008,7 @@ sub get_captions {
   # Put caption info into %data
   foreach my $pic ( @{$data->{pics}} ) {
     $data->{obj}{$pic} = $caps->{$pic};	# Put cap info into data
-    get_exif_caption($opt,$data,$pic);
-
+    get_exif_caption($opt,$data,$pic) if $get_exif;
     $data->{obj}{$pic}{name} = clean_name($opt,$pic,$data->{obj}{$pic}{name});
   }
 
@@ -2600,7 +2593,7 @@ sub Image {
 
   my \$str;
   \$str .= "<\$tag src=\$src border='0'";
-  \$str .= " alt=\$obj->{alt}" if \$obj->{alt};
+  \$str .= " alt=\$obj->{alt} title=\$obj->{alt}" if \$obj->{alt};
   \$str .= " width='\$obj->{\$type}{x}'" if \$obj->{\$type}{x};
   \$str .= " height='\$y'" if \$y;
   \$str .= " />";
@@ -2627,6 +2620,32 @@ return \$obj->{URL}{Page_Type()}{\$subfield};
   \$subfield ? \$obj->{\$field}{\$subfield} : \$obj->{\$field};
 }
 
+# Explanation given in the non-eperl subroutine
+sub mysplit {
+  my (\$str) = \@_;
+  return split(//, \$str) unless \$str =~ /(<.*>|&.*;)/;
+  my \@a;
+  while (\$str =~ /(.*?)(<[^>]+>|&[^;]+;)(.*)/) {
+    push(\@a,split(//,\$1),\$2);
+    \$str = \$3;
+  }
+  (\@a,split(//,\$str));
+}
+
+# Explanation given in the non-eperl subroutine
+sub shorten {
+  my (\$str,\$len) = \@_;
+
+  return \$str if length(\$str) < \$len+3;
+  my \@str = mysplit(\$str);
+  return \$str if \@str <= \$len;
+  my \@a = splice(\@str,0,\$len/2);
+  my \@b = splice(\@str,-\$len/2,\$len/2);
+  # Keep any closing tags that got chopped
+  \@str = grep(m|^</.|, \@str);
+  join('',\@a,\@str,"..",\@b);
+}
+
 # We can chop down extra long image names on the album page if needed
 sub Name {
   my \$obj = get_obj(\@_);
@@ -2634,11 +2653,7 @@ sub Name {
   ##I don't have a clue why this next line was here:
   #return "Back" unless \$n;
   return \$n if Image_Page() && !\$MAIN::FIRST_NAME_CLEAN++;	#Kludge!
-  my \$shorten = !Image_Page() && $opt->{name_length} && length(\$n)>($opt->{name_length}+3);
-  # Don't shorten if name has HTML (kludge..)
-  \$shorten = 0 if \$n =~ /<(a|font|br)\\b.*>/;
-  my \$s = !\$shorten ? \$n :
-    substr(\$n,0,$opt->{name_length}/2) . "..." . substr(\$n,-$opt->{name_length}/2,$opt->{name_length}/2);
+  my \$s = (Image_Page() || !$opt->{name_length}) ? \$n : shorten(\$n,$opt->{name_length});
   return \$s if !$opt->{caption_edit};
   \$n = quote(\$n);
   my \$name = quote("NAME\$obj->{num}:".\$obj->{full}{file});
@@ -2799,7 +2814,7 @@ sub Image_Array {
   \$str .= " width='\$x'" if \$x;
   \$str .= " height='\$y'" if \$y;
   \$str .= " \$and" if \$and;
-  \$str .= " alt='\$alt'" if \$alt;
+  \$str .= " alt='\$alt' title='\$alt'" if \$alt;
   \$str .= " border='0' />";
   \$str;
 }
@@ -3206,6 +3221,36 @@ sub caption {
   }
 }
 
+# Split up all characters, but don't split '<html>' or '&chars;'
+# This is for the shortening algorithm
+sub mysplit {
+  my ($str) = @_;
+  return split(//, $str) unless $str =~ /(<.*>|&.*;)/;
+  my @a;
+  while ($str =~ /(.*?)(<[^>]+>|&[^;]+;)(.*)/) {
+    push(@a,split(//,$1),$2);
+    $str = $3;
+  }
+  (@a,split(//,$str));
+}
+
+# Shorten a string, but don't break up '&chars;' or '<html>' and
+# don't lose any closing html tags in the middle
+# (this heuristic may cause unneeded closing tags, but the complete
+# solution is far more complex and somewhat unwarranted)
+sub shorten {
+  my ($str,$len) = @_;
+
+  return $str if length($str) < $len+3;
+  my @str = mysplit($str);
+  return $str if @str <= $len;
+  my @a = splice(@str,0,$len/2);
+  my @b = splice(@str,-$len/2,$len/2);
+  # Keep any closing tags that got chopped
+  @str = grep(m|^</.|, @str);
+  join('',@a,@str,"..",@b);
+}
+
 sub write_index {
   my ($opt,$data) = @_;
 
@@ -3230,7 +3275,7 @@ sub write_index {
         print ALBUM " width='$obj->{thumb}{x}'" if $obj->{thumb}{x};
         print ALBUM " height='$obj->{thumb}{y}'" if $obj->{thumb}{y};
         print ALBUM " border='0' src=$obj->{URL}{album_page}{thumb}";
-        print ALBUM " alt=$obj->{alt} /><br />\n";
+        print ALBUM " alt=$obj->{alt} title=$obj->{alt}/><br />\n";
         print ALBUM "<font size='+1'>$obj->{name}</font></a>\n";
         print ALBUM "<font size='-1'><br \>$obj->{num_pics} images</font>\n"
           if defined $obj->{num_pics};
@@ -3249,8 +3294,7 @@ sub write_index {
     my $obj = $data->{obj}{$pic};
     my $name = $obj->{name};
     my $pname = $name;
-    $pname = substr($name,0,$opt->{name_length}/2) . "..." . substr($name,-$opt->{name_length}/2,$opt->{name_length}/2)
-      if ($opt->{name_length} && length($name)>($opt->{name_length}+3));
+    $pname = shorten($name,$opt->{name_length}) if $opt->{name_length};
 
     # Picture - thumbnail and all..
     if ($obj->{thumb}) {
@@ -3259,7 +3303,7 @@ sub write_index {
       print ALBUM " width='$obj->{thumb}{x}'" if $obj->{thumb}{x};
       print ALBUM " height='$obj->{thumb}{y}'" if $obj->{thumb}{y};
       print ALBUM " border='0' src=$obj->{URL}{album_page}{thumb}";
-      print ALBUM " alt=$obj->{alt} /><br />\n";
+      print ALBUM " alt=$obj->{alt} title=$obj->{alt}/><br />\n";
       print ALBUM "          $pname\n";
       print ALBUM "          <font size='-1'><i>[$obj->{full}{filesize}]</i></font>\n"
         if $opt->{file_sizes};
@@ -3338,7 +3382,7 @@ PREV_NEXT
     print ALBUM "<a href=$obj->{URL}{image_page}{image}>\n";
     print ALBUM "<$obj->{full}{tag} border='0'";
     print ALBUM " src=$obj->{URL}{image_page}{image_src}";
-    print ALBUM " alt=$obj->{alt}";
+    print ALBUM " alt=$obj->{alt} title=$obj->{alt}";
     print ALBUM " /></a><br />\n";
     caption($obj,1);
     print ALBUM "</font></i></center>\n";
@@ -3531,7 +3575,7 @@ sub gather_contents {
     # Ignore the .no_album/.hide_album/.not_img/.txt.. directive files
     next unless -s $path || -d $path;		# Ignore zero byte files
       # (windows can have zero byte directories)
-    #next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
+    next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
     next if $bob =~ /\Q$opt->{not_img}\E$/;
     next if $bob =~ /\Q$opt->{no_album}\E$/;
     next if $bob =~ /\Q$opt->{hide_album}\E$/;
@@ -3852,7 +3896,7 @@ sub do_album {
   clean_thumb_dir($opt,$data) if $opt->{clean};
 
   # Lookup captions and get names of files
-  get_captions($opt,$data);
+  get_captions($opt,$data, 1);
 
   # Sort pictures/dirs
   sort_info($opt,$data);
@@ -4153,7 +4197,14 @@ sub medium {
 # out if the medium option has changed??  Can we alternatively do
 # this by seeing what .conf options have been respec'd?
 
-  my ($fx,$fy,$mx,$my) = scale($opt,$full_path,$opt->{medium},$obj->{medium}{path},1);
+  my $medium = $opt->{medium};
+# Hack!  This doesn't work on Windows - at least on ActivePerl!  :(
+# I think it's because ActivePerl uses DOS for system calls and DOS doesn't
+# let you quote '>' to avoid redirection?  It complains that we need an
+# argument for -geometry option otherwise.  Can we just add '>'??
+  $medium =~ s/\>/\\>/g unless $opt->{windows};
+
+  my ($fx,$fy,$mx,$my) = scale($opt,$full_path,$medium,$obj->{medium}{path},1);
   ($obj->{full}{x},$obj->{full}{y}) = ($fx,$fy)
     if $base eq 'full' && $fx;
 
