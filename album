@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.12
+# Version:	2.13
 # Description:	Makes a photo album
 use strict;
 
@@ -390,7 +390,7 @@ END_OF_FOOTER
 sub clean_name {
   my ($name,$captions) = @_;
 
-  return $captions->{$name} if ($captions->{$name});
+  return $captions->{$name}{name} if ($captions->{$name});
 
   # No tags in filenames  :)
   $name =~ s/\</&lt;/g;
@@ -540,8 +540,11 @@ sub read_captions {
   }
   while(<CAPS>) {
     chomp;
-    my ($filename,$caption)=split(/\s/, $_, 2); #split on whitespace
-    $caps{$filename}=$caption if ($filename && $caption);
+    my ($file,$name,$cap,$alt)=split(/\t+/, $_, 4);	# Split on tabs
+    next unless $file && $name;
+    $caps{$file}{name}=$name;
+    $caps{$file}{cap}=$cap if $cap;
+    $caps{$file}{alt}=$alt if $alt;
   }
   close CAPS;
   \%caps;
@@ -646,11 +649,12 @@ sub Album_Filename { \$ALBUM_FILENAME; }
 # Header/footer
 sub pFile {
   my (\$f) = \@_;
-  return unless \$f;
-  return unless (-r \$f);
-  return unless open(FILE,"<\$f");
+  return 0 unless \$f;
+  return 0 unless (-r \$f);
+  return 0 unless open(FILE,"<\$f");
   while(<FILE>) { print; }
   close FILE;
+  return 1;
 }
 sub isHeader { return (-r "\$DIR/$HEADER") ? 1 : 0; }
 sub pHeader { pFile("\$DIR/$HEADER"); }
@@ -743,8 +747,11 @@ sub Image_Width { \$IMAGE_WIDTHS[\$IMAGE_CNT]; }
 sub Image_Height { \$IMAGE_HEIGHTS[\$IMAGE_CNT]; }
 sub Image_Cnt { \$IMAGE_CNT+1; }
 sub Images_Left { \$#IMAGE_NAMES + 1 - \$IMAGE_CNT; }
-sub pImage_Caption { pFile(\$IMAGE_CAPTIONS[\$IMAGE_CNT]); }
 sub Next_Image { \$IMAGE_CNT++; }
+sub pImage_Caption {
+  return if pFile(\$IMAGE_CAPTION_FILES[\$IMAGE_CNT]);
+  print \$IMAGE_CAPTIONS[\$IMAGE_CNT];
+}
 
 # For image pages
 sub Image_Prev { \$THIS_IMAGE ? \$THIS_IMAGE-1 : \$#IMAGE_NAMES; }
@@ -847,7 +854,7 @@ sub write_img_themes {
     my $file = "$opt_H->{'dir'}/$pic$post_url";
     $changed[$i] = dependency_changed("$dir/$file",
       "$dir/$pic",				# The image itself
-      $data_H->{'image_captions'}[$i],		# The image.txt file
+      $data_H->{'image_caption_files'}[$i],	# The image.txt file
       "$dir/$opt_H->{'captions'}",		# The captions file
       $0,					# Heck, even this program
       "$opt_H->{'theme'}/image.th",		#   or the theme itself
@@ -918,7 +925,7 @@ sub new_element {
       $new_row=1;
     }
   }
-  print ALBUM "      <td ";
+  print ALBUM "      <td align='center' ";
   print ALBUM "width='",(100/$opt_H->{'columns'}),"%' "
     if ($TABLE_COUNT < $opt_H->{'columns'});
   print ALBUM "valign='top'>\n";
@@ -929,11 +936,13 @@ sub new_element {
 # Default HTML (no ePerl)
 #########################
 sub caption {
-  my ($cap) = @_;
-  if (-f $cap && open(CAP,"<$cap")) {
+  my ($cap,$capfile) = @_;
+  if (-f $capfile && open(CAP,"<$capfile")) {
     while(<CAP>) { print ALBUM; }
     close CAP;
+    return;	# Don't use both captions?
   }
+  print ALBUM $cap if $cap;
 }
 
 sub write_index {
@@ -965,7 +974,9 @@ sub write_index {
     # Picture - thumbnail and all..
     if ($d_H->{'image_is_pic'}[$i]) {
       print ALBUM "        <a href=$d_H->{'image_urls'}[$i]>\n";
-      print ALBUM "          <img width='$opt_H->{'x'}' height='$opt_H->{'y'}' border='0' src=$d_H->{'image_thumbs'}[$i] alt=$d_H->{'image_alts'}[$i]><br />\n";
+      print ALBUM "          <img ";
+      print ALBUM "width='$opt_H->{'x'}' height='$opt_H->{'y'}' " if $opt_H->{crop};
+      print ALBUM "border='0' src=$d_H->{'image_thumbs'}[$i] alt=$d_H->{'image_alts'}[$i]><br />\n";
       print ALBUM "          $d_H->{'image_names'}[$i]\n";
       print ALBUM "          <font size='-1'><i>[$d_H->{'image_filesizes'}[$i]]</i></font>\n"
         if ($opt_H->{'file_sizes'});
@@ -985,7 +996,7 @@ sub write_index {
 
     # Caption?
     print ALBUM "          <font size='-2'>\n";
-    caption($d_H->{'image_captions'}[$i]);
+    caption($d_H->{'image_captions'}[$i],$d_H->{'image_caption_files'}[$i]);
     print ALBUM "          </font>\n";
   }
 
@@ -1036,7 +1047,7 @@ PREV_NEXT
     print ALBUM "<center><i><font size='+1'>\n";
     print ALBUM "<a href=$img>\n";
     print ALBUM "<img border='0' src=$medium alt=$d_H->{'image_alts'}[$i]></a><br />\n";
-    caption($d_H->{'image_captions'}[$i]);
+    caption($d_H->{'image_captions'}[$i],$d_H->{'image_caption_files'}[$i]);
     print ALBUM "</font></i></center>\n";
 
     print ALBUM $prev_next;
@@ -1104,7 +1115,8 @@ sub do_album {
   # Read captions file
   #########################
   my $caps_H = read_captions($opt_H,$dir);
-  $dir_names[-1] = $caps_H->{$dir_names[-1]} if ($caps_H->{$dir_names[-1]});
+  # The captions file can rename this directory too, actually
+  $dir_names[-1] = $caps_H->{$dir_names[-1]}{name} if ($caps_H->{$dir_names[-1]});
 
   #########################
   # Write the html
@@ -1144,8 +1156,6 @@ sub do_album {
       # Image caption file (image_name.txt)
       my $img_cap = "$dir/$pic";  $img_cap =~ s/\.[^\.]+$//;  $img_cap.=".txt";
       my $size; $size = filesize "$dir/$pic" if ($opt_H->{'file_sizes'});
-      my $alt = $name;
-      ($name,$alt) = ($1,$2) if ($name =~ /^(.*)\s*alt=\s*[\'\"]?(.+)[\'\"]?/i);
 
       # Figure out type
       my $is_a_pic = 1;
@@ -1209,8 +1219,10 @@ sub do_album {
       push(@{$d{'image_widths'}}, $width);
       push(@{$d{'image_heights'}}, $height);
       push(@{$d{'image_filesizes'}}, $size);
-      push(@{$d{'image_captions'}}, $img_cap);
-      push(@{$d{'image_alts'}}, quote($alt));	# Don't do -fix_urls on alt
+      push(@{$d{'image_caption_files'}}, $img_cap);
+      push(@{$d{'image_captions'}}, $caps_H->{$pic}{cap});
+      # Don't do -fix_urls on alt
+      push(@{$d{'image_alts'}}, quote($caps_H->{$pic}{alt}));
       push(@{$d{'image_is_pic'}}, $is_a_pic);
     }
   }
