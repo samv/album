@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.17
+# Version:	2.18
 # Description:	Makes a photo album
 use strict;
 
@@ -16,6 +16,7 @@ $PROGNAME =~ s|.*/||;
 
 my $CONVERT	= "convert";
 my $IDENTIFY	= "identify";	# Undef if you don't have identify
+my $MPG_EXTRACT	= "mpeg2decode -f -o3 -1";	# Extracts a single mpg frame
 
 my $EPERL	= "eperl";	# Only needed for templates
 
@@ -64,7 +65,7 @@ my %DEFAULTS	= (
 my $IMAGE_TYPES	=
 	"AVS|BMP|BMP24|CMYK|DCM|DCX|DIB|EPDF|EPI|EPS|EPS2|EPSF|EPSI|EPT|FAX".
 	"FITS|G3|GIF|GIF87|GRADATION|GRANITE|GRAY|HDF|HISTOGRAM|ICB|ICC|ICO".
-	"IPTC|JPG|JPEG|JPEG24|LABEL|LOGO|MAP|MATTE|MIFF|MNG|MONO|MTV|NULL|P7".
+	"IPTC|JPG|JPEG|JPEG24|LABEL|LOGO|MAP|MATTE|MIFF|MNG|MONO|MPG|MPEG|MTV|NULL|P7".
 	"PBM|PCD|PCDS|PCL|PCT|PCX|PDF|PIC|PICT|PICT24|PIX|PLASMA|PGM|PM|PNG".
 	"PNM|PPM|PREVIEW|PS|PS2|PS3|PSD|PTIF|PWP|RAS|RGB|RGBA|RLA|RLE|SCT|SFW".
 	"SGI|SHTML|STEGANO|SUN|TEXT|TGA|TIF|TIFF|TIFF24|TILE|TIM|TTF|TXT|UIL".
@@ -547,21 +548,19 @@ sub read_captions {
     print STDERR "[$PROGNAME] Couldn't read captions: [$dir/$caps]";
     return;
   }
-  my @caps = <CAPS>;
-  close CAPS;
-  my $split_tabs = grep(/\t/, @caps) ? 1 : 0;
-  my $num = 1;
-  foreach ( @caps ) {
+  while (<CAPS>) {
     chomp;
+    my $split_tabs = /\t/ ? 1 : 0;
     my ($file,$name,$cap,$alt)=
-      $split_tabs ? split(/\t+/, $_, 4) : split(/\s*?:\s*?/, $_, 4);
+      $split_tabs ? split(/\t+/, $_, 4) : split(/\s*::\s*/, $_, 4);
     $name=$file if (!$name && $cap);
     next unless $file && $name;
     $caps{$file}{name}=$name;
     $caps{$file}{cap}=$cap if $cap;
     $caps{$file}{alt}=$alt if $alt;
-    $caps{$file}{num}=$num++;
+    $caps{$file}{num}=$.+1;
   }
+  close CAPS;
   \%caps;
 }
 
@@ -744,10 +743,12 @@ sub Next_Child_Album { \$CHILD_ALBUM_CNT++; }
 # Images
 my \$IMAGE_CNT = 0;
 my \$THIS_IMAGE = 0;
+sub is_movie { return \$_[0] =~ /\.mpe?g["']?\$/i ? 1 : 0; }	# Ignore quotes
 sub Images { (\$IMAGE_CNT <= \$#IMAGE_NAMES) ? 1 : 0; }
 sub Image_Src { \$IMAGE_MEDIUMS[\$IMAGE_CNT] || Image_URL(); }
 sub pImage_Src {
-  print "<img src=",Image_Src()," border='0' alt=",Image_Alt();
+  my \$type = is_movie(Image_Src) ? "embed" : "img";
+  print "<\$type src=",Image_Src()," border='0' alt=",Image_Alt();
   print " width='",Image_Width(),"'" if Image_Width();
   print " height='",Image_Height(),"'" if Image_Height();
   print ">";
@@ -1079,7 +1080,8 @@ PREV_NEXT
 
     print ALBUM "<center><i><font size='+1'>\n";
     print ALBUM "<a href=$img>\n";
-    print ALBUM "<img border='0' src=$medium alt=$d_H->{'image_alts'}[$i]></a><br />\n";
+    my $type = is_movie($pic) ? "embed" : "img";
+    print ALBUM "<$type border='0' src=$medium alt=$d_H->{'image_alts'}[$i]></a><br />\n";
     caption($d_H->{'image_captions'}[$i],$d_H->{'image_caption_files'}[$i]);
     print ALBUM "</font></i></center>\n";
 
@@ -1113,6 +1115,7 @@ sub do_album {
 
   my @new_dirs = grep(-d "$dir/$_" &&
                       !-f "$dir/$_/$HIDE_ALBUM" &&
+                      !/^CVS|SCCS|RCS$/ &&	# Ignore revision directories
                       $_ ne $opt_H->{'dir'} &&
                       ($opt_H->{'all'} || !/^\./),
                       @dir);
@@ -1198,7 +1201,7 @@ sub do_album {
       my $is_a_pic = 1;
       $is_a_pic = 0
         if (-f "${pic}$NOT_IMG" || $pic =~ /\.html?$/i ||
-                  $pic =~ /\.(mov|mpg|mpeg)$/ ||
+                  $pic =~ /\.mov$/i ||
                  ($opt_H->{'known_images'} && $pic !~ /\.($IMAGE_TYPES)$/i));
 
       my ($width,$height);
@@ -1207,12 +1210,19 @@ sub do_album {
         # Generate -medium if necessary
         $medium = medium($opt_H,"$dir/$pic");
 
+        # Find out the full image size now, we can skip a step in
+        # thumbnail generation this way.
+        # We can't do this for movies, since we haven't yet extracted the frame
         ($width,$height) = get_size($opt_H,
           $medium ? "$dir/$opt_H->{'dir'}/$medium" : "$dir/$pic")
-          if ($opt_H->{'image_sizes'});
+          if ($opt_H->{'image_sizes'} && !is_movie($pic));
 
         # Generate thumbnail
         $thumb = thumbnail($opt_H,"$dir/$pic",$width,$height);
+
+        # Now get full image size for movies (the frame)
+        ($width,$height) = get_size($opt_H,thumb_name($opt_H,"$dir/$pic").".ppm")
+          if ($opt_H->{'image_sizes'} && is_movie($pic));
 
         next unless defined $thumb;
         $thumb =~ s/^\Q$dir\E\/?//; # Ugly - remove path component from $thumb
@@ -1411,6 +1421,7 @@ sub medium {
   my ($opt_H,$img) = @_;
 
   return unless $opt_H->{'medium'};
+  return if is_movie($img);
 
   my $med_path = medium_name($opt_H,$img);
   my $medium = $med_path;  $medium =~ s|.*/||g;
@@ -1427,6 +1438,25 @@ sub medium {
   return $medium;
 }
 
+# Handle movie clips/thumbnails
+# We can only handle mpg right now
+# This routine is also copied in the eperl source
+sub is_movie { return $_[0] =~ /\.mpe?g$/i ? 1 : 0; }
+
+sub movie_frame {
+  my ($opt_H,$movie,$img) = @_;
+
+  my $cmd = "$MPG_EXTRACT \Q$movie\E \Q$img\E";
+  print STDERR "movie_frame() run: $cmd\n" if ($MAIN::DEBUG);
+  system("$cmd > /dev/null 2>&1");
+  return "$img.ppm" unless ($?);
+  print STDERR "[$PROGNAME] Error extracting movie frame.\n";
+  print STDERR "\n";
+  print STDERR "\tDo you have mpeg2decode installed with the -1 patch from MarginalHacks.com?\n";
+  return $movie;
+}
+
+# An image thumbnail
 sub thumbnail {
   my ($opt_H,$img,$x,$y) = @_;
 
@@ -1437,8 +1467,11 @@ sub thumbnail {
   # Don't regenerate thumbs if we don't need to.
   return $thumb if (-f $thumb && !$opt_H->{'force'} && -M $thumb < -M $img);
 
+  # movie?
+  $img = movie_frame($opt_H,$img,$thumb) if is_movie($img);
+
   # In case we didn't get the size yet
-  ($x,$y) = get_size($opt_H,$img) unless ($opt_H->{'image_sizes'});
+  ($x,$y) = get_size($opt_H,$img) unless ($x && $y);
 
   # Which way do we need to shrink?  convert will scale down w/ aspect
   # as much as is needed to *fit* inside the geometry we give it
