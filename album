@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-  my $VERSION=  2.37;
+  my $VERSION=  2.38;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -1756,7 +1756,7 @@ sub get_size {
         }
         return (0,0) if (/no delegate for this image format/);
         return (0,0) if (/support .*not yet available/);
-        if (/\s(\d+)x(\d+)(\s|\+)/) {
+        if (/\s(\d+)x(\d+)(\s|\+|\-)/) {
           $size->close;
           return ($1,$2);
         }
@@ -1772,7 +1772,7 @@ sub get_size {
   $size || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<$size>) {
     print STDERR "get_size(): $_" if ($MAIN::DEBUG);
-    if(/\s(\d+)x(\d+)(\s|\+)/) {
+    if(/\s(\d+)x(\d+)(\s|\+|\-)/) {
       $size->close;
       $opt->{'identify'} = 0 if $try_noidentify;	# identify didn't work, convert did
       return ($1,$2);
