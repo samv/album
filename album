@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.45;
+  my $VERSION=  2.46;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -90,6 +90,7 @@ my %DEFAULTS	= (
 	'caption_edit'	=> 0,		# Add tags for editing captions CGI
 	'fix_urls'	=> 1,		# Encode unsafe characters as %xx in URL
 	'depth'		=> -1,		# Depth to descend directories
+	'add'		=> "",		# Add these directories to the album
 	'all'		=> 0,		# Do not hide .directories
 	'hashes'	=> 1,		# Show hash progress marks
 	'name_length'	=> 40,		# Limit length of image names
@@ -238,6 +239,7 @@ sub usage {
   print "\t-body             Specify <body> tags for default output (not themes)\n";
   print "\t-all              Do not hide directories starting with '.'\n";
   print "\t-depth            Depth to descend directories (default infinite)\n";
+  print "\t-add <dir>        Add a new directory to the album it's been placed in\n";
   print "\t-hashes           Show hash marks while generating thumbnails"; default("hashes");
   print "\t-name_length      Limit length of image/dir names"; default("name_length");
   print "\t-date_sort        Sort images/dirs by date instead of captions/name"; default("date_sort");
@@ -414,7 +416,7 @@ sub parse_args {
       my ($no,$option) = ($1,$2);
       usage("Unknown option: $option") unless (defined $DEFAULTS{$option});
       # Options that take arguments
-      if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|name_length|theme_url|transform_url)$/) {
+      if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|add|name_length|theme_url|transform_url)$/) {
         usage("Option [$option] can't be -no, it needs an argument") if ($no);
         my $val = shift(@theme_args);
         $val = shift(@ARGV) unless defined $val;
@@ -478,6 +480,9 @@ sub parse_args {
     if ($opt{CROP} && $opt{CROP} !~ /^(top|bottom|left|right)$/);
 
   printf "[$PROGNAME version %4.2f]\n",$VERSION if $MAIN::DEBUG;
+
+  # Take any post / off the "add" directory (should probably clean this better)
+  $opt{add} =~ s|/+$||;
 
   $dir =~ s|/$||;	# Little cleanup
   (\%opt,$dir);
@@ -1561,6 +1566,7 @@ sub do_album {
   my ($opt,$dir,@dir_names) = @_;
 
   return if $opt->{depth}>=0 && @dir_names > $opt->{depth};
+  return if $#dir_names && $opt->{add} && $dir !~ m#^(\./)?$opt->{add}($|/)#;
 
   print STDERR "Album: $dir" unless $MAIN::QUIET;
   if ($opt->{hashes}) {
@@ -1598,6 +1604,7 @@ sub do_album {
                   !/\Q$NO_ALBUM\E$/ &&	# The not_img files themselves
                   !/\.txt$/ &&		# Per image captions
                   !/\.htaccess$/ &&	# httpd security files
+                  !/\.cvsignore$/ &&	# CVS
                   !/~$/ &&		# Emacs backup files
                   $_ ne "$opt->{'index'}$HTML" &&	# Index html
                   $_ ne $HEADER &&	# Header/footer
