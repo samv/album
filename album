@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.21
+# Version:	2.22
 # Description:	Makes a photo album
 use strict;
 
@@ -481,8 +481,11 @@ sub previous_build_theme {
   while(<FILE>) {
     if (/meta\s+NAME='Album_Theme'\s+CONTENT='(.+)'/i) {
       close(FILE);
-      return $1 if (-d $1);
-      print STDERR "[$PROGNAME] Warning: Couldn't find previous theme in $file: $1\n";
+      # It's a relative path from that directory.
+      my $path = $1;
+      $path = "$dir/$path" unless ($path =~ m|^/|);
+      return abs_path($path) if (-d $path);
+      print STDERR "[$PROGNAME] Warning: Couldn't find previous theme in $file: $path\n";
       return undef;
     }
   }
@@ -831,7 +834,7 @@ sub Set_Image_This { \$IMAGE_CNT = \$THIS_IMAGE; }
 sub Meta {
   print "<meta NAME='Generator' CONTENT='$GEN_STRING'>\\n";
   print "<meta NAME='Album_Path' CONTENT='\$ALBUM_PATH'>\\n";
-  print "<meta NAME='Album_Theme' CONTENT='\$OPTIONS{theme}'>\\n";
+  print "<meta NAME='Album_Theme' CONTENT='\$THEME_PATH'>\\n";
   print "<meta NAME='Prev_Image' CONTENT='",\$PICS[Image_Prev()],"'>\\n";
   print "<meta NAME='Next_Image' CONTENT='",\$PICS[Image_Next()],"'>\\n";
   \$CALLED_META=1;
