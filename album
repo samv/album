@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	1.14
+# Version:	1.15
 # Description:	Makes a photo album
 # Assumes:	'Back' for the top of the album is '..'
 use strict;
@@ -166,8 +166,8 @@ sub header {
     <title> 
       Album: $this
     </title>
-    <meta NAME='Generator' CONTENT='$GEN_STRING'
-    <meta NAME='Album_Path' CONTENT='$path'
+    <meta NAME='Generator' CONTENT='$GEN_STRING'>
+    <meta NAME='Album_Path' CONTENT='$path'>
   </head>
   <body bgcolor='white'>
   <table width='95%'>
