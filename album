@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.48;
+  my $VERSION=  2.49;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -21,6 +21,9 @@ $PROGNAME =~ s|.*/||;
 # Windows users will probably want to specify full paths, such as:
 # my $CONVERT   = 'C:/PROGRAM FILES/IMAGEMAGICK/convert.exe';
 # my $IDENTIFY   = 'C:/PROGRAM FILES/IMAGEMAGICK/identify.exe';
+
+# Win98: Slightly different version
+#WIN98#$VERSION .= " (win98)";
 
 # Win98: Needs TCAP:  ftp://ftp.simtel.net/pub/simtelnet/msdos/sysutl/tcap31.zip
 #WIN98#my $TCAP = 'tcap';
@@ -79,6 +82,7 @@ my %DEFAULTS	= (
 	'medium'	=> "",		# Make medium size pictures?
 	'just_medium'	=> 0,		# Don't link to full size images
 	'image_pages'	=> 1,		# Page per image
+	'embed'		=> 1,		# Use embed for non-pic image pages
 	'index'		=> $DEFAULT_INDEX,	# Default index
 	'body'		=> "<body bgcolor='white'>",		# <body> tag
 	'top'		=> "..",	# The "Back" for the top album
@@ -245,6 +249,7 @@ sub usage {
   print "\t-medium <geom>    Generate medium size images"; default("medium");
   print "\t-just_medium      And don't link to full-size images"; default("just_medium");
   print "\t-image_pages      Create a page for each image"; default("image_pages");
+  print "\t-embed            Use image pages for non-picture image pages"; default("embed");
   print "\t-columns          Number of image columns"; default("columns");
   print "\t-file_sizes       Show image file sizes"; default("file_sizes");
   print "\t-image_sizes      Get image size (width*height) (for some themes)"; default("image_sizes");
@@ -301,7 +306,7 @@ sub usage {
 
 sub version {
   print "\n";
-  printf "This is $PROGNAME version %4.2f\n",$VERSION;
+  printf "This is $PROGNAME version $VERSION\n";
   print "\n";
   print "Copyright (c) 2000,2001,2002 David Ljung Madison <$HOME>\n";
   print "\n";
@@ -498,7 +503,7 @@ sub parse_args {
   usage("-CROP must be top, bottom, left or right")
     if ($opt{CROP} && $opt{CROP} !~ /^(top|bottom|left|right)$/);
 
-  printf "[$PROGNAME version %4.2f]\n",$VERSION if $MAIN::DEBUG;
+  printf "[$PROGNAME version $VERSION]\n" if $MAIN::DEBUG;
 
   # Take any post / off the "add" directory (should probably clean this better)
   $opt{add} =~ s|/+$||;
@@ -736,6 +741,7 @@ sub quote {
   my ($path,$opt) = @_;
 
   # Handle ['"#?*!:%] always, regardless of -fix_urls - see RFC 1630
+# or - RFC1630 legally allows:  [\?\/\+a-zA-Z0-9\$\-_\@\.&!\*"'\(\),]
   $path =~ s/(['"#?*!:%])/"%".sprintf("%2.2x",ord($1))/eg;
 
   $path = "'$path'";	# And quote the rest
@@ -1772,7 +1778,10 @@ sub do_album {
       # If we don't have image pages, we'll only use Image_URL
       #
       my $url;
-      if ($is_a_pic && $opt->{'image_pages'}) {
+
+      my $use_medium_page = $is_a_pic && $opt->{'image_pages'} ? 1 : 0;
+      $use_medium_page = 0 if !$opt->{embed} && is_movie($pic);
+      if ($use_medium_page) {
         $url = quote("$opt->{'dir'}/$pic$page_post_url",$opt);
       } elsif ($opt->{transform_url}) {
         $url = $opt->{transform_url};
