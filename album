@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.13
+# Version:	2.14
 # Description:	Makes a photo album
 use strict;
 
@@ -713,8 +713,9 @@ sub Next_Child_Album { \$CHILD_ALBUM_CNT++; }
 my \$IMAGE_CNT = 0;
 my \$THIS_IMAGE = 0;
 sub Images { (\$IMAGE_CNT <= \$#IMAGE_NAMES) ? 1 : 0; }
+sub Image_Src { \$IMAGE_MEDIUMS[\$IMAGE_CNT] || Image_URL(); }
 sub pImage_Src {
-  print "<img src=",Image_URL()," border='0' alt=",Image_Alt();
+  print "<img src=",Image_Src()," border='0' alt=",Image_Alt();
   print " width='",Image_Width(),"'" if Image_Width();
   print " height='",Image_Height(),"'" if Image_Height();
   print ">";
@@ -1165,14 +1166,18 @@ sub do_album {
                  ($opt_H->{'known_images'} && $pic !~ /\.($IMAGE_TYPES)$/i));
 
       my ($width,$height);
-      my ($thumb,$page_thumb);
-      my ($medium);
+      my ($thumb,$page_thumb,$medium);
       if ($is_a_pic) {
         # Generate -medium if necessary
         $medium = medium($opt_H,"$dir/$pic");
 
+        ($width,$height) = get_size($opt_H,
+          $medium ? "$dir/$opt_H->{'dir'}/$medium" : "$dir/$pic")
+          if ($opt_H->{'image_sizes'});
+
         # Generate thumbnail
-        ($thumb,$width,$height) = thumbnail($opt_H,"$dir/$pic");
+        $thumb = thumbnail($opt_H,"$dir/$pic",$width,$height);
+
         next unless defined $thumb;
         $thumb =~ s/^\Q$dir\E\/?//; # Ugly - remove path component from $thumb
         $is_a_pic = 0 unless ($thumb);
@@ -1384,19 +1389,16 @@ sub medium {
 }
 
 sub thumbnail {
-  my ($opt_H,$img) = @_;
+  my ($opt_H,$img,$x,$y) = @_;
 
   print STDERR "\nIMAGE: $img\n" if ($MAIN::DEBUG);
 
   my ($thumb) = thumb_name($opt_H,$img);
 
-  # Always get image size if requested
-  my ($x,$y); ($x,$y) = get_size($opt_H,$img) if ($opt_H->{'image_sizes'});
-
   # Don't regenerate thumbs if we don't need to.
-  return ($thumb,$x,$y) if (-f $thumb && !$opt_H->{'force'} && -M $thumb < -M $img);
+  return $thumb if (-f $thumb && !$opt_H->{'force'} && -M $thumb < -M $img);
 
-  # Get image size if we didn't yet
+  # In case we didn't get the size yet
   ($x,$y) = get_size($opt_H,$img) unless ($opt_H->{'image_sizes'});
 
   # Which way do we need to shrink?  convert will scale down w/ aspect
@@ -1433,7 +1435,7 @@ sub thumbnail {
       unless ($tx==$opt_H->{'x'} && $ty==$opt_H->{'y'});
   }
 
-  ($thumb,$x,$y);
+  $thumb;
 }
 
 ##################################################
