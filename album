@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.04
+# Version:	2.05
 # Description:	Makes a photo album
 use strict;
 
@@ -598,6 +598,20 @@ my \$IMAGE_PAGE = 0;
 sub Image_Page { \$IMAGE_PAGE; }
 sub Album_Filename { \$ALBUM_FILENAME; }
 
+# Header/footer
+sub pFile {
+  my (\$f) = \@_;
+  return unless \$f;
+  return unless (-r \$f);
+  return unless open(FILE,"<\$f");
+  while(<FILE>) { print; }
+  close FILE;
+}
+sub isHeader { return (-r "\$ALBUM_PATH/$HEADER") ? 1 : 0; }
+sub pHeader { pFile("\$ALBUM_PATH/$HEADER"); }
+sub isFooter { return (-r "\$ALBUM_PATH/$FOOTER") ? 1 : 0; }
+sub pFooter { pFile("\$ALBUM_PATH/$FOOTER"); }
+
 # Get any of the command line options
 sub Get_Opt { return \$OPTIONS{\$_[0]}; }
 
@@ -664,9 +678,11 @@ sub pImage {
   return undef unless Images();
   print "<a href=".Image_URL().">";
   pImage_Thumb_Src() if (Image_Is_Pic());
-  return if (defined(\$_[0]) && !\$_[0]);
-  print "<br />\n";
-  print Image_Name();
+  if (!defined \$_[0] || \$_[0]) {
+    print "<br />\n";
+    print Image_Name();
+  }
+  print "</a>";
 }
 # In the image page we use the real URL (back one dir)
 # Otherwise we use the url to the image page (or just the image)
@@ -681,14 +697,7 @@ sub Image_Width { \$IMAGE_WIDTHS[\$IMAGE_CNT]; }
 sub Image_Height { \$IMAGE_HEIGHTS[\$IMAGE_CNT]; }
 sub Image_Cnt { \$IMAGE_CNT+1; }
 sub Images_Left { \$#IMAGE_NAMES + 1 - \$IMAGE_CNT; }
-sub pImage_Caption {
-  my \$f = \$IMAGE_CAPTIONS[\$IMAGE_CNT];
-  return unless \$f;
-  return unless (-r \$f);
-  return unless open(FILE,"<\$f");
-  while(<FILE>) { print; }
-  close FILE;
-}
+sub pImage_Caption { pFile(\$IMAGE_CAPTIONS[\$IMAGE_CNT]); }
 sub Next_Image { \$IMAGE_CNT++; }
 
 # For image pages
@@ -699,7 +708,6 @@ sub Set_Image_This { \$IMAGE_CNT = \$THIS_IMAGE; }
 sub Set_Image_Next {
   \$IMAGE_CNT = \$THIS_IMAGE==\$#IMAGE_NAMES ? 0 : \$THIS_IMAGE+1;
 }
-
 
 # Meta tag needed for regenerating portions of the album tree.
 sub Meta {
