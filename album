@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.03';
+  my $VERSION=  '3.04';
 # Rewrite branched off from: 2.53
 # Description:	Makes a photo album.
 use strict;
@@ -3265,6 +3265,8 @@ sub write_img_themes {
     );
     # Or if -exif has changed, we have to regen all HTML...
     $changed[$i] = 1 if $opt->{SAVE}{exif};
+    $changed[$i] = 1 if $opt->{SAVE}{exif_album};
+    $changed[$i] = 1 if $opt->{SAVE}{exif_image};
   }
 
   for(my $i=0; $i<=$#{$data->{pics}}; $i++) {
