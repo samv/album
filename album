@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.27
+# Version:	2.28
 # Description:	Makes a photo album
 use strict;
 
@@ -37,6 +37,7 @@ my %DEFAULTS	= (
 	'CROP'		=> "",		# top, bottom, left or right
 	'force'		=> 0,		# Force thumbnail generation
 	'type'		=> "jpg",	# Thumbnail image type
+	'medium_type'	=> "",		# Medium Thumbnail image type
 	'dir'		=> "tn",	# Thumbnail directory
 	'known_images'	=> 0,		# I'd rather keep my album clean
 	'sample'	=> 0,		# -sample:-geometry :: fast:better
@@ -155,6 +156,7 @@ sub usage {
   print "Thumbnail Options:\n";
   print "\t-geometry=<X>x<Y> Size of thumbnail  [${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
   print "\t-type             Thumbnail type (gif, jpg, tiff,...)"; default("type");
+  print "\t-medium_type      Medium type (default is same type as full image)"; default("medium_type");
   print "\t-crop             Crop the image to fit thumbnail size\n";
   print "\t                   else aspect will be maintained"; default("crop");
   print "\t-CROP             Force cropping to be top, bottom, left or right\n";
@@ -297,7 +299,7 @@ sub parse_args {
       my ($no,$option) = ($1,$2);
       usage("Unknown option: $option") unless (defined $DEFAULTS{$option});
       # Options that take arguments
-      if ($option =~ /^(medium|dir|type|columns|captions|index|top|body|CROP|depth)$/) {
+      if ($option =~ /^(medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth)$/) {
         usage("Option [$option] can't be -no, it needs an argument") if ($no);
         my $val = (shift(@theme_args) || shift(@ARGV));
         if ($option eq "index" && $val eq $DEFAULT_INDEX) {
@@ -1414,16 +1416,17 @@ sub medium_name {
   my ($opt,$img) = @_;
 
   my $post="";
-  ($img,$post)=($`,$&) if ($img =~ /\.[^\.\/]+$/);
+  ($img,$post)=($`,$1) if ($img =~ /\.([^\.\/]+)$/);
+  $post = $opt->{medium_type} || $post;
 
-  return "${img}.med$post" unless ($opt->{'dir'});
+  return "${img}.med.$post" unless ($opt->{'dir'});
 
   my $dir = $opt->{'dir'};
   ($dir,$img) = ("$`/$opt->{'dir'}",$1) if ($img =~ m|/([^/]*)$|);
 
   (-d $dir) || mkdir($dir,0755) || die("[$PROGNAME] Couldn't make directory [$dir]\n");
 
-  return "$dir/${img}.med$post"
+  return "$dir/${img}.med.$post"
 }
 
 sub thumb_name {
