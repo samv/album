@@ -1,0 +1,115 @@
+Common Problems / Solutions
+
+ITEM: I'm getting errors!
+
+Well, that's not enough information.  First run album with "-d" to see what's
+happening, and if you can't figure out the problem from that, check this page
+to see if your error is mentioned here.  If not, then you can <a href='/Contact/'>send me</a>
+the following information:
+1) The error (all of the output from "album -d")
+2) Your operating system
+3) The version of ImageMagick (first line from "convert -h")
+
+ITEM: I get: <i>"album: No such file or directory"</i>?
+
+1) Try specifying the full path to album, such as:
+
+<code>% ./album</code>
+
+Or
+
+<code>% /usr/local/bin/album</code>
+
+2) Make sure perl is installed in /usr/bin/perl
+
+3) If you save the perl scripts as text from IE, it may screwup the
+   line breaks, instead use save as source.
+
+ITEM: My thumbnails are too big
+
+Some cameras store thumbnails in the profile info of the images,
+and this gets saved by convert when it creates new images.  One
+solution is to try adding:
+
+<code>% album --scale_opts +profile \\\* -- &lt;rest of album arguments here...&gt;</code>
+
+Some versions of ImageMagick will complain with this.  You can also try:
+
+<code>% album --scale_opts -profile /dev/null -- ....</code>
+
+On Windows with ActivePerl you'll need to specify a trash file instead of /dev/null
+
+You can also do this to your medium images with --med_scale_opts.
+
+If that doesn't make your thumbnails small enough, you can lower the
+quality with something like:
+
+<code>% album --scale_opts -quality 5 -- ....</code>
+
+You can combine the --scale_opts as well:
+
+<code>% album --scale_opts +profile \\\* -quality 5 -- ....</code>
+
+ITEM: I don't want to have to regenerate all my albums when I add photos
+
+Great, neither do I.
+
+First of all, unless you specify -force, album won't generate new medium
+or thumbnail images, it will only generate new HTML.  But this can take
+time, and can also be avoided.
+
+If you handle albums like me, then new photos go into a new directory
+which is placed in an album with other subalbums (that are already
+generated).  To update the new directory (with the proper parent album
+links and theme) and add it to the top directory, you can do:
+
+  % album -add photos/new_vacation_pictures
+
+ITEM: My index pages are too large!
+
+I get many requests to break up the index pages after reaching a certain
+threshold of images.
+
+The problem is that this is hard to manage - unless the index pages are
+treated just like sub-albums, then you now have three major components
+on a page, more indexes, more albums, and thumbnails.  And not only is
+that cumbersome, but it would require updating all the themes.
+
+Hopefully the next major release of album will do this, but until then
+there is another, easier solution - just break the images up into
+subdirectories before running album.
+
+I have a tool that will move new images into subdirectories for you and
+then runs album:
+  <a href='http://MarginalHacks.com/Hacks/album/tools/in_album'>in_album</a>
+
+ITEM: <b>ERROR:</b> no delegate for this image format (./album)
+
+You have the album script in your photo directory and it can't make
+a thumbnail of itself!  Either:
+1) Move album out of the photo directory (suggested)
+2) Run album with -known_images
+
+ITEM: <b>ERROR:</b> no delegate for this image format (some_non_image_file)
+
+Don't put non-images in your photo directory, or else run with -known_images
+
+ITEM: <b>ERROR:</b> no delegate for this image format (some.jpg)
+ITEM: <b>ERROR:</b> identify: JPEG library is not available (some.jpg)
+
+Your ImageMagick installation isn't complete and doesn't know how
+to handle the given image type.
+
+ITEM: <b>ERROR:</b> Can't get [some_image] size from -verbose output.
+
+ImageMagick doesn't know the size of the image specified.  Either:
+1) Your ImageMagick installation isn't complete and can't handle the image type.
+2) You are running album on a directory with non-images in it without
+   using the -known_images option.
+
+If you're a <a href='http://MarginalHacks.com/redir.cgi?http://Gentoo.org/'>gentoo linux</a> user and you see this error, then run this command
+as root (thanks Alex Pientka):
+
+  USE="avi gif jpeg mpeg png quicktime tiff" emerge imagemagick
+
+

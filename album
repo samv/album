@@ -2,12 +2,11 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.52;
-# Description:	Makes a photo album
+  my $VERSION=  '3.00';
+# Rewrite branched off from: 2.53
+# Description:	Makes a photo album.
 use strict;
 use IO::File;
-#use locale;	# Does Windows have this?
-
 umask 022;	# 0755
 
 ##################################################
@@ -15,109 +14,169 @@ umask 022;	# 0755
 # SETTINGS
 ##################################################
 ##################################################
-my $PROGNAME = $0;
-$PROGNAME =~ s|.*/||;
 
-# Windows users will probably want to specify full paths, such as:
-# my $CONVERT   = 'C:/PROGRAM FILES/IMAGEMAGICK/convert.exe';
-# my $IDENTIFY   = 'C:/PROGRAM FILES/IMAGEMAGICK/identify.exe';
+# Operating System?  (Get from $^O variable)
+#   OSX=Darwin, Win98=MSWin, WinXP=MSWin (damn), Win2k=MSWin32, Cygwin=cygwin
+my $OSX		= ($^O =~ /darwin/i) ? 1 : 0;
+my $WINDOWS	= (!$OSX && ($^O =~ /Win/i)) ? 1 : 0;
+my $WIN2K	= ($^O =~ /MSWin32/i) ? 1 : 0;
+my $CYGWIN	= ($^O =~ /cygwin/i) ? 1 : 0;
+# tcap isn't needed under cygwin, and I don't think it's
+# needed (or works) under Win2k
+my $TCAP	= ($WINDOWS && !$CYGWIN && !$WIN2K) ? 1 : 0;
 
-# Win98: Slightly different version
-#WIN98#$VERSION .= " (win98)";
-
-# Win98: Needs TCAP:  ftp://ftp.simtel.net/pub/simtelnet/msdos/sysutl/tcap31.zip
-#WIN98#my $TCAP = 'tcap';
-#WIN98#my $TCAP_FILE = "atrash.tmp";
-#WIN98## Put tcap args in the tcap env var, so to reduce line length (128 limit)
-#WIN98#$ENV{tcap}="-overwrite *${TCAP_FILE}";
-
-
-my $CONVERT	= "convert";
-my $IDENTIFY	= "identify";	# Undef if you don't have identify
-my $JHEAD	= "jhead";	# Extract EXIF info from jpgs
-my $FFMPEG	= "ffmpeg";	# For extracting movie frames
-
-# Default directory page
-my $HTML	= ".html";
-my $DEFAULT_INDEX = "index$HTML";		# Don't need to specify this index
-my $HEADER	= "header.txt";
-my $FOOTER	= "footer.txt";
-my $NO_ALBUM	= ".no_album";		# Don't run album on these dirs/files
-my $HIDE_ALBUM	= ".hide_album";	# Don't even show these directories
-my $NOT_IMG	= ".not_img";		# Postfix for files that aren't images
-
+my ($BASENAME,$PROGNAME) = split_path($WINDOWS ? '\\' : '/', $0);
 
 # Avoid "Broken pipe" messages
 $SIG{PIPE} = 'IGNORE';
 
-#########################
-# abs_path
-#########################
-use Cwd 'abs_path';
-# If you don't have the Cwd module, use this:
-#sub abs_path {
-#  my ($dir) = @_;
-#  my $pwd=`pwd`; chomp($pwd);
-#  chdir($dir) || usage("Couldn't find [$dir]");
-#  my $name=`pwd`;  chomp($name);
-#  chdir($pwd);
-#  $name;
-#}
-
-my %DEFAULTS	= (
-	# Thumbnail stuff
-	'x'		=> 133,		# Size of thumbnails
-	'y'		=> 100,
-	'crop'		=> 1,		# Crop or just scale?
-	'CROP'		=> "",		# top, bottom, left or right
-	'force'		=> 0,		# Force thumbnail generation
-	'type'		=> "jpg",	# Thumbnail image type
-	'medium_type'	=> "",		# Medium Thumbnail image type
-	'dir'		=> "tn",	# Thumbnail directory
-	'known_images'	=> 0,		# I'd rather keep my album clean
-	'sample'	=> 0,		# -sample:-geometry :: fast:better
-	'animated_gifs'	=> 0,		# Use [0] in convert for animated gifs
-
-	# Album stuff
-	'medium'	=> "",		# Make medium size pictures?
-	'just_medium'	=> 0,		# Don't link to full size images
-	'image_pages'	=> 1,		# Page per image
-	'embed'		=> 1,		# Use embed for non-pic image pages
-	'index'		=> $DEFAULT_INDEX,	# Default index
-	'body'		=> "<body bgcolor='white'>",		# <body> tag
-	'top'		=> "..",	# The "Back" for the top album
-	'columns'	=> 4,		# Number of images per row
-	'file_sizes'	=> 0,		# Show image file sizes
-	'image_sizes'	=> 0,		# Get image sizes (width*height)
-	'clean'		=> 0,		# Clean garbage out of thumbnail dir?
-	'captions'	=> "captions.txt",	# Captions filename?
-	'caption_edit'	=> 0,		# Add tags for editing captions CGI
-	'exif'		=> "",		# Format for EXIF caption string
-	'fix_urls'	=> 1,		# Encode unsafe characters as %xx in URL
-	'depth'		=> -1,		# Depth to descend directories
-	'add'		=> "",		# Add these directories to the album
-	'all'		=> 0,		# Do not hide .directories
-	'hashes'	=> 1,		# Show hash progress marks
-	'name_length'	=> 40,		# Limit length of image names
-	'date_sort'	=> 0,		# Sort by date
-	'name_sort'	=> 0,		# Sort by name, ignore caption order
-	'reverse_sort'	=> 0,		# Reverse sorting
-	'charset'	=> "iso-8859-1",# Charset for default theme
-	'image_loop'	=> 1,		# Do image pages loop around?
-
-	# eperl stuff
-	'enter_eperl'	=> '<:',	# Start code region in theme
-	'leave_eperl'	=> ':>',	# Leave code region in theme
-
-	# Ignore this stuff..
-	'transform_url'	=> "",		# Hack for transforming image URL
-
-	# deprecated, it's automated now
-	'identify'	=> 1,		# Use identify or convert for get_size?
-
-	'theme_url'	=> "",		# In case we need to specify theme URL
-	'theme'		=> "",		# So that -no_theme works, ignored.
+##################################################
+# CONF FILES
+##################################################
+my $PROGFILE = ($PROGNAME =~ /^([^\.-]{3,})[\.-]/) ? $1 : $PROGNAME;
+my @CONFS = (
+	"/etc/$PROGFILE/$PROGFILE.conf",
+	"/etc/$PROGFILE.conf",
+	"$BASENAME/$PROGFILE.conf",
+	"$ENV{HOME}/.${PROGFILE}rc",
+	"$ENV{HOME}/.$PROGFILE.conf",
 	);
+
+# I like to keep all my dot files in one directory besides my $HOME
+push(@CONFS, "$ENV{DOT}/$PROGFILE.conf") if $ENV{DOT};
+
+# Windows: "C:\Documents and Settings\TheUser"
+push(@CONFS, "$ENV{USERPROFILE}/$PROGFILE.conf") if $ENV{USERPROFILE};
+
+##################################################
+# OPTIONS
+##################################################
+# add_option(lvl, option, type, hash)
+#    lvl = usage printing level:  -h=1  -more=2  -More=3  (not shown)=4+
+#   option = option name
+#   hash{args} = args for usage (i.e., -option <file>)
+#   hash{default} = default value
+#   hash{usage} = "This is the usage line"
+#   hash{usage} = ["Can also be","an array of lines"]
+#   hash{one_time} = Set for options that shouldn't be saved in album.conf
+#   type is one of:
+my $OPTION_SEP = 1;	# Separator
+my $OPTION_BOOL = 2;
+my $OPTION_NUM = 3;
+my $OPTION_STR = 4;
+my $OPTION_ARR = 5;	# Array of strings
+
+add_option(1,'h',\&usage, usage=>"Show usage");
+add_option(1,'more',\&usage, usage=>"To show more options.");
+add_option(2,'More',\&usage, usage=>"To show even more options.");
+add_option(2,'q',$OPTION_BOOL, one_time=>1, usage=>"Be quiet");
+add_option(2,'d',$OPTION_BOOL, one_time=>1, usage=>"Set debug mode");
+add_option(99,'pod',\&gen_pod, usage=>"Generate pod text");
+add_option(1,'conf', \&read_conf, one_time=>1, args=>'<file>', usage=>"Read a .conf file");
+add_option(3,'save_conf',$OPTION_BOOL, default=>1, usage=>"Save $PROGFILE.conf files in photo album");
+add_option(3,'configure',$OPTION_BOOL, usage=>"Setup initial $PROGNAME site configuration");
+add_option(1,'version',\&version, usage=>"Display program version info");
+
+# Album Options:
+add_option(1,'Album Options:',$OPTION_SEP);
+add_option(3,'image_pages',$OPTION_BOOL, default=>1, usage=>"Create a page for each image");
+add_option(2,'dir_thumbs',$OPTION_BOOL, default=>1, usage=>"Directories have thumbnail (if supported by theme)");
+add_option(1,'medium', $OPTION_STR, args=>'<geom>', usage=>"Generate medium size images");
+add_option(2,'just_medium',$OPTION_BOOL, usage=>"Don't link to full-size images");
+add_option(1,'embed',$OPTION_BOOL, default=>1, usage=>"Use image pages for non-picture image pages");
+add_option(3,'columns',$OPTION_NUM, default=>4, usage=>"Number of image columns");
+add_option(1,'clean',$OPTION_BOOL, one_time=>1, usage=>"Remove unused thumbnails");
+add_option(3,'captions',$OPTION_STR, default=>'captions.txt', usage=>"Specify captions filename");
+add_option(2,'album_captions',$OPTION_BOOL, default=>1, usage=>"Also show captions on album page");
+add_option(1,'caption_edit',$OPTION_BOOL, usage=>"Add comment tags so that caption_edit.cgi will work");
+add_option(1,'exif', $OPTION_ARR, args=>'<fmt>', usage=>["Append exif info to captions.  Use %key% in fmt string",
+           "Example:  -exif \"<br>Camera: %Camera model%\"",
+           "If any %keys% are not found by jhead, nothing is appended."]);
+add_option(3,'exif_album', $OPTION_ARR, args=>'<fmt>', usage=>"-exif for just album pages");
+add_option(3,'exif_image', $OPTION_ARR, args=>'<fmt>', usage=>"-exif for just image pages");
+add_option(2,'file_sizes',$OPTION_BOOL, usage=>"Show image file sizes");
+	## For backwards compat with themes?
+	add_option(999,'image_sizes',$OPTION_BOOL, usage=>"DEPRECATED OPTION");
+add_option(2,'fix_urls',$OPTION_BOOL, default=>1, usage=>"Encode unsafe chars as %xx in URLs");
+add_option(2,'known_images',$OPTION_BOOL, default=>1, usage=>"Only include known image types");
+add_option(2,'top',$OPTION_STR, default=>'../', usage=>"URL for 'Back' link on top page");
+add_option(2,'all',$OPTION_BOOL, usage=>"Do not hide files/directories starting with '.'");
+add_option(1,'add', $OPTION_ARR, args=>'<dir>', one_time=>1, usage=>"Add a new directory to the album it's been placed in");
+add_option(2,'depth',$OPTION_NUM, default=>-1, one_time=>1, usage=>"Depth to descend directories (default infinite)");
+add_option(2,'hashes',$OPTION_BOOL, default=>1, one_time=>1, usage=>"Show hash marks while generating thumbnails");
+add_option(2,'name_length',$OPTION_NUM, default=>40, usage=>"Limit length of image/dir names");
+add_option(2,'date_sort',$OPTION_BOOL, usage=>"Sort images/dirs by date instead of captions/name");
+add_option(2,'name_sort',$OPTION_BOOL, usage=>"Sort by name, not caption order");
+add_option(2,'reverse_sort',$OPTION_BOOL, usage=>"Sort in reverse");
+add_option(3,'body',$OPTION_STR, usage=>"Specify <body> tags for non-theme output");
+add_option(3,'charset', $OPTION_STR, args=>'<str>', default=>'iso-8859-1', usage=>"Charset for non-theme output");
+add_option(2,'image_loop',$OPTION_BOOL, default=>1, usage=>"Do first and last image pages loop around?");
+add_option(1,'index', $OPTION_STR, args=>'<file>', usage=>["Select the default 'index.html' to use.",
+           "For file://, try '-index index.html' to add 'index.html' to index links."]);
+add_option(2,'default_index', $OPTION_STR, args=>'<file>', default=>'index.html', usage=>"The file the webserver accesses when no file is specified.");
+add_option(3,'html', $OPTION_STR, args=>'<post>', default=>'.html', usage=>"Default postfix for HTML files");
+
+# Thumbnail Options:
+add_option(1,'Thumbnail Options:',$OPTION_SEP);
+add_option(1,'geometry', \&parse_geometry, args=>'<X>x<Y>', default=>'133x133', usage=>"Size of thumbnail");
+  add_option(99,'x',$OPTION_NUM, default=>133, usage=>"x Size of thumbnail");
+  add_option(99,'y',$OPTION_NUM, default=>133, usage=>"y Size of thumbnail");
+add_option(1,'type',$OPTION_STR, default=>'jpg', usage=>"Thumbnail type (gif, jpg, tiff,...)");
+add_option(1,'medium_type',$OPTION_STR, usage=>"Medium type (default is same type as full image)");
+add_option(1,'crop',$OPTION_BOOL, default=>0, usage=>["Crop the image to fit thumbnail size",
+           "otherwise aspect will be maintained"]);
+add_option(3,'CROP',$OPTION_STR, usage=>"Force cropping to be top, bottom, left or right");
+add_option(1,'dir',$OPTION_STR, default=>'tn', usage=>"Thumbnail directory");
+add_option(2,'force',$OPTION_BOOL, one_time=>1, usage=>["Force overwrite of existing thumbnails",
+           "otherwise they are only written when changed"]);
+add_option(2,'sample',$OPTION_BOOL, usage=>"convert -sample for thumbnails (faster, low quality)");
+add_option(2,'sharpen', $OPTION_STR, args=>'<radius>x<sigma>', usage=>"Sharpen after scaling");
+add_option(1,'animated_gifs',$OPTION_BOOL, usage=>"Take first frame of animated gifs (only some systems)");
+add_option(2,'scale_opts',$OPTION_ARR, usage=>"Options for convert (use '--' for mult)");
+add_option(3,'medium_scale_opts',$OPTION_ARR, usage=>"List of medium convert options");
+add_option(3,'full_scale_opts',$OPTION_ARR, usage=>"List of full convert options");
+
+# Theme Options:
+add_option(1,'Theme Options:',$OPTION_SEP);
+add_option(1,'theme', $OPTION_STR, args=>'<dir>', usage=>"Specify a theme directory");
+add_option(2,'theme_url', $OPTION_STR, args=>'<url>', usage=>"In case you want to refer to the theme by absolute URL");
+add_option(2,'theme_path', $OPTION_ARR, args=>'<dir>', default=>[], usage=>"Directories that contain themes");
+
+# Paths:
+add_option($WINDOWS?1:10,'Paths:',$OPTION_SEP);
+add_option(10,'convert',$OPTION_STR, default=>'convert', usage=>"Path to convert (ImageMagick)");
+add_option(10,'identify',$OPTION_STR, default=>'identify', usage=>"Path to identify (ImageMagick)");
+add_option(10,'jhead',$OPTION_STR, default=>'jhead', usage=>"Path to jhead (extracts exif info)");
+add_option(10,'ffmpeg',$OPTION_STR, default=>'ffmpeg', usage=>"Path to ffmpeg (extracting movie frames)");
+add_option(10,'conf_file',$OPTION_STR, default=>'album.conf', usage=>"Conf filename for album configurations");
+add_option(10,'dev_null',$OPTION_STR, default=>default_dev_null(), usage=>"Throwaway temp file");
+
+# Windows crap:
+#  "Windows.  It may be slow, but at least it's hard to use"
+add_option($WINDOWS?1:10,'windows',$OPTION_STR, default=>$WINDOWS, usage=>"Are we (unfortunately) running windows?");
+add_option($WINDOWS?1:10,'cygwin',$OPTION_STR, default=>$CYGWIN, usage=>"Are we using the Cygwin environment?");
+# Win98: Needs TCAP:  ftp://ftp.simtel.net/pub/simtelnet/msdos/sysutl/tcap31.zip
+add_option($TCAP?1:10,'use_tcap',$OPTION_BOOL, default=>$TCAP, usage=>"Use tcap? (win98)");
+add_option($TCAP?1:10,'tcap',$OPTION_STR, default=>'tcap', usage=>"Path to tcap (win98)");
+add_option($TCAP?1:10,'tcap_out',$OPTION_STR, default=>'atrash.tmp', usage=>"tcap output file (win98)");
+add_option($TCAP?1:10,'cmdproxy',$OPTION_STR, default=>'cmdproxy', usage=>"Path to cmdproxy (tcap helper for long lines)");
+
+# Default directory page
+add_option(10,'header',$OPTION_STR, default=>'header.txt', usage=>"Path to header file");
+add_option(10,'footer',$OPTION_STR, default=>'footer.txt', usage=>"Path to footer file");
+add_option(10,'no_album',$OPTION_STR, default=>'.no_album', usage=>"Ignore dir/files if file with this postfix exists");
+add_option(10,'hide_album',$OPTION_STR, default=>'.hide_album', usage=>"Ignore and don't display these files");
+add_option(10,'not_img',$OPTION_STR, default=>'.not_img', usage=>"Don't treat these files as images");
+
+# Generally not used as options stuff..
+# <meta name='Album_Path' content='...'>
+add_option(99,'path',$OPTION_STR, usage=>"Path of album so far");
+# Hacky kludge stuff for internal/my purposes
+add_option(99,'transform_url',$OPTION_STR, usage=>"Transform image URL");
+add_option(99,'enter_eperl',$OPTION_STR, default=>'<:', usage=>"Enter code region in theme");
+add_option(99,'leave_eperl',$OPTION_STR, default=>':>', usage=>"Leave code region in theme");
+add_option(99,'num_hashes',$OPTION_NUM, default=>20, one_time=>1, usage=>"How many hashes to print");
+add_option(99,'hash_width',$OPTION_NUM, default=>78, usage=>"Width of screen (for hashes)");
 
 # As of "ImageMagick 4.2.9 99/09/01"
 # May not be the same as your version of convert, but damn it's alot!
@@ -130,72 +189,180 @@ my $IMAGE_TYPES	=
 	"SGI|SHTML|STEGANO|SUN|TEXT|TGA|TIF|TIFF|TIFF24|TILE|TIM|TTF|TXT|UIL|".
 	"UYVY|VDA|VICAR|VID|VIFF|VST|X|XBM|XC|XPM|XV|XWD|YUV";
 
-$IMAGE_TYPES.="|AVI|MOV|MOOV" if $FFMPEG;	# ffmpeg can handle AVI, MOV
+##################################################
+# Data structures
+# (hashes unless otherwise specified)
+##################################################
+# $opt
+# ----
+# Options from command line and config files
+# (and also themes and a few from index.html as well)
+#
+# $opt->{$option}	Array or string or number depending on @OPTIONS above.
+#
+# Also:
+# $opt->{image.th}	The image.th file
+# $opt->{album.th}	The album.th file
+# $opt->{top}		The path to the top album.
+#
+# $data
+# -----
+# Each directory in the album has it's own data structure:
+#
+# $data->{unknown}	Does the directory contain an unknown HTML?
+# $data->{start}	We are starting our call to album here
+# @{$data->{dir_pieces}} All the pieces of the path to this part of the album
+# $data->{depth}	Depth of the album to this part
+# @{$data->{pics}}	Array of all the pics in this album
+# @{$data->{dirs}}	Array of all the child directories
+# $data->{obj}{$obj}	Object (image/directory) info (see $obj structure)
+# $data->{paths}	Path info:
+#   {dir}		  Current working album directory
+#   {album_file}	  Full path to the album index.html
+#   {album_path}	  The path of parent directories
+#   {theme}		  Full path to the theme directory
+#   {img_theme}		  Full path to the theme directory from image pages
+#   {page_post_url}	  The ".html" to add onto image pages
+#   {parent_albums}	  Array of parent albums (album_path split up)
+#
+# $obj
+# ----
+# Objects are images, movies, subdirectories..
+# Each object has an $obj structure at $data->{obj}{$pic}
+#
+# $obj->{type}		Which list?  pics or dirs
+# $obj->{is_movie}	Boolean: is this a movie?
+# $obj->{name}		Name (cleaned and optionally from captions)
+# $obj->{cap}		Image caption
+# $obj->{capfile}	Optional caption file
+# $obj->{alt}		Alt tag
+# $obj->{num_pics}	[directories only, -dir_thumbs] Num of pics in directory
+# $obj->{num_dirs}	[directories only, -dir_thumbs] Num of dirs in directory
+#
+# There are three sizes of images for each pic: full, medium, thumb.
+# For each of these sizes, we have:
+#
+#   $obj->{<size>}{x}		Width
+#   $obj->{<size>}{y}		Height
+#   $obj->{<size>}{file}		Filename (without path)
+#   $obj->{<size>}{path}		Filename (full path)
+#   $obj->{<size>}{filesize}	Filesize in bytes
+#   $obj->{full}{tag}	Tag - either 'image' or 'embed' (only for full)
+#
+# Image objs also have URL info:
+#
+# $obj->{URL}		URL paths: {URL}{from_page}{to}
+#   {album_page}{image}		  Image_URL from album_page
+#   {album_page}{thumb}		  Thumbnail from album_page
+#   {image_page}{image}		  Image_URL from image_page
+#   {image_page}{image_page}	  This image page from another image page
+#   {image_page}{image_src}	  The <img src> URL for the image page
+#   {image_page}{thumb}		  Thumbnail from image_page
+#
+# And directory objs have:
+#
+# $obj->{URL}{album_page}{dir}	URL to the directory from it's parent album page
+#
+# Internal $data/$opt fields
+# --------------------------
+# There are also some _fields in $data that are internal (not for theme use)
+#
+# $opt->{_theme}{..}		Contains entire text of the image.th/album.th
+# $opt->{_theme_line}{..}	The starting line
+# $opt->{_captions}{$dir}	Captions cache for a path
+# 				(in opt to survive multiple do_album calls)
+# @{$opt->{_albums}}		List of albums to run on
+# $opt->{_album}{$alb}		Hash of any album settings (such as 'add')
+# $data->{paths}{_date_sort_cache}	Date sort values
+# $data->{eperl}		The ePerl support text
+
+##################################################
+# Bootstrap/Simple utilities
+##################################################
+sub attempt_require { eval "require $_[0]"; $@ ? 0 : 1; }
+
+my %OPTIONS;
+my @OPTIONS;
+my %DEFAULTS;
+sub add_option {
+  my ($lvl,$option,$type,%hash) = @_;
+  $hash{lvl}=$lvl;
+  $hash{type}=$type;
+  push(@OPTIONS,$option);
+  $hash{default}=0 unless $hash{default} || $type!=$OPTION_BOOL;
+  $OPTIONS{$option} = \%hash;
+  $DEFAULTS{$option} = $hash{default};
+}
 
 #########################
 # Windows blows
 #########################
-my $OSX = ($^O =~ /darwin/i) ? 1 : 0;
-my $CRAPPY_OS = (!$OSX && ($^O =~ /Win/i)) ? 1 : 0;
-# Win98=MSWin, WinXP=MSWin (damn), CygWin=cygwin
-
   # 1) Can't handle "\Qfile\E";
   sub file_quote {
-    my ($file) = @_;
-    $CRAPPY_OS ? "\"$file\"" : "\Q$file\E";
+    my ($opt,$file) = @_;
+    $opt->{windows} ? "\"$file\"" : "\Q$file\E";
   }
 
   # 2) Can't create .files
-  $NO_ALBUM =~ s/^\.//g if $CRAPPY_OS;
-  $HIDE_ALBUM =~ s/^\.//g if $CRAPPY_OS;
+  # 3) .exe extension if we don't have it
+  # (fixed in get_defaults)
 
-  # 3) Stupid $0 is probably '/' not '\'
-  if ($CRAPPY_OS && $0 =~ m|\\|) {	# Guess
-    $PROGNAME = $0;
-    $PROGNAME =~ s|.*\\||;
-  }
+  # 4) Stupid $0 is probably '/' not '\'
+  # (Fixed in PROGNAME split_path above)
 
-  # 4) Can't handle 'open(FOO,"cmd |")' or 2>&1
-  #    (According to one mail, 2>&1 works in Win2000)
+  # 5) Can't handle 'open(FOO,"cmd |")' or 2>&1
+  #    (Though 2>&1 works in Win2000, ActivePerl and Cygwin)
+  my $TMPFILE;
   sub open_pipe {
-    my ($cmd) = @_;
-    print STDERR "run: $cmd\n" if ($MAIN::DEBUG);
+    my ($opt,$cmd,$args) = @_;
+    print STDERR "run: $cmd $args\n" if $opt->{d};
     my $fh = new IO::File;
 
+    $cmd = file_quote($opt,$cmd);
+
     # Happy Unix
-    return (open($fh, "$cmd 2>&1 |")) && $fh unless $CRAPPY_OS;
+    return (open($fh, "$cmd $args 2>&1 |")) && $fh
+      unless $opt->{cygwin} || $opt->{use_tcap};
 
     # Win98 (use TCAP)
-#WIN98#    system("$TCAP -c $cmd");
-#WIN98#    (open($fh, "$TCAP_FILE")) || die("Can't open $TCAP output [$TCAP_FILE]\n");
-#WIN98#    return $fh;
+    if ($opt->{use_tcap}) {
+      usage("Couldn't find 'tcap'") unless $opt->{tcap};
+      # Put tcap args in the tcap env var, so to reduce line length (128 limit)
+      $ENV{tcap}="-overwrite *$opt->{tcap_out}";
+      $TMPFILE = $opt->{tcap_out};	# Interrupt handlers can remove it..
+      my $tcap = file_quote($opt,$opt->{tcap});
+      $tcap .= " ".file_quote($opt,$opt->{cmdproxy}) if $opt->{cmdproxy};
+      system("$tcap -c $cmd $args");
+      (open($fh, "$opt->{tcap_out}")) || fatal($opt,"Can't open $opt->{tcap} output [$opt->{tcap_out}]");
+      return $fh;
+    }
 
     # Windows2000,XP:  -| pipe method, doesn't seem to work on Win98
+    # (Only works under Cygwin??)
+    # Otherwise error: '-' is not recognized as an internal or external
+    #   command, operable program or batch file
     my $pid = (open($fh,"-|"));
     return undef unless defined $pid;	# Failed
     return $fh if $pid;			# Parent
     # Child
-    (open(STDERR,">&STDOUT")) || die("open_pipe(): Can't dup stdout\n");
-    exec($cmd);
+    (open(STDERR,">&STDOUT")) || fatal($opt,"open_pipe(): Can't dup stdout\n");
+    exec("$cmd $args");
   }
 
-  # 4 1/2)  Clean up the tmp file	(for Win98)
-#WIN98#  sub win_done { print STDERR "@_\n"; unlink($TCAP_FILE);  exit; }
-#WIN98#  if ($CRAPPY_OS) {
-#WIN98#    $SIG{INT} = \&win_done; $SIG{TERM} = \&win_done;
-#WIN98#    $SIG{HUP} = \&win_done; $SIG{QUIT} = \&win_done;
-#WIN98#    $SIG{EXIT} = \&win_done; $SIG{__DIE__} = \&win_done;
-#WIN98#  }
+  # 5 1/2)  Clean up the tmp file	(for Win98)
+  sub all_done {
+    print STDERR "@_\n" if @_;
+    unlink($TMPFILE) if $TMPFILE;
+    exit;
+  }
+  $SIG{INT} = \&all_done; $SIG{TERM} = \&all_done;
+  $SIG{HUP} = \&all_done; $SIG{QUIT} = \&all_done;
+  $SIG{EXIT} = \&all_done; $SIG{__DIE__} = \&all_done;
 
-  # 5) Can't handle /dev/null?
-  # (Need to figure this out - make a tmpfile?  $DEV_NULL = ...?)
-
-  # 6) .exe extension if we don't have it
-  if ($CRAPPY_OS) {
-    $CONVERT =~ s/\.exe$//;
-    $IDENTIFY =~ s/\.exe$//;
-    $CONVERT .= ".exe";
-    $IDENTIFY .= ".exe";
+  # 6) Can't handle /dev/null
+  sub default_dev_null() {
+    return '/dev/null' if !$WINDOWS || $CYGWIN;
+    ($ENV{TMP} || $ENV{TEMP} || '/tmp')."/$PROGFILE.null";
   }
 
 #########################
@@ -206,164 +373,696 @@ my $ALBUM_URL	= "${HOME}Hacks/album/";
 my $GEN_STRING	= "album $HOME";
 my $OLD_GEN_RE	= "Generated by <a href=.+>$PROGNAME</a> and <a href=.+>thumb</a>";
 
-#########################
-# Stupid privoxy bug.
-#########################
-sub concat {
-  die(<<PRIVOXY_SUCKS);
-Your proxy (privoxy) has a bug in it:
+sub get_defaults {
+  my $opt = \%DEFAULTS;
 
-  http://www.privoxy.org/faq/misc.html#DOWNLOADS
+  # Windows defaults are slightly different (no .files)
+  if ($opt->{windows}) {
+    # These aren't that important because of search_path_win()
+    $opt->{convert} .= ".exe" unless $opt->{convert} =~ /\.exe$/;
+    $opt->{identify} .= ".exe" unless $opt->{identify} =~ /\.exe$/;
 
-Privoxy corrupts text scripts by changing o-p-e-n-( to concat(
-And they don't seem concerned about it.  So you might want to consider
-getting a new proxy.  Until then, replace all 'concat(' in this script
-with 'o-p-e-n-(' without the dashes.
+    $opt->{no_album} =~ s/^\.//g;
+    $opt->{hide_album} =~ s/^\.//g;
+  }
 
-PRIVOXY_SUCKS
+  $opt;
 }
 
 ##################################################
+# COMMAND-LINE OPTIONS AND CONFIGURATIONS
 ##################################################
-# COMMAND-LINE OPTIONS
-##################################################
-##################################################
-sub default {
-  my $d = $DEFAULTS{$_[0]};
-  print $d==1 ? " [ON]\n" : $d ? " [$d]\n" : "\n";
+sub fatal {
+  my ($opt,@msg) = @_;
+  print STDERR "\n[$PROGNAME] ",join("\n", @msg),"\n\n" if @msg;
+  exit -1;
 }
-my $ARG_THEME;	# Themes can specify args - show where they came from
+
 sub usage {
-  my $msg;
-  foreach $msg (@_) { print "ERROR:  $msg\n"; }
-  print "\tOption from theme: [$ARG_THEME]\n" if $ARG_THEME;
-  print "\n";
-  print "Usage:\t$PROGNAME [-d] [--scale_opts .. --] [options] <dir>\n";
-  print "\tMakes a photo album\n";
-  print "\n";
-  print "\tAll boolean options can be turned off with '-no_option'\n";
-  print "\t(Some are default on, defaults shown in [brackets])\n";
-  print "\n";
-  print "Album Options:\n";
-  print "  -d                 Set debug mode\n";
-  print "  -q                 Be quiet (we're hunting wabbits!)\n";
-  print "  -medium <geom>     Generate medium size images"; default("medium");
-  print "  -just_medium       And don't link to full-size images"; default("just_medium");
-  print "  -image_pages       Create a page for each image"; default("image_pages");
-  print "  -embed             Use image pages for non-picture image pages"; default("embed");
-  print "  -columns           Number of image columns"; default("columns");
-  print "  -file_sizes        Show image file sizes"; default("file_sizes");
-  print "  -image_sizes       Get image size (width*height) (for some themes)"; default("image_sizes");
-  print "  -clean             Remove unused thumbnails"; default("clean");
-  print "  -captions          Specify captions filename"; default("captions");
-  print "  -caption_edit      Add comment tags so that caption_edit.cgi will work"; default("caption_edit");
-  print "  -exif <fmt>        Append exif info to captions.  Use \%key\% in fmt string"; default("exif");
-  print "                     Example:  -exif \"<br>Camera: %Camera model%\"\n";
-  print "                     If any %keys% are not found by jhead, nothing is appended.\n";
-  print "  -fix_urls          Encode unsafe chars as %xx in URLs"; default("fix_urls");
-  print "  -known_images      Only include known image types"; default("known_images");
-  print "  -body              Specify <body> tags for default output (not themes)\n";
-  print "  -top               URL for 'Back' link on top page"; default("top");
-  print "  -all               Do not hide directories starting with '.'\n";
-  print "  -depth             Depth to descend directories (default infinite)\n";
-  print "  -add <dir>         Add a new directory to the album it's been placed in\n";
-  print "  -hashes            Show hash marks while generating thumbnails"; default("hashes");
-  print "  -name_length       Limit length of image/dir names"; default("name_length");
-  print "  -date_sort         Sort images/dirs by date instead of captions/name"; default("date_sort");
-  print "  -name_sort         Sort by name, not caption order"; default("name_sort");
-  print "  -reverse_sort      Sort in reverse"; default("reverse_sort");
-  print "  -charset <str>     Charset for non-theme output"; default("charset");
-  print "  -image_loop        Do first and last image pages loop around?"; default("image_loop");
-  print "  -index <file>      Select the default 'index.html' to use"; default("index");
-  print "                       Specifying '-index index' will force album to\n";
-  print "                       actually add 'index.html' to the end of links,\n";
-  print "                       which is useful if you use file://\n";
-  print "\n";
-  print "Thumbnail Options:\n";
-  print "  -geometry=<X>x<Y>  Size of thumbnail  [${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
-  print "  -type              Thumbnail type (gif, jpg, tiff,...)"; default("type");
-  print "  -medium_type       Medium type (default is same type as full image)"; default("medium_type");
-  print "  -crop              Crop the image to fit thumbnail size\n";
-  print "                      else aspect will be maintained"; default("crop");
-  print "  -CROP              Force cropping to be top, bottom, left or right\n";
-  print "  -dir               Thumbnail directory"; default("dir");
-  print "  -force             Force overwrite of existing thumbnails\n";
-  print "                      else they are only written when changed"; default("force");
-  print "  -sample            convert -sample for thumbnails (faster, low quality)"; default("sample");
-  print "  -animated_gifs     Take first frame of animated gifs (only some systems)"; default("animated_gifs");
-  print "  --scale_opts       List of convert options, end with '--'\n";
-  print "                     (Also --med_scale_opts and --full_scale_opts..)\n";
-  print "\n";
-  print "Theme Options:\n";
-  print "  -theme <dir>       Specify a theme directory\n";
-  print "  -theme_url <url>   In case you want to refer to the theme by absolute URL\n";
-  print "  -no_theme          Ignore album's previous theme settings\n";
-  print "\n";
-  print "  -version           Display program version info\n";
-  print "\n";
-  print "Author:      David Ljung Madison\n";
-  print "Docs:        $ALBUM_URL\n";
-  print "License:     ${HOME}License/\n";
-  print "Please see!  ${HOME}Pay/\n";
-  print "\n";
-  exit -1;
+  my (@msg) = @_;		# Called with error
+  my ($opt,$option,$val) = @_;	# Called from option
+
+  version();
+
+  # If it was called from -h, -more or -More
+  my $show=1;
+  if (ref $opt eq 'HASH') {
+    $show = 2 if $option eq "more";
+    $show = 3 if $option eq "More";
+    undef @msg;
+  }
+
+  # Otherwise we have a usage error
+  if (@msg) {
+    map { print STDERR "\nERROR:  $_\n"; } @msg;
+    print STDERR "\nTry '$PROGNAME -h' for usage info.\n\n";
+    exit -1;
+  }
+
+  # Print usage.
+  print STDERR <<USAGE;
+
+Usage:\t$PROGNAME [-d] [--scale_opts .. --] [options] <dir>
+\tMakes a photo album
+
+\tAll boolean options can be turned off with '-no_<option>'
+\t(Some are default on, defaults shown in [brackets])
+
+USAGE
+
+  # Calculate width of -arg string
+  my $maxw = 0;
+  map { $maxw=max($maxw,length($_)); } @OPTIONS;
+  $maxw-=1;
+  $maxw=min($maxw,17);
+
+  # Show usage for each option
+  my $dashdash=0;
+  foreach my $option ( @OPTIONS ) {
+    my $type = $OPTIONS{$option}{type};
+    my $default = $OPTIONS{$option}{default};
+    next unless $OPTIONS{$option}{lvl}<=$show;
+    if ($type==$OPTION_SEP) {
+      print STDERR $option ? "\n$option\n" : "\n";
+      next;
+    }
+    my $def = $type==$OPTION_BOOL ? ($default ? " [ON]" : " [OFF]") :
+              !defined($default) ? "" :
+              $type==$OPTION_ARR ? " [@$default]" :
+              ($type==$OPTION_STR && !$default) ? "" : " [$default]";
+    my $opt = $option;
+    $opt .= " $OPTIONS{$option}{args}" if $OPTIONS{$option}{args};
+    $opt = "-$opt" if $type==$OPTION_ARR;
+    $dashdash++ if $type==$OPTION_ARR;
+    my $usage = $OPTIONS{$option}{usage};
+    my $usage_str = ref $usage eq 'ARRAY' ? join("\n      ",@$usage) : $usage;
+    printf STDERR "  -%-${maxw}s $usage_str$def\n", $opt;
+  }
+
+  print STDERR <<DASHDASH_USAGE if $dashdash;
+
+Dashdash options (--opt) can be specified two ways:
+  With one argument:       "-exif hi -exif there"
+  With mult. arguments:    "--exif hi there --"
+DASHDASH_USAGE
+
+  copyright();
 }
 
+sub gen_pod {
+  my ($opt,$option,$val) = @_;
+
+  my $eq = '=';	# Otherwise pod2man thinks the pod is up here
+  print <<START_POD;
+${eq}head1 OPTIONS
+
+There are three types of options.  Boolean options, string/num options and
+array options.  Boolean options can be turned off by prepending -no_:
+
+% album -no_image_pages
+
+String and number values are specified after a string option:
+
+% album -type gif
+% album -columns 5
+
+Array options can be specified two ways, with one argument at a time:
+
+% album -exif hi -exif there
+
+Or multiple arguments using the '--' form:
+
+% album --exif hi there --
+
+START_POD
+
+  my @options = grep($OPTIONS{$_}{lvl}<=10, @OPTIONS);
+  my @bool_opts = grep($OPTIONS{$_}{type}==$OPTION_BOOL, @options);
+  my @str_opts = grep($OPTIONS{$_}{type}==$OPTION_STR, @options);
+  my @arr_opts = grep($OPTIONS{$_}{type}==$OPTION_ARR, @options);
+
+  print "Boolean options:\n\n";
+  print '% album -'.join(', -',@bool_opts),"\n\n";
+
+  print "String/number options:\n\n";
+  print '% album -'.join(', -',@str_opts),"\n\n";
+
+  print "Array options:\n\n";
+  print '% album --'.join(', --',@arr_opts),"\n\n";
+
+  print <<START_OPTS;
+
+${eq}head2 OPTION DESCRIPTIONS
+
+${eq}over 4
+
+START_OPTS
+
+  foreach my $option ( @options ) {
+    next if $OPTIONS{$option}{lvl} > 10;
+    my $type = $OPTIONS{$option}{type};
+    my $default = $OPTIONS{$option}{default};
+    if ($type==$OPTION_SEP) {
+      print <<POD_SEP if $option;
+${eq}back
+
+${eq}head2 $option
+
+${eq}over 4
+
+POD_SEP
+      next;
+    }
+    my $def = $type==$OPTION_BOOL ? ($default ? " [Default ON]" : " [Default OFF]") :
+              !defined($default) ? "" :
+              $type==$OPTION_ARR ? " [Default @$default]" :
+              ($type==$OPTION_STR && !$default) ? "" : " [Default $default]";
+    my $opt = $option;
+    $opt = "-$opt" if $type==$OPTION_ARR;
+    my $args = $OPTIONS{$option}{args};
+    $args = "string" if $type==$OPTION_STR && !$args;
+    $args = "strings" if $type==$OPTION_ARR && !$args;
+    unless ($args =~ s/^<([^<>]*)>$/$1/) {
+      $args =~ s/</E<lt>/g;
+      $args =~ s/(?<!E<lt)>/E<gt>/g;
+    }
+    $args = $args ? ($args =~ /^<.*>$/ ? "=I$args" : "=I<$args>") : "";
+    my $usage = $OPTIONS{$option}{usage};
+    my $usage_str = $usage ? join("\n",@$usage) : "";
+    printf "=item B<-$opt>I<$args>\n\n$usage_str$def\n\n";
+  }
+
+  print "\n\n=back\n\n";
+
+  exit 0;
+}
+#########################
+# Version/Copyright Info
+#########################
 sub version {
-  print "\n";
-  printf "This is $PROGNAME version $VERSION\n";
-  print "\n";
-  print "Copyright (c) 2000,2001,2002 David Ljung Madison <$HOME>\n";
-  print "\n";
-  exit -1;
+  my ($opt,$option,$val) = @_;
+  
+  unless ($opt->{q} || $MAIN::SHOWED_VERSION++) {
+    print STDERR "\nThis is $PROGNAME v$VERSION";
+    print STDERR "  ** BETA version.  DO NOT DISTRIBUTE. **"
+      if $VERSION =~ /b/;
+    print STDERR "\n\n";
+  }
+
+  return unless $option;	# Called from -version, do the whole thing
+
+  copyright();
+  exit 0;
 }
 
-sub set_size {
-  my ($opt,$size) = @_;
-  return ($opt->{'x'},$opt->{'y'}) = ($1,$2) if ($size =~ /^(\d+)x(\d+)$/);
-  usage("Can't understand geometry [$size]");
+sub copyright {
+  print <<COPYRIGHT;
+
+Copyright:   (c) 2000-2004 David Ljung Madison
+Docs:        $ALBUM_URL
+License:     ${HOME}License/
+Please see!  ${HOME}Pay/
+
+COPYRIGHT
+  exit 0;
 }
+
+#########################
+# Parse command line
+#########################
+sub parse_geometry {
+  my ($opt,$option,$val) = @_;
+
+  usage("Can't understand geometry [$val]") unless $val =~ /^(\d+)x(\d+)$/;
+  $opt->{geometry} = $val;	# To get saved in conf files
+  ($opt->{x},$opt->{y}) = ($1,$2);
+}
+
+# Parse a single argument with optional value (and 'no_' flag)
+sub parse_arg {
+  my ($opt,$option,$val, $from) = @_;
+
+  print STDERR "[ARG] $option $val - $from\n" if $opt->{d};
+
+  # Should 'no_' be undef?
+  $val = 0 if ($option =~ s/^no_?//);	# Handle 'no_' options
+  my $dashdash = ($option =~ s/^-//) ? 1 : 0;
+  usage("Unnecessary '--' in options") if $dashdash && !$option;
+
+  usage("Unknown ".($from||"command-line option").":\n\t  -$option") unless $OPTIONS{$option};
+  my $type = $OPTIONS{$option}{type};
+
+  # Theme options don't override any options that are previously set.
+  return if $from =~ /theme option/ && $opt->{_set}{$option};
+
+  # Keep track of which args were on the command-line ('SAVE' hash)
+  $opt->{SAVE}{$option} = 1 unless $from
+    || (defined($OPTIONS{$option}{default}) && $val eq $OPTIONS{$option}{default});
+  $opt->{_set}{$option} = 1;
+
+  if ($type==$OPTION_SEP) {
+    usage("Unknown option: $option");
+
+  } elsif ($type==$OPTION_BOOL) {
+    # Booleans are either on or off
+    my $set = 1;
+    $set = ($val ? 1 : 0) if defined $val;
+    $set = 0 if $val =~ /^(off|no)$/i;
+    #$set = ($set ? 0 : 1) if $no;
+    $opt->{$option} = $set;
+
+  } elsif (ref $type eq 'CODE') {
+    # Handle actions (code ref type)
+    unless (defined $val || !$OPTIONS{$option}{args}) {
+      # We need an arg - but $from implies we don't have any args to get..
+      usage("Missing argument for $from option: $option") if $from;
+      $val = shift @ARGV 
+    }
+    &$type($opt,$option,$val);
+
+  } elsif ($type==$OPTION_ARR) {
+    my @val;
+    $val = shift @ARGV unless $dashdash || $from || defined $val;
+    push(@val, $val) if defined $val;
+    # If $from isn't defined, then we're parsing @ARGV, collect args to --
+    if (!$from && $dashdash) {
+      push(@val, shift(@ARGV)) while (@ARGV && $ARGV[0] ne "--");
+      usage("Missing -- at end of $option") unless shift(@ARGV);
+    }
+    # Do we care about 'no_'?
+    push(@{$opt->{$option}}, @val) if @val;
+
+  } else {
+    # Strings or numbers
+    $val = shift @ARGV unless $from || defined $val;
+    usage("-$option needs an argument") unless defined $val;
+    usage("Bad -$option number [$val]") if $val=~/\D/ && $type==$OPTION_NUM;
+    $opt->{$option} = $val;
+  }
+}
+
+# Add to the list of albums
+sub add_album_dir {
+  my ($opt,$dir) = @_;
+
+  my $path = port_abs_path($opt,$dir);
+  return if $opt->{_album}{$path}{added}++;
+  $opt->{_album}{$path}{arg} = $dir;
+  push(@{$opt->{_albums}}, $path);
+
+  # Get previous album options saved in meta tags
+# DEPRECATED - this is all saved in album.conf now..
+  return if $opt->{notheme};
+  return if $opt->{theme};	# Already defined
+
+# We could remove this ugliness, but we'd lose backwards compat.  And long
+# before we do that, we should make sure that these get saved by {SAVE}..
+  my $file = index_page($opt,1,$dir);
+  my $theme;
+  (open(FILE,"<$file")) || return;
+  while(<FILE>) {
+    # Did we find any meta args?
+    if (/meta\s+name='Album_(.+)'\s+content='(.+)'/i) {
+      my ($option,$val) = ($1,$2);
+      $option = lc($option) unless $OPTIONS{$option};
+      # This is for backwards compat - future opts get saved in conf files
+# ToConsider: Is this dangerous?  If someone can edit the HTML, they
+# can edit the album params.  Is this a big issue?  If someone else is
+# running album, then by changing paths and whatnot this could be an issue..
+unless ($option eq 'path' || $option eq 'theme') {
+  hash_warn($opt,"Can't handle option [$option] in $file");
+  next;
+}
+
+# We might not know the -theme_path yet..
+#      if ($option eq 'theme' && ! -d search_path($opt,$val,@{$opt->{theme_path}})) {
+#        hash_warn($opt,"Couldn't find theme [$val] - ignoring");
+#        next;
+#      }
+
+      parse_arg($opt,$option,$val, "meta option [$file]");
+    }
+    # Stop if we see the end of head or start of body
+    last if (/<\/head/i || /<body/i);
+  }
+  close FILE;
+}
+
+# Parse command-line options
+sub parse_args {
+  my ($opt) = @_;
+  while (my $arg = shift @ARGV) {
+    if ($arg =~ /^-([^=]+)(=(.+))?/) {
+      # -options
+      my ($option,$val) = ($1,$3);
+      parse_arg($opt,$option,$val);
+
+    } else {
+      # Album directories
+      $arg =~ s|/$||;	# Little cleanup
+      usage("Can't find directory $arg") unless (-d $arg);
+
+      add_album_dir($opt,$arg);
+    }
+  }
+
+  # Default is current directory
+  add_album_dir($opt,'.') unless $opt->{_albums};
+}
+
+#########################
+# Configuration files
+#########################
+sub read_conf {
+  my ($opt,$option,$conf,$check_argv) = @_;
+
+  return if $opt->{_read_conf}{$conf};
+  $opt->{_read_conf}{$conf} = 1;	# We read a conf file
+
+  my $fh = new IO::File;
+  unless (open($fh,"<$conf")) {
+    print STDERR "[$PROGNAME] ERROR: Couldn't open conf: [$conf]\n" if $option;
+    return 0;
+  }
+
+  print STDERR "Read conf: $conf\n" unless $opt->{q};
+
+  while (<$fh>) {
+    s/#.*//;	# Ignore comments
+    next unless /\S/;	# And white-space
+    unless (/^(\S+)(\s+(\S.*?))?\s*$/) {
+      print STDERR "[$PROGNAME] Can't understand conf: [$conf, line $.]\n  $_";
+      next;
+    }
+    my ($option,$val) = ($1,$3);
+    $val = $1 if $val =~ /^"(.*)"$/ || $val =~ /^'(.*)'$/;
+    parse_arg($opt,$option,$val, "conf option [$conf]")
+      unless $check_argv && $opt->{SAVE}{$option};
+  }
+  close $fh;
+  1;
+}
+
+sub read_confs {
+  my ($opt) = @_;
+  map { read_conf($opt,undef,$_) } @CONFS;
+  $opt;
+}
+
+# Save any command-line specified options to the config file
+sub save_conf {
+  my ($opt,$data,$conf,$save) = @_;
+
+  # If we specify $save then we want to save no matter what.
+  my $changed = 0;
+  $changed = 1 if $save;
+
+  $save = $save || $opt->{SAVE};
+
+  my @new;
+  my %arr;
+  if (open(CONF,"<$conf")) {
+    while (<CONF>) {
+      my ($line,$comment) = /(.*?)(\s*#.*)/ ? ($1,$2) : ($_);
+
+      # Not an option line
+      unless ($line =~ /^(\S+)((\s+)(\S.*))?$/) {
+        push(@new,$_);
+        next;
+      }
+
+      # Not a command-line option
+      my ($option,$sp,$conf_val) = ($1,$3,$4);
+      $conf_val = $1 if $conf_val =~ /^"(.*)"$/ || $conf_val =~ /^'(.*)'$/;
+      unless ($save->{$option} && !$OPTIONS{$option}{one_time}) {
+        push(@new,$_);
+        next;
+      }
+
+      # This is an option we specified on the command line
+
+      # Make a copy of array options
+      my $array_op = ref $opt->{$option} eq 'ARRAY' ? 1 : 0;
+      delete $save->{$option} unless $array_op;
+      @{$arr{$option}} = @{$opt->{$option}}
+        unless !$array_op || $arr{$option};
+      my $array_empty = ($array_op && !@{$arr{$option}}) ? 1 : 0;
+
+      my $opt_val = $array_op ? shift(@{$arr{$option}}) : $opt->{$option};
+
+      $changed++ if $conf_val ne $opt_val;
+      $opt_val = "'$opt_val'" if $opt_val =~ /\s/;
+      push(@new,"$option$sp$opt_val$comment\n") unless $array_empty;
+    }
+    close CONF;
+  }
+
+  foreach my $option ( keys %{$save} ) {
+    next if $OPTIONS{$option}{one_time};
+    my @val = ref $opt->{$option} eq 'ARRAY' ? (@{$opt->{$option}}) : ($opt->{$option});
+    @val = @{$arr{$option}} if $arr{$option};
+    $changed+= $#val+1;
+    map {
+      $_ = "'$_'" if /\s/;
+      push(@new,"$option\t$_\t# command-line saved option\n");
+    } @val;
+  }
+
+  return unless $changed;
+
+  return print STDERR "[$PROGNAME] ERROR: Couldn't write conf: [$conf]\n"
+    unless (open(CONF,">$conf"));
+  print CONF @new;
+  close CONF;
+  my $conf_str = $data ? "$data->{paths}{album_path}/$opt->{conf_file}" : $conf;
+  print "Saved command line options in [$conf]\n" unless $opt->{q};
+}
+
+# Push and pop the option stack, for when we enter albums with local confs
+sub push_opts {
+  my ($opt) = @_;
+  $opt->{_saved_opt} = duplicate($opt);
+}
+
+sub pop_opts {
+  my ($opt) = @_;
+  %$opt = %{$opt->{_saved_opt}};
+}
+
+# Any references in $opt need to be copied as well when we push_opts.
+# We need to make a complete duplicate of the entire data structure.
+sub duplicate {
+  my ($thing) = @_;
+
+  my $ref = ref $thing;
+
+  if ($ref eq 'HASH') {
+    my %copy;
+    foreach my $key ( keys %$thing ) {
+      # Don't need to make new copies of: SAVE and _captions or _set
+      if (grep($key eq $_, qw(SAVE _captions _set))) {
+        $copy{$key} = $thing->{$key};	# Just copy the reference
+        next;
+      }
+      $copy{$key} = duplicate($thing->{$key});
+    }
+    return \%copy;
+  }
+
+  if ($ref eq 'ARRAY') {
+    my @copy;
+    $copy[$#$thing] = 0 if $#$thing>0;	# Performance: Grow to full size
+    for(my $i=0; $i<=$#$thing; $i++) {
+      $copy[$i] = duplicate($thing->[$i]);
+    }
+    return \@copy;
+  }
+
+  # We're in trouble if it's CODE or something else weird..
+  # This will probably only happen if a plugin adds such a thing to $opt
+  # and we'll need to figure out what to do with it when that happens..
+  print STDERR "\n[$PROGNAME] Warning:  duplicate found a ref: [$ref] - don't know what to do!?\n"
+    if $ref && !$MAIN::DUPLICATE_UNKNOWN_REF++;
+
+  $thing;
+}
+
+# All the albums can have album.conf files
+# (and we automatically save any command-line options here)
+sub album_confs {
+  my ($opt,$data) = @_;
+
+  my $dir = $data->{paths}{dir};
+  my $scrub = 0;
+
+  # If we just got started and this is a subalbum, read all higher confs
+  if ($data->{start}) {
+    my @parents = @{$data->{dir_pieces}};
+    for (my $i=0; $i<$#parents; $i++) {
+      my $conf = "$opt->{top}/".join('/',@parents[0..$i])."/$opt->{conf_file}";
+      next unless -r $conf;
+      read_conf($opt,undef,$conf,1);
+      $scrub = 1;
+    }
+  }
+
+  # Do we have a local conf?
+  my ($pushed,$conf) = (0,"$dir/$opt->{conf_file}");
+  if (-r $conf) {
+    push_opts($opt) unless $data->{start};
+    $pushed = 1 unless $data->{start};
+    read_conf($opt,undef,$conf,$data->{start});
+    $scrub = 1;
+  }
+
+  # Options sanity checks and the like.
+  scrub_opts($opt) if $scrub;
+
+  # Should we save any command line options?
+  save_conf($opt,$data,$conf) if $data->{start} && $opt->{save_conf};
+  $pushed;
+}
+
+#########################
+# After handling options, clean them up and sanity check them
+#########################
+sub scrub_opts {
+  my ($opt,$first) = @_;
+
+  # We only scrub these once, they pretty much shouldn't be changed
+  # in any per-album configurations, and that would probably screw
+  # things up if they were anyways...
+  if ($first) {
+    # Handle -add
+    foreach my $add ( @{$opt->{add}} ) {
+      my $path = port_abs_path($opt,$add);
+      usage("Can't add root directory [$add]") if $path eq '/';
+      my ($parent,$name) = split_path($opt,$path);
+      # Add the parent and add to the parent's {add} array
+      add_album_dir($opt,$parent);
+      push(@{$opt->{_album}{$parent}{add}}, $name);
+    }
+
+    # ffmpeg can handle AVI, MOV
+    $IMAGE_TYPES.="|AVI|MOV|MOOV" if $opt->{ffmpeg};
+
+    #########################
+    # Windows crap
+    # "The box said Windows 95 or better.  So I bought a Macintosh."
+    #########################
+    # use_tcap or cygwin imply windows
+    $opt->{windows}=1 if ($opt->{use_tcap} || $opt->{cygwin});
+
+    # Don't do tcap and cygwin
+    if ($opt->{use_tcap} && $opt->{cygwin}) {
+      print STDERR "\n[$PROGNAME] Warning: Ignoring '-use_tcap' when '-cygwin' set\n  Use '-no_cygwin' if you want tcap\n";
+      $opt->{use_tcap} = 0;
+    }
+
+    if ($opt->{windows}) {
+      print STDERR "\n[$PROGNAME] Warning: Option -clean doesn't seem to work well under windows\n"
+        if $opt->{clean};
+
+      my @path = get_path($opt);
+      $opt->{convert} = search_path_win($opt,$opt->{convert}, @path);
+      usage("Couldn't find path for convert, try specifying with -convert option\n")
+        unless $opt->{convert};
+      $opt->{identify} = search_path_win($opt,$opt->{identify}, @path);
+      usage("Couldn't find path for identify, try specifying with -identify option\n")
+        unless $opt->{identify};
+      $opt->{tcap} = search_path_win($opt,$opt->{tcap}, @path);
+      $opt->{cmdproxy} = search_path_win($opt,$opt->{cmdproxy}, @path);
+    }
+  }
+
+  # -medium needs image pages
+  $opt->{image_pages}=1 if $opt->{medium};
+  # -just_medium needs -medium
+  usage("Need to specify -medium <geom> with -just_medium option")
+    if $opt->{just_medium} && !$opt->{medium};
+
+  # If the medium scaling is <width>x<height>, add ">" on the end so
+  # convert will only shrink the images, never grow them
+  $opt->{medium}.='\>' if ($opt->{medium} =~ /^\d+x\d+$/);
+
+  # -clean and hashes is ugly
+  $opt->{hashes}=0 if $opt->{clean} || $opt->{d} || $opt->{q};
+
+  # -caption_edit needs themes
+  usage("Can't use -caption_edit without a theme")
+    if $opt->{caption_edit} && !$opt->{theme};
+
+  # -theme_url needs -theme
+  # Don't check here, it might be a conf arg or it might be set by the album
+#  usage("-theme_url requires -theme option (it does not replace it)")
+#    if $opt->{theme_url} && !$opt->{theme};
+  # How about this instead?
+  hash_warn($opt,"WARNING: -theme_url still requires -theme option, it doesn't replace it")
+    if $opt->{theme_url} && !$opt->{theme} && !$MAIN::WARNED_THEME_URL++;
+
+  usage("-CROP must be top, bottom, left or right")
+    if ($opt->{CROP} && $opt->{CROP} !~ /^(top|bottom|left|right)$/);
+}
+
+##################################################
+# Parsing Themes
+##################################################
 
 # Theme directories contain album.th and image.th
 sub get_themes {
-  my ($opt,$dir_arg) = @_;
+  my ($opt) = @_;
 
-  $opt->{theme} = abs_path($dir_arg);
-  $ARG_THEME = $dir_arg;
+  my $theme = $opt->{theme};
 
-  my $dir = $opt->{theme};
+  # -no_theme
+  unless ($theme) {
+    undef $opt->{'album.th'}; undef $opt->{'image.th'};
+    $opt->{notheme} = 1;
+    return;
+  }
 
-  my @new_opts;	# Options specified by themes
+  # Find it
+  my ($dir,$found_path) = search_path($opt,$theme,@{$opt->{theme_path}});
+  unless (-d $dir) {
+    # The old meta tag method ('Album_Theme') would be a relative path.
+    # With -theme_path being stressed, we'll try just the theme name
+    my (undef,$try) = split_path($opt,$theme);
+    my ($newdir,$newfound_path) = search_path($opt,$try,@{$opt->{theme_path}});
+    if (-d $newdir) {
+      $opt->{theme} = $try;
+      ($dir,$found_path) = ($newdir,$newfound_path)
+    }
+  }
+  $dir = port_abs_path($opt,$dir) if -d $dir;
 
   # If it's a directory, look for "image.th" and "album.th"
-  usage("-theme needs to specify a directory [$dir]") unless (-d $dir);
-  my $found = 0;
-  if (-f "$dir/album.th") {
-    $found++;
-    $opt->{'album.th'} = "$dir/album.th";
-    push(@new_opts,get_theme($opt,'album.th'));
-  }
-  if (-f "$dir/image.th") {
-    $found++;
-    $opt->{'image.th'} = "$dir/image.th";
-    push(@new_opts,get_theme($opt,'image.th'));
-  }
-  usage("No themes found in [$dir]") unless $found;
-  return @new_opts;
+  return hash_warn($opt,"Couldn't find -theme directory [$dir] (ignoring)\n\t(Try specifying -theme_path with -theme)")
+    unless -d $dir;
+
+  # Already got this theme
+  return if $opt->{_theme_full} eq $dir;
+
+  # New theme
+  $opt->{_theme_full} = $dir;
+  get_theme($opt,'album.th', "$dir/album.th") if -f "$dir/album.th";
+  get_theme($opt,'image.th', "$dir/image.th")
+    if -f "$dir/image.th" && $opt->{image_pages};
+    # -no_image_pages kills image theme
+
+  usage("No themes found in [$theme]")
+    unless $opt->{'album.th'} || $opt->{'image.th'};
 }
 
 # Read in a whole template/theme file
-# Check for Meta() and Credit()
+# Check for Meta() and Credit() and theme options.
 # (These tags are actually needed for proper operation,
 #  not just my ego gratification!  Please don't override!)
 sub get_theme {
-  my ($opt,$which) = @_;
+  my ($opt,$which,$file) = @_;
 
-  my $file = $opt->{$which};
-  my $data = "$which.data";
-  undef $opt->{$data};	# In case we've specified themes twice..
+  $opt->{$which} = $file;
+  undef $opt->{_theme}{$which};	# In case we've specified themes twice..
 
-  my @new_opts;
   my $top = 1;	# Options can only be specified at the top of the file
   my $start_line = 1;
 
@@ -373,13 +1072,16 @@ sub get_theme {
   my ($in_head,$saw_meta,$saw_credit);
   while (<TEMP>) {
     if ($top && /^\s*(#c)?\s*(\/\/)?\s*options?:\s*(\S.*)/i) {
-      my $option = $3;  $option =~ s/\s+$//g;
-      push(@new_opts,split(/\s+/,$option));
+      my $str = $3;
+      $str =~ s/\s+$//g;
+      my ($option,$val) = split(/\s+/,$str,2);
+      $option =~ s/^\-//;
+      parse_arg($opt,$option,$val, "theme option [$file]");
       $start_line = $.+1;
       next;
     }
     $top = 0;
-    push(@{$opt->{$data}},$_);
+    push(@{$opt->{_theme}{$which}},$_);
     $in_head=1 if (/<head>/i);
     if (/Meta\(\)/) {
       usage("Meta() must be inside <head>...</head>") if (!$in_head);
@@ -393,233 +1095,515 @@ sub get_theme {
   usage("You need to call Meta() inside <head>..</head> of [$file]") unless $saw_meta;
   usage("You need to call Credit() in your theme [$file]") unless $saw_credit;
 
-  $opt->{"$which.line"} = $start_line;
-
-  @new_opts;
+  $opt->{_theme_line}{$which} = $start_line;
 }
 
-sub parse_args {
-  my $dir;
-  my %opt;
+##################################################
+##################################################
+# Is this their first time?
+##################################################
+##################################################
+sub virgin_check {
+  my ($opt) = @_;
 
-  # Defaults
-  %opt = %DEFAULTS;
+  # Eventually we'll keep version numbers in the conf files, not today.
+  return if $opt->{_read_conf} && keys %{$opt->{_read_conf}} && !$opt->{configure};
 
-  my @theme_args;	# We can get args from the theme as well
+  # Options that we want to save
+  my %save;
+  $opt->{configure_save} = \%save;
 
-  push(@ARGV,".") unless @ARGV;
-  while (@ARGV || @theme_args) {
-    undef $ARG_THEME unless (@theme_args);
-    my $arg=shift(@theme_args) || shift(@ARGV);
-    if ($arg =~ /^-h$/) { usage(); }
-    if ($arg =~ /^--?v(ersion)?$/) { version(); }
-    if ($arg =~ /^-(no_?)?d$/) { $MAIN::DEBUG = $1?0:1; next; }
-    if ($arg =~ /^-(no_?)?q$/) { $MAIN::QUIET = $1?0:1; next; }
-    if ($arg =~ /^-g(eom(etry)?)?(=(.+))?$/) { set_size(\%opt,$4 ? $4 : (shift(@theme_args) || shift(@ARGV))); next; }
-    if ($arg =~ /^-theme(=(.+))?$/) {
-      @theme_args = get_themes(\%opt, ($2?$2:(shift(@theme_args) || shift(@ARGV))));
-      next;
-    }
-    if ($arg =~ /^--(full_|med_|)scale_opts(=(.+))?$/) {
-      my $scale_opts = "${1}scale_opts";
-      # --scale_opts=<opt>
-      if ($3) {
-        $opt{$scale_opts} .= "$3 ";
+  # First install.  Hopefully they've got a tty
+  print STDERR "I see this is your first time running $PROGNAME v$VERSION.\n\n"
+    unless $opt->{_read_conf} && keys %{$opt->{_read_conf}};
+  print STDERR "I'm going to do some simple installations for you.\n\n";
 
-      # Theme:  --scale_opts <opt> <opt> --
-      } elsif (@theme_args) {
-        $opt{$scale_opts} .= shift(@theme_args)." "
-          while (@theme_args && $theme_args[0] ne "--");
-        usage("Missing -- at end of $scale_opts") unless shift(@theme_args);
+  # Figure out where the conf is going to go.
+  my $conf = !$< ? '/etc' : $ENV{HOME};
+  $conf = $ENV{USERPROFILE} if ($opt->{windows} && (!$conf || !-d $conf));
+  $conf = $BASENAME unless $conf && -d $conf;
+  $conf = '.' unless $conf && -d $conf;	# Don't know how that happened..
 
-      # ARGV:  --scale_opts <opt> <opt> --
+  $conf .= $conf eq $ENV{HOME} ? "/.$PROGFILE.conf" : "/$PROGFILE.conf";
+
+  print STDERR "I'll save your installation in:\n  $conf\n\n";
+  print STDERR "You can edit this file later to suit your needs.\n\n";
+  print STDERR "Run $PROGNAME as root if you want to do a system-wide configuration.\n\n"
+    if $< && -d '/etc';
+
+  print STDERR "Are you ready?\n";
+  exit unless install_get_yn($opt,'y');
+
+  print STDERR "--------------------------------------------------\n\n";
+
+  # THEME PATH
+  my $themes;
+  unless ($opt->{notheme}) {
+    $themes = install_theme_path($opt);
+
+    print STDERR "\n--------------------------------------------------\n\n";
+
+    if ($themes) {
+      # INSTALL THEMES?
+      if (-d $themes) {
+        print STDERR "If $PROGNAME has problems finding themes, make sure they're in:\n";
+        print STDERR "  $themes\n";
+        print STDERR "\nOr edit $conf to set their new location\n";
       } else {
-        $opt{$scale_opts} .= shift(@ARGV)." "
-          while (@ARGV && $ARGV[0] ne "--");
-        usage("Missing -- at end of $scale_opts") unless shift(@ARGV);
-      }
-
-      next;
-    }
-    if ($arg =~ /^-(no_?)?(.+)$/) {
-      my ($no,$option) = ($1,$2);
-      usage("Unknown option: $option") unless (defined $DEFAULTS{$option});
-      # Options that take arguments
-      if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|exif|index|top|body|CROP|depth|add|name_length|theme_url|transform_url)$/) {
-        usage("Option [$option] can't be -no, it needs an argument") if ($no);
-        my $val = shift(@theme_args);
-        $val = shift(@ARGV) unless defined $val;
-        if ($option eq "index" && ($val eq $DEFAULT_INDEX || $val.$HTML eq $DEFAULT_INDEX)) {
-          undef $DEFAULT_INDEX;
-        } else {
-          $opt{$option} = $val;
+        print STDERR "I see that the -theme_path does not currently exist:\n  $themes\n\n";
+        print STDERR "Would you like to try to install the themes there?\n";
+        if (install_get_yn($opt,'y')) {
+          print STDERR "\n";
+          # Try to find where the themes were installed
+          my $curr = install_find_current_themes($opt);
+          if ($curr && !install_move($opt,$curr,$themes)) {
+            print STDERR "\nCouldn't install themes!\n";
+            print STDERR "Please login as a user with the appropriate privileges and copy:\n";
+            print STDERR "  $curr -> $themes\n\n";
+          }
         }
-      } elsif ($option eq "theme") {
-        $opt{notheme} = 1;
-        undef $opt{theme};
-        undef $opt{'album.th'};
-        undef $opt{'image.th'};
-      } else {
-        $opt{$option} = $no ? 0 : 1;
-        # Need to override image themes
-        $opt{'no_image_pages'} = 1 if ($option eq "image_pages" && $no);
       }
-      next;
     }
-    usage("Can't find directory $arg") unless (-d $arg);
-    usage("Too many directories: $arg and $dir") if ($dir);
-    $dir=$arg;
+    print STDERR "\n--------------------------------------------------\n\n";
+  }
 
-    # Did we specify a theme last time?
-    unless (@ARGV || $opt{'notheme'} || $opt{theme}) {
-      my $theme = previous_build_theme(\%opt,$dir);
-      @theme_args = get_themes(\%opt,$theme) if ($theme);
+  # THEME URL
+  unless ($opt->{theme_url} || !$themes) {
+    my $num3 = $themes ne port_abs_path($opt,$themes) ? "" :
+      "\n   (I've checked and #3 is not currently true.)\n";
+    print STDERR <<CONFIG_THEME_URL;
+You can also specify a default -theme_url path.  This is useful if the
+mapping between your file path and URLs are not clear, for example if:
+
+1) You have virtual domains.
+2) You're using mod_rewrite on the themes path.
+3) You use a symbolic link to point to the actual themes directory.$num3
+
+In general if you don't know what these mean, then you probably don't
+need to specify -theme_url.  Usually the filesystem and URL match after
+you remove the web root directory.  Otherwise, this should be the URL
+that you can put in your browser to see a listing of the theme directories.
+
+CONFIG_THEME_URL
+
+    while (!$opt->{theme_url}) {
+      print STDERR "Do you want to specify a -theme_url?\n";
+      my $default = $num3 ? 'n' : 'y';
+      last unless install_get_yn($opt,$default);
+      $opt->{theme_url} = install_get_answer($opt,'theme_url','/Themes/',<<THEME_URL);
+
+Some reasonable values:  /Themes/,  http://yourdomain.com/Themes/
+THEME_URL
+      undef $opt->{theme_url} if $opt->{theme_url} =~ /\S\s+\S/;
+      print STDERR "\nThe -theme_url value should not contain any spaces\n\n"
+        unless $opt->{theme_url};
+    }
+    $opt->{configure_save}{theme_url} = 1 if $opt->{theme_url};
+  }
+
+  # CONVERT/IDENTIFY
+  print STDERR "\n";
+  install_find_exec($opt,'convert');
+  install_find_exec($opt,'identify',1);
+  install_find_exec($opt,'ffmpeg',1);
+
+  # DONE!
+  print STDERR "\nEnd of configuration\n\n";
+
+  # Save it.
+  save_conf($opt,undef,$conf,\%save);
+  undef $opt->{configure_save};
+
+  exit if $opt->{configure};
+  # Otherwise we can continue to run album.
+
+  print STDERR "Continuing with $PROGNAME run:\n";
+}
+
+sub install_move {
+  my ($opt,$from,$to) = @_;
+
+  print STDERR "\nAttempting to move:\n  $from -> $to\n\n";
+
+  # Attempt to move the directory.
+  return print "Move successful.\n" if rename($from,$to);
+
+  # If rename doesn't work, try mv (rename might break across filesystems)
+  my $mv = '/bin/mv';
+  $mv = '/usr/bin/mv' unless -x $mv;
+  $mv = '/sbin/mv' unless -x $mv;
+  return 0 unless -x $mv;
+  system($mv,$from,$to);
+  return print "Move successful.\n" unless $?;
+  0;
+}
+
+sub install_find_exec {
+  my ($opt,$what,$optional) = @_;
+
+  my $try = $opt->{$what};
+
+  if ($try =~ m|[/\\]|) {
+    print STDERR "Found $what setting:  $try\n";
+    print STDERR "  But it's missing or not executable!\n" unless -x $try;
+    print STDERR "\nChange?\n";
+    return unless install_get_yn($opt, -x $try ? 'n' : 'y');
+  } else {
+    # Search path
+    $try = $try || $what;
+    # Actually, if it's windows we should have found it via scrub_opts
+    my @path = get_path($opt);
+    my $slash = $opt->{windows} ? '\\' : '/';
+    my $found = search_path_exec($opt,$slash,$what,@path);
+    return print STDERR "Found $what in path:  $found\n" if -x $found;
+  }
+
+  while (1) {
+    my $ques = "\nCan't find $what executable.\n";
+    $ques .= $optional ?
+      "This is optional but is useful to $PROGNAME.\n" :
+      "I need to know where this is for $PROGNAME to run properly.\n";
+    $try = install_get_answer($opt,"path to $what",undef,$ques);
+
+    last if -x $try;
+    print STDERR "\nExecutable not found: [$try]\nTry again?\n";
+    return unless install_get_yn($opt,'y');
+  }
+
+  # We need to save this
+  $opt->{configure_save}{$what} = 1;
+  $opt->{$what} = $try;
+}
+
+sub install_theme_path {
+  my ($opt) = @_;
+
+  my $themes;
+  foreach $themes ( reverse @{$opt->{theme_path}} ) {
+    last if -x $themes;
+  }
+
+  # Assume they meant to use the path they specified
+  $themes = $opt->{theme_path}[-1] if !$themes && $opt->{theme_path};
+
+  print STDERR "- I see you specified the -theme_path.  Using [$themes]\n"
+    if $themes;
+  return $themes if -x $themes;
+  print STDERR "  ..but I can't find the directory!\n\n" if $themes;
+
+  unless ($themes) {
+    # Try to guess path
+    $themes = '/var/www/html' unless -x $themes;
+    $themes = '/var/www' unless -x $themes;
+    $themes = '/home/httpd' unless -x $themes;
+    $themes = '/home/http' unless -x $themes;
+    $themes = "$ENV{HOME}/public_html" unless -x $themes;
+    $themes = '' unless -x $themes;
+    $themes .= "/Themes" if $themes;
+  }
+
+  my $example = $themes ? $themes : '/var/www/html/Themes';
+
+  print STDERR "- You need to specify the option: 'theme_path'\n";
+  print STDERR "- You can override this value on the command-line: -theme_path\n\n";
+  my $themes = install_get_answer($opt,'theme_path',$themes,<<THEME_PATH);
+$PROGNAME supports themes for web page layout, they were probably included
+with the package you installed, or can be downloaded from:
+  $ALBUM_URL
+
+You need to put them in a directory *inside* your web path.
+If you can't find the themes from your web browser, then any
+images or css you use will not be displayed.
+
+A good location is a directory inside the web root, something like:
+  $example
+THEME_PATH
+
+  return unless $themes;
+  push(@{$opt->{theme_path}}, $themes);
+  $opt->{configure_save}{theme_path} = 1;	# Make sure to save it
+  $themes;
+}
+
+# Find where the themes were downloaded
+sub install_find_current_themes {
+  my ($opt) = @_;
+  my ($curr,$where) = ("/usr/share/$PROGFILE/themes","\n  Default is the dpkg install of $PROGNAME.");
+  ($curr,$where) = ('./Themes',"\n  Found local ./Themes directory.") unless -x $curr;
+  ($curr,$where) = (undef,undef) unless -x $curr;
+
+
+  # Is it still zipped up?
+  my $targz = "${PROGFILE}_themes.tar.gz";
+  if (-f $targz && !-d 'Themes') {
+    print STDERR "\nI found a gzipped themes tar: $targz\n\nWould you like me to try to unzip it?\n";
+    if (install_get_yn($opt,'y')) {
+      system("tar xzf $targz");
+      if ($?) {
+        # Try gunzip/tar
+        system("gunzip $targz");
+        system("tar xzf $targz") unless $?;
+      }
+      return 'Themes' unless $? || !-d 'Themes';
+      print STDERR "\nError untarring: $!\n";
     }
   }
-  continue {
-    # We're about done with args, get default (and make sure we get theme args)
-    push(@ARGV,".") unless ($dir || @ARGV || @theme_args);
+
+  my $zip = "${PROGFILE}_themes.zip";
+  if (-f $zip && !-d 'Themes') {
+    print STDERR "\nI found a zipped themes archive: $zip\n\nWould you like me to try to unzip it?\n";
+    if (install_get_yn($opt,'y')) {
+      system("unzip $targz");
+      return 'Themes' unless $? || !-d 'Themes';
+      print STDERR "\nError untarring: $!\n";
+    }
   }
 
-  # Allow -no_image_pages to override themes
-  if ($opt{'no_image_pages'}) {
-    $opt{'image.th'}=0;
-    $opt{'image_pages'}=0;
+  while (1) {
+    my $dir = install_get_answer($opt,'downloaded theme location',$curr,<<CURRENT);
+I need to find where you downloaded the Themes.  $where
+CURRENT
+    return $dir if -d $dir;
+    print STDERR "\nDirectory not found: [$dir]\nTry again?\n";
+    return undef unless install_get_yn($opt,'y');
+    print STDERR "\n";
   }
-  $opt{image_pages}=1 if $opt{'image.th'};
+}
 
-  # -clean and hashes is ugly
-  $opt{hashes}=0 if $opt{clean} || $MAIN::DEBUG || $MAIN::QUIET;
+sub install_get_yn {
+  my ($opt,$default) = @_;
+  while (1) {
+    my $ans = install_get_answer($opt,'y/n',$default);
+    return 1 if $ans =~ /^y/i;
+    return 0 if $ans =~ /^n/i;
+    print STDERR "You must answer 'y' or 'n'\n";
+  }
+}
 
-  # -caption_edit needs themes
-  usage("Can't use -caption_edit without a theme")
-    if $opt{caption_edit} && !$opt{theme};
+sub install_get_answer {
+  my ($opt,$question,$default,$desc) = @_;
 
-  # -medium needs image pages
-  $opt{image_pages}=1 if $opt{medium};
-  # -just_medium needs -medium
-  usage("Need to specify -medium <geom> with -just_medium option")
-    if $opt{just_medium} && !$opt{medium};
-
-  # Add the .html flag if missing a postscript?
-  $opt{index}.=$HTML unless $opt{index} =~ /\./;
-
-  # -theme_url needs -theme
-  usage("-theme_url requires -theme option (it does not replace it)")
-    if $opt{theme_url} && !$opt{theme};
-
-  usage("-CROP must be top, bottom, left or right")
-    if ($opt{CROP} && $opt{CROP} !~ /^(top|bottom|left|right)$/);
-
-  printf "[$PROGNAME version $VERSION]\n" if $MAIN::DEBUG;
-
-  # Take any post / off the "add" directory (should probably clean this better)
-  $opt{add} =~ s|/+$||;
-
-  $dir =~ s|/$||;	# Little cleanup
-  (\%opt,$dir);
+  print STDERR "$desc\n";
+  my $ret;
+  while (!$ret) {
+    print STDERR "Enter $question";
+    print STDERR " [default: $default]" if $default;
+    print STDERR "> ";
+    my $line = scalar <STDIN>;  chomp($line);
+    $ret = $line || $default;
+  }
+  $ret;
 }
 
 ##################################################
 ##################################################
-# GENERATE HTML
+# UTILITIES
 ##################################################
 ##################################################
-sub header {
-  my ($opt,$d_H,$image_page,$dir,@parents) = @_;
+sub max { $_[0]>$_[1] ? $_[0] : $_[1]; }
+sub min { $_[0]<$_[1] ? $_[0] : $_[1]; }
 
-  my @names = @parents;
+#########################
+# Stupid privoxy bug.
+#########################
+sub concat {
+  my $rep = 'op';  $rep .= 'en(';
+  die(<<PRIVOXY_SUCKS);
+Your proxy (privoxy) has a bug in it:
 
-  my $this = pop(@names);
-  my $header = "";
-  my $back = $#names;
-  my $index = ($opt->{index} eq $DEFAULT_INDEX) ? "" : $opt->{index};
-  while (my $n = pop(@names)) {
-    $header = "<a href='".("../"x($back-$#names))."$index'>$n</a> : $header";
-  }
-  $header.=$this;
+  http://www.privoxy.org/faq/misc.html#DOWNLOADS
 
-  my $Up = $image_page ? "Back" : "Up";
-  my $UpUrl = "../$index";
-  $UpUrl = $opt->{'top'} unless ($#parents || $image_page);
-  $UpUrl = "<h1><a href='$UpUrl'>$Up</a></h1>" if $UpUrl && $UpUrl ne "''";
+Privoxy corrupts text scripts by changing o-p-e-n-( to concat(
+And they don't seem concerned about it.  So you might want to consider
+getting a new proxy.  Until then, replace all 'concat(' in this script
+with '$rep'
 
-  print ALBUM <<END_OF_HEADER;
-<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN'
-    'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>
-<html xmlns='http://www.w3.org/1999/xhtml'>
-  <head>
-    <title> 
-      Album: $this
-    </title>
-    <meta http-equiv='Content-Type' content='text/html; charset=$opt->{charset}' />
-    <meta name='Generator' content='$GEN_STRING' />
-    <meta name='Album_Path' content='$d_H->{album_path}' />
-  </head>
-  $opt->{'body'}
-  <table width='95%'>
-    <tr>
-      <td align='left'>
-        <h2>$header</h2>
-      </td>
-      <td align='right'>
-        $UpUrl
-      </td>
-    </tr>
-  </table>
-  <hr />
-END_OF_HEADER
-
-  if (-f "$dir/$HEADER" && (open(HEADER,"<$dir/$HEADER"))) {
-    while(<HEADER>) { print ALBUM; }
-    print ALBUM "<hr />\n";
-  }
+PRIVOXY_SUCKS
 }
 
-sub footer {
+#########################
+# abs_path
+# Use internal version if they don't have the Cwd package
+#########################
+my $CWD = attempt_require('Cwd');
+sub int_abs_path {
   my ($dir) = @_;
-  if (-f "$dir/$FOOTER" && (open(FOOTER,"<$dir/$FOOTER"))) {
-    while(<FOOTER>) { print ALBUM; }
-    print ALBUM "<hr />\n";
-  }
-  my $date = localtime;
-  print ALBUM <<END_OF_FOOTER;
-    <font size='-1'>
-      Photo album generated by
-      <a href='$ALBUM_URL'>$PROGNAME</a>
-      from <a href='http://GetDave.com/'>Dave's</a>
-      <a href='$HOME'>MarginalHacks</a>
-      on $date
-    </font>
-  </body>
-</html>
-END_OF_FOOTER
+  my $save=`pwd`; chomp($save);
+  chdir($dir) || usage("Couldn't find [$dir]");
+  my $name=`pwd`;  chomp($name);
+  chdir($save);
+  $name;
+}
 
+sub port_abs_path {
+  my ($opt,$dir) = @_;
+  -d $dir || usage("Couldn't find directory [$dir]");
+  return $CWD ? Cwd::abs_path($dir) : int_abs_path($dir);
+}
+
+
+#########################
+# Diff two paths
+# Find a relative path between the two
+#########################
+sub diff_path {
+  my ($opt,$from,$to) = @_;
+
+  # Remove file component
+  $from =~ s|/[^/]+$|| unless -d $from;
+
+  my $back = "";
+  while ($to !~ /^\Q$from\E/) {
+    $back .= "../";
+    $from =~ s|/[^/]+$||;
+  } 
+  $to =~ s|^\Q$from\E/?||;
+  
+  $back.$to;
+}
+
+#########################
+# Search path: If a path isn't absolute, get it from the given dir
+#########################
+sub get_path {
+  my ($opt) = @_;
+  return split(':',$ENV{PATH}) unless $opt->{windows};
+  my @path = split(';',$ENV{PATH});
+  push(@path,'C:\PROGRAM FILES\IMAGEMAGICK');
+  # c:\windows\system32 has an NTFS utility called convert which isn't right
+  # And besides, the system32 directory isn't going to help us.
+  grep(!m|windows[/\\]system32|, @path);
+}
+
+# Returns path and result.
+#   result=2 if found in @dir
+#   result=1 if found elsewhere
+#   result=0 if not found
+sub search_path_test {
+  my ($opt,$test,$slash,$path,@dir) = @_;
+
+  # Absolute path
+  return ($path, &$test($path) ? 1 : 0)
+    if $path =~ /^\// || ($opt->{windows} && $path =~ m|^([a-z]:)?[/\\]|i);
+
+  # Kludge for '~'
+  return search_path_test($opt,$test,$slash,"$ENV{HOME}/$1",@dir)
+    if $path =~ m|^~/(.*)|;
+
+  # Check @dir
+  foreach my $dir ( @dir ) {
+    $dir =~ s/$slash$//;
+    return ("$dir$slash$path",2) if &$test("$dir$slash$path");
+  }
+
+  ($path, &$test($path) ? 1 : 0);
+}
+
+sub search_path {
+  my ($opt,$path,@dir) = @_;
+  my ($p,$r) = search_path_test($opt, sub {-e $_[0]}, '/', $path, @dir);
+  wantarray ? ($p,$r) : $p;
+}
+
+sub search_path_exec {
+  my ($opt,$slash,$path,@dir) = @_;
+  my ($p,$r) = search_path_test($opt, sub {-x $_[0]}, $slash, $path, @dir);
+  wantarray ? ($p,$r) : $p;
+}
+
+sub search_path_win {
+  my ($opt,$path,@dir) = @_;
+  my $try = search_path_exec($opt,'\\', $path, @dir);
+  return $try if -x $try;
+# To be complete we could check everything in $ENV{PATHEXT}..
+  $try = search_path_exec($opt,'\\', $path.'.exe', @dir);
+  return $try if -x $try;
+  $try = search_path_exec($opt,'\\', $path.'.com', @dir);
+  return $try if -x $try;
+  undef;
+}
+
+#########################
+# What's the file for an index page?
+# $file=1 means return full path (include even default index)
+#########################
+sub index_page {
+  my ($opt, $file, $dir) = @_;
+  $dir .= '/' if $dir;
+  my $index = $opt->{index};
+  return $dir unless $index || $file;
+  $index = $index || $opt->{default_index};
+  $dir.$index;
+}
+
+#########################
+# Hash code
+#########################
+my $_hashes_done = 0;
+my $_hashes_start;
+sub start_hashes {
+  my ($opt,$str) = @_;
+  return if $opt->{q};
+  return print STDERR "$str\n" unless $opt->{hashes};
+  my $w = $opt->{hash_width} - $opt->{num_hashes} - 3;
+  $_hashes_start = $str ? sprintf("%-${w}s",$str) : "";
+  $_hashes_done = 0;
+  print STDERR "$_hashes_start ["," "x$opt->{num_hashes},"]\b","\b"x$opt->{num_hashes};
+}
+sub show_hashes {
+  my ($opt,$done,$outof) = @_;
+  return unless $opt->{hashes} && !$opt->{q};
+  return unless $outof;
+  my $needed = int($opt->{num_hashes}*($done/$outof));
+  print STDERR "X"x($needed-$_hashes_done);
+  $_hashes_done = $needed;
+}
+sub stop_hashes {
+  my ($opt) = @_;
+  return unless $opt->{hashes} && !$opt->{q};
+  show_hashes($opt,1,1);
+  undef $_hashes_start;
+  undef $_hashes_done;
+  print STDERR "]\n";
+}
+sub hash_msg {
+  my ($opt,$str) = @_;
+  return unless $opt->{hashes};
+  printf STDERR "%".$opt->{num_hashes}."s]\n",$str;
+  undef $_hashes_start;
+}
+sub hash_warn {
+  my ($opt,@msgs) = @_;
+  print STDERR "\n" if $_hashes_start;
+  foreach my $msg (@msgs) { print STDERR "[$PROGNAME] $msg\n"; }
+  return unless $opt->{hashes} && ($_hashes_done || $_hashes_start);
+  start_hashes($opt,$_hashes_start);
+  print STDERR "X"x$_hashes_done;
+  undef;
 }
 
 ##################################################
 ##################################################
-# ALBUM GENERATION
+# ALBUM UTILITIES
 ##################################################
 ##################################################
 # Nice name for printing
 sub clean_name {
-  my ($name,$caps,$no_br) = @_;
+  my ($opt,$name,$capname,$no_br) = @_;
 
-  my $usecap = ($caps->{$name} && $caps->{$name}{name}) ? 1 : 0;
-  $name = $caps->{$name}{name} if $usecap;
+  $name = $capname || $name;
 
   # No tags in filenames  :)
-  $name =~ s/\</&lt;/g unless $usecap;
+  $name =~ s/\</&lt;/g unless $capname;
 
   # Remove postfixes
   $name =~ s/\.($IMAGE_TYPES)$//i;
-  $name =~ s/\Q$HTML\E$//i;
+  $name =~ s/\Q$opt->{html}\E$//i;
 
   # Remove thumbnail cropping directives
   $name =~ s/CROP(top|bottom|left|right)$//;
 
-  unless ($usecap) {
+  unless ($capname) {
     # Underbar = space
     $name =~ s/_/ /g;
     $name =~ s/\./ /g;
@@ -630,8 +1614,8 @@ sub clean_name {
 
   # I sort my albums by date:   2001-10-03.some_directory
   $no_br = $no_br ? " " : "<br>";
-  $name = "<font size=-1>$1</font>$no_br$2"
-    if $name =~ /^(\d{4}-\d{1,2}-\d{1,2})( .+)$/;
+  $name = "<font size='-1'>$1</font>$no_br$3"
+    if $name =~ /^(\d{4}-\d{1,2}(-\d{1,2})?)( .+)$/;
 
   $name;
 }
@@ -653,82 +1637,62 @@ sub filesize($) {
 # Is there some unknown HTML (that we didn't create?)
 # If we know this HTML, get the full album path,
 # in case we are only regenerating a branch of the full tree
-my $PATH;
-sub unknown_html {
-  my ($opt,$dir) = @_;
+sub parse_index {
+  my ($opt,$data) = @_;
 
-  return 1 if (-f file_quote("$dir/$NO_ALBUM"));
+  my $index = index_page($opt,1,$data->{paths}{dir});
+  return 1 unless -f $index;
+  return 1 if -z $index;
 
-  my $file = "$dir/$opt->{index}";
-  return 0 unless -f $file;
-  return 0 if -z $file;
+  $data->{unknown} = 1;
+  (open(INDEX,"<$index")) || return;
+  while(<INDEX>) {
+    $data->{unknown} = 0  if (/$OLD_GEN_RE/);	# Old string, backwards compat
+    $data->{unknown} = 0  if (/meta\s+name='Generator'\s+content='$GEN_STRING'/i);
+    $data->{paths}{album_path} = $1 if (/meta\s+name='Album_Path'\s+content='(.+)'/i);
 
-  my $mine;
-  (open(FILE,"<$file")) || return 1;
-  while(<FILE>) {
-    $mine = 1  if (/$OLD_GEN_RE/);	# Backwards compat
-    $mine = 1  if (/meta\s+name='Generator'\s+content='$GEN_STRING'/i);
-    $PATH = $1 if (/meta\s+name='Album_Path'\s+content='(.+)'/i);
-
-    if ($mine && defined $PATH) {
-      close(FILE);
-      return 0;
-    }
+    last if defined $data->{paths}{album_path} && !$data->{unknown};
   }
-  close(FILE);
-  return 0 if $mine;
-  print STDERR "[$PROGNAME] Unknown HTML [$file] - skipping\n";
-  return 1;
-}
-
-# Return theme if previously defined
-sub previous_build_theme {
-  my ($opt,$dir) = @_;
-
-  my $file = "$dir/$opt->{index}";
-  (open(FILE,"<$file")) || return undef;
-  while(<FILE>) {
-    if (/meta\s+name='Album_Theme'\s+content='(.+)'/i) {
-      close(FILE);
-      # It's a relative path from that directory.
-      my $path = $1;
-      $path = "$dir/$path" unless ($path =~ m|^/|);
-      return abs_path($path) if (-d $path);
-      print STDERR "[$PROGNAME] Warning: Couldn't find previous theme in $file: $path\n";
-      return undef;
-    }
-  }
-  close(FILE);
-  undef;
+  close(INDEX);
+  hash_warn($opt,"Skipping unknown HTML:\n  $index") if $data->{unknown};
 }
 
 #########################
 # Clean out unused images/files from the thumbnail directory
 #########################
 sub clean_thumb_dir {
-  my ($opt,$dir,@pics) = @_;
+  my ($opt,$data) = @_;
+
+  my $dir = "$data->{paths}{dir}/$opt->{dir}";
+  my @pics = @{$data->{pics}};
+
+  return unless -d $dir;
 
   # Read the thumbnail directory
   opendir(DIR,$dir);
-  my (@files) = grep(!/^\.{1,2}$/, readdir(DIR));
+  my @files = grep(!/^\.{1,2}$/, readdir(DIR));
   closedir(DIR);
 
   # Check each file to make sure it's a currently used thumbnail or image_page
   foreach my $file ( @files ) {
     my $remove;
     my $name = $file;
-    if ($name =~ s/\Q$HTML\E$//) {
+    if ($name =~ s/\Q$opt->{html}\E$//) {
       $remove = "unused image page"
-        unless ($opt->{'image_pages'} && grep($_ eq $name, @pics));
-    } elsif ($name  =~ /\.med\./) {
-      $name = $`;
+        unless ($opt->{image_pages} && grep($_ eq $name, @pics));
+    } elsif ($name  =~ /(.+)\.med\.(.+)/) {
+      $name = "$1.$2";
       $remove = "unused medium image"
-        unless ($opt->{'medium'} && grep(/^\Q$name.\E/, @pics));
-    } elsif ($name  =~ /\.$opt->{'type'}$/) {
+        unless $opt->{medium} && grep($_ eq $name, @pics);
+    } elsif ($name  =~ /(.+)\.snap\.(.+?)(\.$opt->{type})?$/) {
+      $name = "$1.$2";
+      $remove = "unused snapshot image" unless grep($_ eq $name, @pics);
+    } elsif ($name  =~ /(.+)\.$opt->{type}$/) {
       # Thumbnail?
-      $name = $`;
-      $remove = "unused thumbnail" unless (grep(/^\Q$name.\E/, @pics));
-    } elsif ($name  =~ /(.+)\.$opt->{'type'}\.ppm$/) {
+      $name = $1;
+      $remove = "unused thumbnail"
+        unless grep($_ eq $name || $_ eq "$name.$opt->{type}", @pics);
+    } elsif ($name  =~ /(.+)\.$opt->{type}\.ppm$/) {
       my $mov = $1;
       $remove = "unused ppm thumbnail?" unless (grep(/^\Q$mov.\E/, @pics));
     } else {
@@ -736,69 +1700,61 @@ sub clean_thumb_dir {
     }
     if ($remove) {
       print "Remove $remove: $dir/$file\n";
-      print STDERR "[$PROGNAME] Couldn't erase [$file]\n"
-        unless unlink "$dir/$file"
+      hash_warn($opt,"Remove $remove: $dir/$file");
+# This doesn't seem to work (or show error) under windows.  Bah.
+      hash_warn($opt,"Couldn't erase [$file]")
+        unless unlink "$dir/$file";
     }
   }
 }
 
 #########################
-# Quote URLs to avoid errors
+# Quote stuff to avoid errors
 #########################
 sub quote {
-  my ($path,$opt) = @_;
+  my ($path,$opt,$url) = @_;
 
-  # Handle ['"#?*!:%] always, regardless of -fix_urls - see RFC 1630
-# or - RFC1630 legally allows:  [\?\/\+a-zA-Z0-9\$\-_\@\.&!\*"'\(\),]
-  $path =~ s/(['"#?*!:%])/"%".sprintf("%2.2x",ord($1))/eg;
+  if ($url) {
+    # Handle ['"#?*!:%] always, regardless of -fix_urls - see RFC 1630
+    # or - RFC1630 legally allows:  [\?\/\+a-zA-Z0-9\$\-_\@\.&!\*"'\(\),]
+    $path =~ s/(['"#?*!:%])/"%".sprintf("%2.2x",ord($1))/eg;
+  } else {
+    $path =~ s/\'/%27/g;	# Just quotes
+  }
 
   $path = "'$path'";	# And quote the rest
-  return $path unless ($opt && $opt->{'fix_urls'});
+  return $path unless $url && $opt && $opt->{fix_urls};
 
-  # Should probably correct more than just whitespace
-  $path =~ s/(\s)/"%".sprintf("%2.2x",ord($1))/eg;
-  # Handle umlauts and whatnot
-  $path =~ s/([\xE4\xF6\xFC\xC4\xD6\xDC\xDF])/"%".sprintf("%2.2x",ord($1))/eg;
-
-  # Handle unsafe characters including space.
-  # Encode everything below space and above hex 127
+  # Handle all unsafe characters including space.
+  # Encode everything below space and above 127
   $path =~ s/([\x00-\x20\x7F-\xFF])/"%".sprintf("%2.2x",ord($1))/eg;
 
   $path;
 }
 
-#########################
-# Diff two paths.  Find a relative path between the two
-#########################
-sub diff_path {
-  my ($from,$to) = @_;
-
-  # Remove file component
-  $from =~ s|/[^/]+$|| unless -d $from;
-
-  $from = abs_path($from);
-  $to = abs_path($to);
-  
-  my $back = "";
-  while ($to !~ /^\Q$from\E($|\/)/) {
-    $back .= "../";
-    $from =~ s|/[^/]+$||;
-  } 
-  $to =~ s|^\Q$from\E/?||;
-
-  $back.$to;
-}
+##################################################
+##################################################
+# CAPTIONS
+##################################################
+##################################################
 
 #########################
 # Read a captions file.
-#   Caption files allow you to rename each image/directory in one file
 #########################
 sub read_captions {
   my ($opt,$dir) = @_;
+
+  # $dir may actually be $data, get $data->{paths}{$dir}
+  $dir = $dir->{paths}{dir} if ref $dir eq "HASH";
+
+  return $opt->{_captions}{$dir} if $opt->{_captions}{$dir};
+
   my %caps;
-  my $caps = $opt->{'captions'};
-  return \%caps unless ($caps);
-  return \%caps unless (-r "$dir/$caps");
+  $opt->{_captions}{$dir} = \%caps;
+
+  my $caps = $opt->{captions};
+  return \%caps unless $caps;
+  return \%caps unless -r "$dir/$caps";
   if (!open(CAPS,"<$dir/$caps")) {
     print STDERR "[$PROGNAME] Couldn't read captions: [$dir/$caps]";
     return \%caps;
@@ -810,64 +1766,173 @@ sub read_captions {
       $split_tabs ? split(/\t+/, $_, 4) : split(/\s*::\s*/, $_, 4);
     $name=$file if (!$name && $cap);
     next unless $file;
-    $file=$1 if ($file eq "." && $dir =~ m|([^/]+)$|);
+    #$file=$1 if ($file eq '.' && $dir =~ m|([^/]+)$|);
     $caps{$file}{name}=$name;
     $caps{$file}{cap}=$cap if $cap;
-    $caps{$file}{alt}=$alt if $alt;
-    $caps{$file}{num}=$.+1;
+    $caps{$file}{alt}=quote($alt,$opt);
+    $caps{$file}{line}=$.+1;
   }
   close CAPS;
+
   \%caps;
 }
 
-# See if a directory renames itself in it's own caption file
-# (But let the local captions file override it, if someone really wants
-# to add that confusion)
+# EXIF information added to captions.
+sub get_exif {
+  my ($opt,$pic) = @_;
+
+  my %exif;
+  my $qpic = file_quote($opt,$pic);
+  my $jhead = open_pipe($opt,$opt->{jhead},$qpic);
+  undef $opt->{jhead} unless $jhead;
+  return "" unless $jhead;
+  while(<$jhead>) {
+    print STDERR "get_exif(): $_" if $opt->{d};
+    if (/command not found/) {	# Kind of kludgy
+      hash_warn($opt,"-exif specified but jhead not found [$opt->{jhead}]");
+      undef $opt->{jhead};
+      $jhead->close;
+      return "";
+    }
+    $exif{$1} = $2 if /(.+?)\s*:\s*(\S.*)/;
+  }
+  $jhead->close;
+  \%exif;
+}
+
+# Any EXIF key found in the exif string inside %% is replaced.
+sub exif_replace {
+  my ($exif,@str) = @_;
+  my $ret;
+  foreach my $str ( @str ) {
+    $str =~ s/%([^%]+)%/$exif->{$1} ? $exif->{$1} : "% %"/eg;
+    # Ignore this EXIF caption if we missed any keys.
+    $ret .= $str unless $str =~ /% %/;
+  }
+  $ret;
+}
+
+sub get_exif_captions {
+  my ($opt,$data,$pic) = @_;
+
+  return "" unless $opt->{exif} || $opt->{exif_image} || $opt->{exif_album};
+  return "" if !$opt->{jhead};
+  return "" unless $pic =~ /\.jpe?g$/i;
+
+  my $dir = $data->{paths}{dir};
+
+  my $exif = get_exif($opt,"$dir/$pic");
+
+  $data->{obj}{$pic}{exif} = exif_replace($exif, @{$opt->{exif}})
+    if $opt->{exif};
+  $data->{obj}{$pic}{exif_image} = exif_replace($exif, @{$opt->{exif_image}})
+    if $opt->{exif_image};
+  $data->{obj}{$pic}{exif_album} = exif_replace($exif, @{$opt->{exif_album}})
+    if $opt->{exif_album};
+}
+
+#########################
+# Get directory caption
+#########################
 sub get_dir_caption {
-  my ($opt,$caps_H,$path,$dir) = @_;
+  my ($opt,$dir,$name) = @_;
 
-  # Local captions file:
-  return (clean_name($dir,$caps_H),$caps_H->{$dir}{cap})
-    if $caps_H->{$dir} && $caps_H->{$dir}{name};
+  my $path = $dir ? "$opt->{top}/$dir" : $opt->{top};
 
-  # Directories captions file:
-  my $dir_caps_H = read_captions($opt,"$path/$dir");
-  return (clean_name($dir,$dir_caps_H),$dir_caps_H->{$dir}{cap})
-    if $dir_caps_H->{$dir} && $dir_caps_H->{$dir}{name};
+  # First check parent directory for $name
+  my $caps = read_captions($opt,$path);
+  return $caps->{$name} if $caps->{$name};
 
-  # Just clean $dir then.
-  return (clean_name($dir,$caps_H),"");
+  # Check the $name directory for $name or '.'
+  $caps = read_captions($opt,"$path/$name");
+  return $caps->{$name} if $caps->{$name};
+
+  return $caps->{'.'} if $caps->{'.'};
+  undef;
 }
 
-# Sort according to order found in optional captions file
+#########################
+# Get pics/dirs caption info
+#########################
+sub get_captions {
+  my ($opt,$data) = @_;
+
+  # First read the captions file
+  my $caps = read_captions($opt,$data);
+
+  # Commented out lines in captions is same as .no_album
+  @{$data->{pics}} = grep(!$caps->{"#".$_} || $caps->{$_}, @{$data->{pics}});
+  @{$data->{dirs}} = grep(!$caps->{"#".$_} || $caps->{$_}, @{$data->{dirs}});
+
+  # Put caption info into %data
+  foreach my $pic ( @{$data->{pics}} ) {
+    $data->{obj}{$pic} = $caps->{$pic};	# Put cap info into data
+    get_exif_captions($opt,$data,$pic);
+
+    $data->{obj}{$pic}{name} = clean_name($opt,$pic,$data->{obj}{$pic}{name});
+  }
+
+  # Directories - the caption can be here or in it's own directory
+  foreach my $dir ( @{$data->{dirs}} ) {
+    if ($caps->{$dir}) {
+      $data->{obj}{$dir} = $caps->{$dir};	# Put cap info into data
+    } else {
+      my $dircaps = read_captions($opt,"$data->{paths}{dir}/$dir");
+      $data->{obj}{$dir} = $dircaps->{'.'} || $dircaps->{$dir};
+    }
+    $data->{obj}{$dir}{name} = clean_name($opt,$dir,$data->{obj}{$dir}{name});
+  }
+}
+
+##################################################
+##################################################
+# SORTING PICS/DIRS
+##################################################
+##################################################
+
+# The sort rank for a file, according to the captions file or date
 sub sort_rank {
-  my ($opt,$caps,$dir,$f) = @_;
-  return ($caps->{$f} && $caps->{$f}{num}) unless $opt->{date_sort};
+  my ($opt,$data,$f) = @_;
+  return ($data->{obj}{$f} && $data->{obj}{$f}{line}) unless $opt->{date_sort};
   # Save mod times in a cache
-  return $opt->{DATE_SORT_CACHE}{$f}
-    if $opt->{DATE_SORT_CACHE} && $opt->{DATE_SORT_CACHE}{$f};
-  $opt->{DATE_SORT_CACHE}{$f} = -(-M "$dir/$f");
-  $opt->{DATE_SORT_CACHE}{$f};
+  return $data->{paths}{_date_sort_cache}{$f}
+    if $data->{paths}{_date_sort_cache} && $data->{paths}{_date_sort_cache}{$f};
+  $data->{paths}{_date_sort_cache}{$f} = -(-M "$data->{paths}{dir}/$f");
+  $data->{paths}{_date_sort_cache}{$f};
 }
 
-sub caption_order {
-  my ($opt,$caps,$dir,$a,$b) = @_;
+# Compare two names using natural sort (bob_2.jpg < bob_10.jpg)
+sub natural_cmp {
+  my ($a,$b) = @_;
+  my @a = split /(\d+)/, $a;
+  my @b = split /(\d+)/, $b;
+  my $M = @a > @b ? @a : @b;
+  for (my $i = 0; $i < $M; $i++) {
+    return -1 if ! defined $a[$i];
+    return 1 if  ! defined $b[$i];
+    return $a[$i] <=> $b[$i] if $a[$i] =~ /\d/ && $a[$i] <=> $b[$i];
+    return $a[$i] cmp $b[$i] if $a[$i] !~ /\d/ && $a[$i] cmp $b[$i];
+  }
+  0;
+}
 
-  ($a,$b) = ($b,$a) if ($opt->{reverse_sort});
+sub sort_order {
+  my ($opt,$data,$a,$b) = @_;
+
+  ($a,$b) = ($b,$a) if $opt->{reverse_sort};
 
   my ($an,$bn);
   unless ($opt->{name_sort}) {
-    $an = sort_rank($opt,$caps,$dir,$a);
-    $bn = sort_rank($opt,$caps,$dir,$b);
+    $an = sort_rank($opt,$data,$a);
+    $bn = sort_rank($opt,$data,$b);
   }
 
-  # Use captions instead of names if needed
-  $a = $caps->{$a}{name} if $caps->{$a};
-  $b = $caps->{$b}{name} if $caps->{$b};
+  # Get name
+  $a = $data->{obj}{$a}{name};
+  $b = $data->{obj}{$b}{name};
 
-# This tries to mingle captioned images with non-captioned.  It won't work,
-# because what do you do if you have images:  a, b, c and the captions
-# file only has c and then a.  There's no way to sort that.
+# This tries to mingle captioned images with non-captioned.  It won't work.
+# Consider images:  a, b, c and captions file only has c then a.  No sort!
 #  return $an <=> $bn if ($an && $bn);
 #  return ($a cmp $b);
 
@@ -875,77 +1940,119 @@ sub caption_order {
   if ($an) {
     return $bn ? ($an <=> $bn) : -1;
   } else {
-    return $bn ? 1 : ($a cmp $b);
+    return $bn ? 1 : natural_cmp($a,$b);
   }
 }
 
-# EXIF information added to captions.
-# Any EXIF key found in the exif string inside %% is replaced.
-sub get_exif {
-  my ($pic,$exif) = @_;
-
-  return "" unless $pic =~ /\.jpe?g$/i;
-
-  my $qpic = file_quote($pic);
-  my $jhead = open_pipe("$JHEAD $qpic");
-  undef $JHEAD unless $jhead;
-  return "" unless $jhead;
-  while(<$jhead>) {
-    print STDERR "get_exif(): $_" if ($MAIN::DEBUG);
-    if (/command not found/) {	# Kind of kludgy
-      undef $JHEAD;
-      $jhead->close;
-      return "";
-    }
-    if (/(.+?)\s*:\s*(\S.*)/) {
-      my ($key,$val) = ($1,$2);
-      $exif =~ s/%$key%/$val/g;
-    }
+sub sort_count {
+  my ($opt,$data,$what) = @_;
+  my $i=0;
+  foreach my $bob ( @{$data->{$what}} ) {
+    $data->{obj}{$bob}{num} = $i++;
+    $data->{obj}{$bob}{type} = $what;
   }
-  $jhead->close;
-
-  # Ignore EXIF info if we missed any keys.
-  # I'd like to come up with a better system..
-  return "" if $exif =~ /%.*%/;
-
-  $exif;
 }
 
-# Add the exif info to captions
-sub add_exif {
-  my ($opt,$dir,$caps_H,@pics) = @_;
+# Sort the pictures and directories as required
+sub sort_info {
+  my ($opt,$data) = @_;
+  @{$data->{pics}} = sort { sort_order($opt,$data,$a,$b) } @{$data->{pics}};
+  @{$data->{dirs}} = sort { sort_order($opt,$data,$a,$b) } @{$data->{dirs}};
+  sort_count($opt,$data,'pics');
+  sort_count($opt,$data,'dirs');
+}
 
-  return unless $opt->{exif} || !$JHEAD;
+#########################
+# Figure out all the paths
+#########################
+# /dave/bob/joe -> (/dave/bob,joe)
+sub split_path {
+  my ($slash,$path) = @_;
+  $slash = $slash->{slash} if ref $slash eq 'HASH';
+  my $slash = $slash || '/';
+  return ($slash,'') if $path eq $slash;
+  my $re = "(.*)\Q$slash\E([^$\Q$slash\E}]+)\$";
+  $path =~ m|$re| ? ($1 ? $1 : $slash, $2) : ('.',$path);
+}
 
-  foreach my $pic ( @pics ) {
-    $caps_H->{$pic}{cap} .= get_exif("$dir/$pic",$opt->{exif});
-    $caps_H->{$pic}{name} = $caps_H->{$pic}{name} || $pic;
+sub calc_paths {
+  my ($opt,$data) = @_;
+
+  my $dir = $data->{paths}{dir};
+
+  # Paths to the album HTML
+  $data->{paths}{album_file} = index_page($opt,1,$dir);
+  $data->{paths}{album_path} = join('/',@{$data->{dir_pieces}});
+
+  # Captions for all the dir_pieces leading up to this path.
+  my @path = ();
+  foreach my $dir_name ( @{$data->{dir_pieces}} ) {
+    my $dir_cap = get_dir_caption($opt,join('/',@path),$dir_name);
+    my $cap = $dir_cap->{name} if $dir_cap;
+    my $name = clean_name($opt,$dir_name, $cap,1);
+    # We only do {name} for parent_albums.  We could do {cap} as well,
+    # but I don't imagine many themes would use it, and more importantly
+    # we can store it via a hash because it's possible that the names of
+    # parent_albums are the same.  (i.e.: /album/bob/holiday/bob/)
+    push(@{$data->{paths}{parent_albums}}, $name);
+    push(@path,$dir_name);
+  }
+
+  # Paths to theme files
+  if ($opt->{theme}) {
+    $data->{paths}{theme} = diff_path($opt,$dir,$opt->{_theme_full});
+  
+    # assume $opt{dir} is one level (we make that assumption in many other places)
+    $data->{paths}{img_theme} = "../$data->{paths}{theme}";
+  }
+
+  # Image page URLs are <img.html> or <img.indexname.html>
+  $data->{paths}{page_post_url} = $opt->{index} ? ('.'.$opt->{index}) : $opt->{html};
+
+  # Setup obj info
+  # Final obj is a hash of hashes:  full, medium, thumb
+  # Each hash contains:  file, x, y and possibly filesize and path
+  foreach my $pic ( @{$data->{pics}} ) {
+    $data->{obj}{$pic}{full}{file} = $pic;
+    $data->{obj}{$pic}{full}{path} = "$dir/$pic";
+  }
+
+  # Links to sub-albums
+  if (@{$data->{dirs}}) {
+    foreach my $child ( @{$data->{dirs}} ) {
+      my $obj = $data->{obj}{$child};
+      $obj->{dir} = $child;	# The unadulterated name
+      $obj->{path} = "$dir/$child";
+      $obj->{URL}{album_page}{dir} = quote(index_page($opt,0,$child),$opt,1);
+    }
   }
 }
 
 ##################################################
 ##################################################
-# EPERL CODE (main code ripped out of my ePerl perl script)
+# EPERL CODE (main code lifted out of my ePerl perl script)
 ##################################################
 ##################################################
 sub eperl_set_file {
   my ($file,$line) = @_;
+  #print STDERR "\n# line $line \"$file\"\n";
   print ALBUM "\n# line $line \"$file\"\n";
 }
 
 sub send_perl {
   my ($opt,$code) = @_;
 
-  my $line_info = "";
+  #print STDERR $code;	# For debugging eperl
+  print ALBUM $code;
+
+#  my $line_info = "";
 #  if ($opt->{line_info}) {
 #    my $file = get_filename($opt);
 #    my $line = $opt->{lines}[0] + $opt->{offset}[0];
 #    $line_info = "\n# line $line \"$file\"\n";
 #    $opt->{line_info} = 0;
 #  }
-
-  #print STDERR $line_info.$code;
-  print ALBUM $line_info.$code;
+#  print ALBUM $line_info.$code;
 }
 
 sub send_perl_code {
@@ -1009,14 +2116,23 @@ sub eperl {
 
   undef $_;
   while ($line <= $#lines+1) {
-    while (!defined $_) {
-      $_ = $lines[$line++];
-      last unless defined $_;
-      if (/^#c/) {	# Comments
-        $_ = (m|//$|) ? (undef) : "\n";
-      }
-    }
-    if (!$in_perl && /$opt->{enter_eperl}/) {
+
+## This code screwed up line numbers by skipping empty comments.
+## And on top of that, it printed out newlines in place of comments.  Bah.
+#    while (!defined $_) {
+#      $_ = $lines[$line++];
+#      last unless defined $_;
+#      if (/^#c/) {	# Comments
+#        $_ = (m|//$|) ? (undef) : "c\n";
+#      }
+#    }
+
+    $_ = $lines[$line++] unless defined $_;
+    # My cheap eperl album comments '#c...'
+    if (!$in_perl && /^#c/) {
+      send_perl_code($opt,"\n");
+      undef $_;
+    } elsif (!$in_perl && /$opt->{enter_eperl}/) {
       $in_perl = 1;
       my ($out,$rest) = ($`,$');
       send_perl_text($opt,$out,1,$just_left);
@@ -1048,259 +2164,679 @@ sub eperl {
 # DATA -> EPERL / THEME SUPPORT ROUTINES
 ##################################################
 ##################################################
-# Take a scalar/array/hash and turn it into perl statements to set the array
-sub perl_quote_scalar {
-  my ($opt,$str) = @_;
-  $str =~ s/'/\\'/g;
 
-# I think I want people to be able to do eperl inside of captions.txt and whatnot
-#  # We need to convert the :> to \:\> so we don't mistakenly enter eperl
-#  unless ($opt->{quoted_enter_eperl}) {
-#    $opt->{quoted_enter_eperl} = $opt->{enter_eperl};
-#    $opt->{quoted_enter_eperl} =~ s/(.)/\\$1/g;
-#  }
-#
-#  $str =~ s/$opt->{enter_eperl}/$opt->{quoted_enter_eperl}/g;
+#########################
+# Simple Data dumper
+# Doesn't handle multiple pointers to objects (such as recursive pointers)
+# (But fails at least!)
+# If needed we could create a new object for each ref and add it to the top
+# and use reference pointers..  i.e. "my $_dumper_HASH::82332 = { ..."
+# But that's ugly.
+# I suppose I could keep track of the full path and use references, such
+# as ($data->{prev}{object}{stored}{here}) but I'm not sure if that works
+# in initialization data.
+#########################
+sub dumper {
+  my ($dmp,$name,$var) = @_;
 
-  "'$str'";
-}
-sub perl_quote_array {
-  my ($opt,$a) = @_;
-  my $str = "\t(\n";
-  foreach my $el ( @$a ) {
-    $str .= "\t".perl_quote_scalar($opt,$el).",\n";
-  }
-  $str."\t)";
-}
-sub perl_quote_hash {
-  my ($opt,$h) = @_;
-  my $str = "\t(\n";
-  foreach my $key ( keys %$h ) {
-    next if ref($h->{$key});	# Only quote scalars
-    next if ($key eq "leave_eperl");
-    next if ($key eq "enter_eperl");
-    $str .= "\t".perl_quote_scalar($opt,$key).
-            "\t=> ".perl_quote_scalar($opt,$h->{$key}).",\n";
-  }
-  $str."\t)";
+  return if $name =~ /$dmp->{ignore}/;
+
+  my $ref = ref($var);
+  return hash_warn($dmp->{opt},"Option or data [$name] was used multiple times?\n\t(Internal consistency problem - probably with a module?)")
+    if $ref && $dmp->{saw}{$var}++;
+
+  return hash_warn($dmp->{opt},"Variable with no name?") unless $dmp->{lvl} || defined $name;
+  my $s = " "x$dmp->{lvl};
+  my $qname = defined $name ? dumper_quote($name)." => " : "";
+
+  my $start = $dmp->{lvl} ? $s.$qname : "\$$name = ";
+  push(@{$dmp->{dump}}, $start);
+
+  dumper_array($dmp,$var) if ($ref eq 'ARRAY');
+  dumper_hash($dmp,$var) if ($ref eq 'HASH');
+  # Assume plain old scalar (not a scalar ref!) otherwise
+  dumper_value($dmp,$var) if ($ref ne 'ARRAY' && $ref ne 'HASH');
+
+  my $end = ($dmp->{lvl} ? ",\n" : ";\n");
+  push(@{$dmp->{dump}}, $end);
 }
 
+sub dumper_value {
+  my ($dmp,$val) = @_;
+  push(@{$dmp->{dump}}, dumper_quote($val));
+}
+
+sub dumper_quote {
+  my ($str) = @_;
+  defined $str ? eperl_quote($str) : 'undef';
+}
+
+sub dumper_array {
+  my ($dmp,$array) = @_;
+
+  return push(@{$dmp->{dump}}, "[]") unless @$array;
+
+  push(@{$dmp->{dump}}, "[\n");
+  $dmp->{lvl}+=2;
+  map(dumper($dmp,undef,$_), @$array);
+  $dmp->{lvl}-=2;
+  push(@{$dmp->{dump}}, " "x$dmp->{lvl} . "]");
+}
+
+sub dumper_hash {
+  my ($dmp,$hash) = @_;
+
+  return push(@{$dmp->{dump}}, "{}") unless %$hash;
+  push(@{$dmp->{dump}}, "{\n");
+  $dmp->{lvl}+=2;
+  map(dumper($dmp,$_,$hash->{$_}), keys %$hash);
+  $dmp->{lvl}-=2;
+  push(@{$dmp->{dump}}, " "x$dmp->{lvl} . "}");
+}
+
+#########################
+# Convert to eperl
+#########################
+# Put the 'data' structure into an input string for eperl,
+# and throw in some access functions
 # (Writing perl with perl is a bitch!  Quoting nightmare!)
-sub convert_data_to_eperl {
-  my ($opt,$data_H) = @_;
+sub data_to_eperl {
+  my ($opt,$data) = @_;
 
-  # Support routines are basically the same for the main
-  # index and all the image pages, so only convert once:
-  return if ($data_H->{'eperl'} && @{$data_H->{'eperl'}});
+  # Data dump.  Convert $data to assignment statements
+  my %dmp;
+  $dmp{opt} = $opt;	# opt handle
 
-#  push(@{$data_H->{'eperl'}},"# 1 \"album theme initialization\"\n");
+  # Ignore the eperl delimiters, 0 vars and '_internal' variables
+  $dmp{ignore} = '^(_.*|enter_eperl|leave_eperl|0)$';
+  dumper(\%dmp,'data',$data);
+  dumper(\%dmp,'opt',$opt);
 
-  # Set data up to be transferred to eperl
-  # Quote arrays
-  push(@{$data_H->{'eperl'}},"<:\n");
-  foreach my $key ( keys %$data_H ) {
-    next if ($key eq "eperl");
-    my $NAME = uc($key);
-    if (ref($data_H->{$key}) eq "ARRAY") {
-      push(@{$data_H->{'eperl'}}, "my \@$NAME = ".perl_quote_array($opt,$data_H->{$key}).";\n");
-    } else {
-      push(@{$data_H->{'eperl'}}, "my \$$NAME = ".perl_quote_scalar($opt,$data_H->{$key}).";\n");
-    }
-  }
-  push(@{$data_H->{'eperl'}},'my %OPTIONS = '.perl_quote_hash($opt,$opt).";\n");
-  push(@{$data_H->{'eperl'}},":>//\n");
+# For debug - dump data structures
+#print; foreach ( @{$dmp{dump}} ) { print; } exit;
 
-  # Write the support routines to eperl
-  my $TN_GEOM = $opt->{'crop'} ?
-                  "width='$opt->{'x'}' height='$opt->{'y'}'" : "";
+  $data->{eperl} = $dmp{dump};
+  unshift(@{$data->{eperl}},"<:\n");
+  push(@{$data->{eperl}},":>//\n");
 
-  # Position of this is crucial
+##################################################
+##################################################
+# Album support routines!
+##################################################
+##################################################
+
+  # Position of this line relative to start of SUPPORT is crucial
   my $start_line = __LINE__ + 4;
-  push(@{$data_H->{'eperl'}},<<SUPPORT);
+  # Think you're clever, eh?  Okay, so you found it.
+  # Please leave this requirement in, it's the only way I get paid..
+  my $derc = pack('C*',qw(67 65 76 76 69 68 95 67 82 69 68 73 84));
+  my $dercerr = pack('C*',qw(100 105 100 110 39 116 32 99 97 108 108 32 67 114 101 100 105 116 40 41 33));
+
+  push(@{$data->{eperl}},<<SUPPORT);
 <:
 # line $start_line "$0"
-# Album name
-my \$ALBUM_NAME = \$PARENT_ALBUMS[-1];
-\$ALBUM_NAME =~ s/<[^>]+>//g;	# Strip HTML
-sub pAlbum_Name { print \$ALBUM_NAME; }
-my \$IMAGE_PAGE = 0;
-sub Image_Page { \$IMAGE_PAGE; }
-sub Album_Filename { \$ALBUM_FILENAME; }
-sub Theme_Path { Image_Page() ? \$IMG_THEME_PATH : \$THEME_PATH; }
-sub Theme_URL { \$OPTIONS{theme_url} || Theme_Path(); }
 
-# Header/footer
-sub pFile {
-  my (\$f) = \@_;
-  return 0 unless \$f;
-  return 0 unless (-r \$f);
-  return 0 unless (open(FILE,"<\$f"));
-  while(<FILE>) { print; }
-  close FILE;
-  return 1;
-}
-sub quote { my (\$s) = \@_; \$s =~ s/"/&quot;/g;  '"'.\$s.'"'; }
-sub isHeader { return (-r "\$DIR/$HEADER") ? 1 : 0; }
-sub pHeader {
-  print "<!--HEADER name=".quote("HEADER:$HEADER")."-->\\n" if $opt->{caption_edit};
-  pFile("\$DIR/$HEADER");
-  print "<!--END_HEADER-->\\n" if $opt->{caption_edit};
-}
-sub isFooter { return (-r "\$DIR/$FOOTER") ? 1 : 0; }
-sub pFooter {
-  print "<!--FOOTER name=".quote("FOOTER:$FOOTER")."-->\\n" if $opt->{caption_edit};
-  pFile("\$DIR/$FOOTER");
-  print "<!--END_FOOTER-->\\n" if $opt->{caption_edit};
-}
+# These are changed by write_img_themes
+my \$IMAGE_PAGE = 0;
+my \$PAGE_TYPE = 'album_page';
+my \$THIS_IMAGE = 0;	# For image pages
 
 # Get any of the command line options
-sub Get_Opt { return \$OPTIONS{\$_[0]}; }
+sub Option { \$opt->{\$_[0]}; }
 
-# Main index page (probably just default of "")
-sub Index { ("$opt->{index}" eq "$DEFAULT_INDEX") ? "" : "$opt->{index}"; }
-# Go back to a previous index, or just ".." for the top page of the album
-sub Back { (\$#PARENT_ALBUMS || Image_Page()) ? "'../".Index()."'" : "'$opt->{top}'"; }
+#########################
+# Paths
+#########################
+sub Path {
+  my (\$path) = \@_;
 
-# Parent albums
+  return \$data->{paths}{parent_albums}[-1] if \$path eq 'album_name';
+  \$data->{paths}{\$path};
+}
+
+sub Image_Page() { \$IMAGE_PAGE; }
+sub Page_Type() { \$IMAGE_PAGE ? 'image_page' : 'album_page' }
+sub Theme_Path() { Image_Page() ? Path('img_theme') : Path('theme'); }
+sub Theme_URL() { \$opt->{theme_url} ? "\$opt->{theme_url}/\$opt->{theme}" : Theme_Path(); }
+
+sub read_file {
+  my (\$f) = \@_;
+  return '' unless \$f;
+  return '' unless (-r \$f);
+  return '' unless (open(FILE,"<\$f"));
+  my \@contents;
+  while(<FILE>) { push(\@contents,\$_); }
+  close FILE;
+  return \@contents;
+}
+
+sub quote { my (\$s) = \@_; \$s =~ s/"/&quot;/g;  '"'.\$s.'"'; }
+
+# Header/Footer
+sub isHeader { return (-r "\$data->{paths}{dir}/\$opt->{header}") ? 1 : 0; }
+sub pHeader {
+  print "<!--HEADER name=".quote("HEADER:\$opt->{header}")."-->\\n" if \$opt->{caption_edit};
+  pFile("\$data->{paths}{dir}/\$opt->{header}");
+  print "<!--END_HEADER-->\\n" if \$opt->{caption_edit};
+}
+sub isFooter { return (-r "\$data->{paths}{dir}/\$opt->{footer}") ? 1 : 0; }
+sub pFooter {
+  print "<!--FOOTER name=".quote("FOOTER:\$opt->{footer}")."-->\\n" if \$opt->{caption_edit};
+  pFile("\$data->{paths}{dir}/\$opt->{footer}");
+  print "<!--END_FOOTER-->\\n" if \$opt->{caption_edit};
+}
+
+#########################
+# Object Iterators
+#########################
+sub num {
+  my (\$type) = \@_;
+  \$type='pics' unless \$type;
+  return \$#{Path('parent_albums')}+1 if \$type eq 'parent_albums';
+  \$#{\$data->{\$type}}+1;
+}
+
+# OBSOLETE:  Global counter variables
+my \$IMAGE_CNT;	# DEPRECATED
+my \$CHILD_ALBUM_CNT = 0;
 my \$PARENT_ALBUM_CNT = 0;
-sub Parent_Albums { (\$PARENT_ALBUM_CNT <= \$#PARENT_ALBUMS) ? 1 : 0; }
+# END OBSOLETE:  Global counter variables
+
+# There are three types of arguments for our image subs:
+# 1) No argument:  Use current image (IMAGE_CNT)
+# 2) Number arg:   Use image #num
+# 2) obj arg:  Use that obj
+sub get_obj {
+  my (\$pic,\$type,\$loop) = \@_;
+
+  return \$pic if ref \$pic eq 'HASH';
+
+  # DEPRECATED:
+  \$pic = defined \$pic ? \$pic :
+    (\$type eq 'dirs' ? \$CHILD_ALBUM_CNT : \$IMAGE_CNT);	# DEPRECATED
+
+  return undef if \$pic<0 && !\$loop;
+  \$pic=0 if \$loop && \$pic>=num(\$type);
+  \$type='pics' unless \$type;
+  my \$img = \$data->{\$type}[\$pic];
+  return undef unless \$img;
+  \$obj = \$data->{obj}{\$img};
+}
+
+sub First { get_obj(0,\$_[0]); }
+
+sub Last { get_obj(-1,\$_[0],1); }
+
+sub Next {
+  my (\$what,\$loop) = \@_;
+  my \$obj = get_obj(\$what);
+  get_obj(\$obj->{num}+1, \$obj->{type}, \$loop);
+}
+
+sub Prev {
+  my (\$what,\$loop) = \@_;
+  my \$obj = get_obj(\$what);
+  get_obj(\$obj->{num}-1, \$obj->{type}, \$loop);
+}
+
+#########################
+# Parent albums
+#########################
 sub Parent_Album {
-  return "" unless Parent_Albums();
-  if (\$PARENT_ALBUM_CNT == \$#PARENT_ALBUMS) {
-    return \$PARENT_ALBUMS[\$PARENT_ALBUM_CNT] unless Image_Page();
-    return "<a href='../".Index()."'>\$PARENT_ALBUMS[\$PARENT_ALBUM_CNT]</a>";
-  }
-  my \$str = "<a href='";
-  \$str .=   "../"x(Parent_Albums_Left() - (Image_Page()?0:1));
-  \$str .=   Index();
-  \$str .=   "'>\$PARENT_ALBUMS[\$PARENT_ALBUM_CNT]</a>";
+  my (\$num) = \@_;
+  \$num = \$PARENT_ALBUM_CNT unless defined \$num;	# DEPRECATED
+  my \$parent_albums = Path('parent_albums');
+  return "" if \$num >= num('parent_albums');
+# You know..  This should be done in album and saved as "parent_album_urls"..
+  my \$dotdots = num('parent_albums') - \$num - 1;
+  \$dotdots++ if Image_Page();
+  my \$str = "";
+  \$str .= "<a href='". ("../"x\$dotdots). Option('index'). "'>" if \$dotdots;
+  \$str .= \$parent_albums->[\$num];
+  \$str .= "</a>" if \$dotdots;
   \$str;
 }
-sub pParent_Album { print Parent_Album(); }
-sub Parent_Albums_Left { \$#PARENT_ALBUMS + 1 - \$PARENT_ALBUM_CNT; }
-sub Parent_Album_Cnt { \$PARENT_ALBUM_CNT+1; }
-sub Next_Parent_Album { \$PARENT_ALBUM_CNT++; }
-sub pJoin_Parent_Albums {
-  while(Parent_Albums()) {
-    pParent_Album();
-    Next_Parent_Album();
-    print \$_[0] if (Parent_Albums());
-  }
+
+# Return an array or join of all the calls to Parent_Album
+sub Parent_Albums {
+  my (\$join) = \@_;
+  my \@pa = map Parent_Album(\$_), 0..(num('parent_albums')-1);
+  \$join ? join(\$join, \@pa) : \@pa;
 }
 
-# Child albums
-my \$CHILD_ALBUM_CNT = 0;
-sub Child_Albums { (\$CHILD_ALBUM_CNT <= \$#CHILD_ALBUM_NAMES) ? 1 : 0; }
-sub pChild_Album {
-  my (\$nobr) = \@_;
-  my \$name = \$CHILD_ALBUM_NAMES[\$CHILD_ALBUM_CNT];
-  \$name =~ s/<br>//g if \$nobr;
-  print "<a href=\$CHILD_ALBUM_URLS[\$CHILD_ALBUM_CNT]>\$name</a>";
+# Go back to a previous index, or just ".." for the top page of the album
+sub Back {
+  (num('parent_albums')>1 || Image_Page()) ?
+    "'../".Option('index')."'" : "'".Option('top')."'";
 }
-sub Child_Album_Caption { \$CHILD_ALBUM_CAPTIONS[\$CHILD_ALBUM_CNT]; }
-sub pChild_Album_Caption { print \$CHILD_ALBUM_CAPTIONS[\$CHILD_ALBUM_CNT]; }
-sub Child_Album_URL { \$CHILD_ALBUM_URLS[\$CHILD_ALBUM_CNT]; }
-sub Child_Album_Name { \$CHILD_ALBUM_NAMES[\$CHILD_ALBUM_CNT]; }
-sub Child_Album_Cnt { \$CHILD_ALBUM_CNT+1; }
-sub Child_Albums_Left { \$#CHILD_ALBUM_NAMES + 1 - \$CHILD_ALBUM_CNT; }
-sub Next_Child_Album { \$CHILD_ALBUM_CNT++; }
 
+#########################
 # Images
-my \$IMAGE_CNT = 0;
-my \$THIS_IMAGE = 0;
-sub Images { (\$IMAGE_CNT <= \$#IMAGE_NAMES) ? 1 : 0; }
-sub Image_Src { \$IMAGE_MEDIUMS[\$IMAGE_CNT] || Image_URL(); }
-sub pImage_Src {
-  print "<",Image_Tag(Image_Filename())," src=",Image_Src()," border='0' alt=",Image_Alt();
-  print " width='",Image_Width(),"'" if Image_Width();
-  print " height='",Image_Height(),"'" if Image_Height();
-  print " />";
-}
-sub pImage_Thumb_Src {
-  print "<img src=",Image_Thumb()," border='0' alt=",Image_Alt();
-  #print " width='$opt->{'x'}' height='$opt->{'y'}' border='0' />";
-  print " $TN_GEOM />";
-}
-sub pImage {
-  return undef unless Images();
-  print "<a href=".Image_URL().">";
-  pImage_Thumb_Src() if (Image_Is_Pic());
-  if (!defined \$_[0] || \$_[0]) {
-    print "<br />\\n";
-    print Image_Name();
-  }
-  print "</a>";
-}
-sub Image_Filename { \$PICS[\$IMAGE_CNT]; }
-sub Image_Tag { return (\$_[0] =~ /\.(mpe?g|mov|avi|pdf|ps)\$/i ? "embed" : "img"); }
+#########################
+# The image number for an image page
+sub This_Image() { get_obj(\$THIS_IMAGE); }
 
-# In the image page we use the real URL (back one dir)
-# Otherwise we use the url to the image page (or just the image)
-sub Image_URL { Image_Page() ? \$IMAGE_IMAGE_URLS[\$IMAGE_CNT] : \$IMAGE_URLS[\$IMAGE_CNT]; }
-sub Image_Page_URL { \$IMAGE_PAGE_URLS[\$IMAGE_CNT] || Back(); }
+# <img> tags for medium/full/thumb images
+# Call as:  Image(<image>,<type>)
+# i.e.:  Image(4,'thumb') or Image(\$img,'full'), etc..
+sub Image {
+  my (\$pic,\$type) = \@_;
+  my \$obj = get_obj(\$pic);
+
+  # Medium or full if not thumb?
+# TODO: Shouldn't this medium/full nonsense be a new: \$obj->{page}{...}
+  \$type = Get(\$obj,'medium','x') ? 'medium' : 'full' if \$type ne 'thumb';
+  return '' unless \$obj->{\$type}{x};
+
+  my \$src = \$type eq 'thumb' ?
+    \$obj->{URL}{Page_Type()}{thumb} :
+    \$obj->{URL}{image_page}{image_src};
+
+  my \$tag = \$type eq 'thumb' ? 'img' : Get(\$obj,'full','tag');
+  my \$y = \$obj->{\$type}{y};
+  my \$embed_movie = (\$obj->{is_movie} && \$type ne 'thumb') ? 1 : 0;
+  \$y += 15 if \$embed_movie && \$y;
+
+  my \$str;
+  \$str .= "<\$tag src=\$src border='0'";
+  \$str .= " alt=\$obj->{alt}" if \$obj->{alt};
+  \$str .= " width='\$obj->{\$type}{x}'" if \$obj->{\$type}{x};
+  \$str .= " height='\$y'" if \$y;
+  \$str .= " />";
+  \$str;
+}
+
+# Get a field/subfield property of an object.
+# Can also get URLs, with the "from" portion set to Page_Type if not specified
+# If field is 'href' - then return the URL wrapped in <a href=..>
+sub Get {
+  my (\$pic,\$field,\$subfield,\$subsub) = \@_;
+  my \$obj = get_obj(\$pic);
+
+  return Name(\$pic) if \$field eq 'Name';
+  return Caption(\$pic) if \$field eq 'Caption';
+  return '<a href='.Get(\$pic,'URL',\$subfield,\$subsub).'>'
+    if \$field eq 'href';
+
+  if (\$field eq 'URL') {
+    return \$obj->{URL}{\$subfield}{\$subsub} if \$subsub;
+    \$this_page = (Image_Page() ? 'image_page' : 'album_page');
+return \$obj->{URL}{Page_Type()}{\$subfield};
+}
+  \$subfield ? \$obj->{\$field}{\$subfield} : \$obj->{\$field};
+}
+
 # We can chop down extra long image names on the album page if needed
-sub Image_Name {
-  my \$n = \$IMAGE_NAMES[\$IMAGE_CNT];
+sub Name {
+  my \$obj = get_obj(\@_);
+  my \$n = \$obj->{name};
   return "Back" unless \$n;
   return \$n if Image_Page() && !\$MAIN::FIRST_NAME_CLEAN++;	#Kludge!
   my \$shorten = !Image_Page() && $opt->{name_length} && length(\$n)>($opt->{name_length}+3);
+  # Don't shorten if name has HTML (kludge..)
+  \$shorten = 0 if \$n =~ /<(a|font|br)\\b.*>/;
   my \$s = !\$shorten ? \$n :
     substr(\$n,0,$opt->{name_length}/2) . "..." . substr(\$n,-$opt->{name_length}/2,$opt->{name_length}/2);
   return \$s if !$opt->{caption_edit};
   \$n = quote(\$n);
-  my \$name = quote("NAME\$IMAGE_CNT:".\$PICS[\$IMAGE_CNT]);
+  my \$name = quote("NAME\$obj->{num}:".\$obj->{full}{file});
   \$s =~ s/\\n//mg;
   "<!--IMAGE_NAME name=\$name value=\$n-->\$s<!--END_IMAGE_NAME-->";
 }
-sub Image_Thumb { Image_Page() ? \$IMAGE_PAGE_THUMBS[\$IMAGE_CNT] : \$IMAGE_THUMBS[\$IMAGE_CNT]; }
-sub Image_Is_Pic { \$IMAGE_IS_PIC[\$IMAGE_CNT]; }
-sub Image_Alt { \$IMAGE_ALTS[\$IMAGE_CNT]; }
-sub Image_Filesize { \$IMAGE_FILESIZES[\$IMAGE_CNT]; }
-sub Image_Path { \$IMAGE_PATH[\$IMAGE_CNT]; }
-sub Image_Width { \$IMAGE_WIDTHS[\$IMAGE_CNT]; }
-sub Image_Height { \$IMAGE_HEIGHTS[\$IMAGE_CNT]; }
-sub Image_Cnt { \$IMAGE_CNT+1; }
-sub Images_Left { \$#IMAGE_NAMES + 1 - \$IMAGE_CNT; }
-sub Next_Image { \$IMAGE_CNT++; }
-sub pImage_Caption {
-  print "<!--IMAGE_CAPTION name=".quote("CAPTION:".\$PICS[\$IMAGE_CNT])."-->\\n"
-    if $opt->{caption_edit}; # && !Image_Page();
-  print \$IMAGE_CAPTIONS[\$IMAGE_CNT]
-    unless pFile(\$IMAGE_CAPTION_FILES[\$IMAGE_CNT]);
-  print "<!--END_IMAGE_CAPTION-->\\n" if $opt->{caption_edit}; # && !Image_Page();
+sub Caption {
+  my \$obj = get_obj(\@_);
+  my \$norm_caps = ($opt->{album_captions} || Image_Page()) ? 1 : 0;
+  my \$cap = "";
+  \$cap .= "<!--IMAGE_CAPTION name=".quote("CAPTION:".\$obj->{full}{file})."-->\\n"
+    if $opt->{caption_edit};
+  \$cap .= \$obj->{cap} if \$norm_caps;
+  \$cap .= \$obj->{exif} if \$norm_caps;
+  \$cap .= Image_Page() ? \$obj->{exif_image} :  \$obj->{exif_album};
+  \$cap .= join('',read_file(\$obj->{capfile})) if \$norm_caps;
+  \$cap .= "<!--END_IMAGE_CAPTION-->\\n" if $opt->{caption_edit};
+  \$cap;
 }
 
-# For image pages
-sub Image_Prev { \$THIS_IMAGE ? \$THIS_IMAGE-1 : $opt->{image_loop} ? \$#IMAGE_NAMES : \$#IMAGE_NAMES+1; }
-sub Image_Next { \$THIS_IMAGE!=\$#IMAGE_NAMES ? \$THIS_IMAGE+1 : $opt->{image_loop} ? 0 : \$#IMAGE_NAMES+1; }
-sub Set_Image_Prev { \$IMAGE_CNT = Image_Prev(); }
-sub Set_Image_Next { \$IMAGE_CNT = Image_Next(); }
-sub Set_Image_This { \$IMAGE_CNT = \$THIS_IMAGE; }
+##################################################
+# OBSOLETE/DEPRECATED SUPPORT ROUTINES!
+##################################################
+# I've reduced the number of functions that
+# need to be called (and remembered).
+# These old routines may be removed soon.
+
+# Paths
+sub pAlbum_Name { Path('album_name'); }
+sub Album_Filename { Path('album_file'); }
+sub pFile { print read_file(\@_); }
+sub Get_Opt { Option(\@_); }
+sub Index { Option('index'); }
+
+# Parents
+sub pParent_Album { print Parent_Album(\@_); }
+sub Parent_Albums_Left { num('parent_albums') - \$PARENT_ALBUM_CNT; }
+sub Parent_Album_Cnt { \$PARENT_ALBUM_CNT+1; }
+sub Next_Parent_Album { \$PARENT_ALBUM_CNT++; }
+sub pJoin_Parent_Albums { print Parent_Albums(\@_); }
+
+# Images
+sub pImage {
+  return undef unless Images();
+  print "<a href=".Get(undef,'URL','image').">";
+  print Image(undef,'thumb') if (Get(undef,'thumb'));
+  if (!defined \$_[0] || \$_[0]) {
+    print "<br />\\n";
+    print Name();
+  }
+  print "</a>";
+}
+sub pImage_Src { print Image(\@_,'full'); }
+sub Image_Src { Image(\@_,'full'); }
+sub pImage_Thumb_Src { print Image(\@_,'thumb'); }
+sub Image_Name { Name(\@_); }
+sub Image_Caption { Caption(\@_); }
+sub Image_Thumb { Get(\$_[0],'URL','thumb'); }
+sub Image_Is_Pic { Get(\$_[0],'thumb'); }
+sub Image_Alt { Get(\$_[0],'alt'); }
+sub Image_Filesize { Get(\$_[0],'full','filesize'); }
+sub Image_Path { Get(\$_[0],'full','path'); }
+sub Image_Width { Get(\$_[0],'medium','x') || Get(\$_[0],'full','x'); }
+sub Image_Height { Get(\$_[0],'medium','y') || Get(\$_[0],'full','y'); }
+sub Image_Filename { Get(\$_[0],'full','file'); }
+sub Image_Tag { Get(\$_[0],'full','tag'); }
+sub Image_URL { Get(\$_[0],'URL','image'); }
+
+# In the image page we use the real URL (back one dir)
+# Otherwise we use the url to the image page (or just the image)
+sub Image_Page_URL { Get(\$_[0],'URL','image_page','image_page') || Back(); }
+sub pImage_Caption { print Get(\$_[0],'Caption'); }
+
+#########################
+# Deprecated Child Album routines
+# These are ugly.  Please don't use them
+#########################
+sub Child_Album {
+  my (\$num,\$nobr) = \@_;
+  my \$obj = get_obj(\$num,'dirs');
+  my \$name = Name(\$obj);
+  \$name =~ s/<br>//g if \$nobr;
+  my \$url = Get(\$obj,'URL','dir');
+  "<a href=\$url>\$name</a>";
+}
+sub pChild_Album { print Child_Album(undef,\@_); }	# Stupid undef kludge here..
+sub Child_Album_Caption { Caption(\$_[0],'dirs'); }
+sub pChild_Album_Caption { print Child_Album_Caption(\@_); }
+sub Child_Album_URL { Get(get_obj(\$_[0],'dirs'),'URL','dir'); }
+sub Child_Album_Name { Name(get_obj(\$_[0],'dirs')); }
+
+#########################
+# Just don't work..
+#########################
+# References to unused data structures, such as:
+# \@PARENT_ALBUMS, \$#PARENT_ALBUMS, \$PARENT_ALBUMS[...], etc..
+# Use:  \@PARENT_ALBUMS = \@{Path('parent_albums')};
+# \@CHILD_ALBUMS, \@CHILD_ALBUM_NAMES, \@CHILD_ALBUM_URLS, ...
+
+##################################################
+# END OF OBSOLETE/DEPRECATED SUPPORT ROUTINES!
+##################################################
+
+##################################################
+# DEPRECATED GLOBAL VARIABLE METHODS
+##################################################
+# These are less likely to be removed anytime soon,
+# I haven't decided if these are a good way to access the info.
+my \$picdata;
+sub Images { (\$IMAGE_CNT < num('pics')) ? 1 : 0; }
+sub Image_Cnt { Get(\$_[0],'num')+1; }
+sub Images_Left { num('pics') - \$IMAGE_CNT; }
+sub Next_Image { Set_Image(\$IMAGE_CNT+1); }
+Set_Image(0);
+
+sub Image_Prev { \$THIS_IMAGE ? \$THIS_IMAGE-1 : $opt->{image_loop} ? \$#{\$data->{pics}} : \$#{\$data->{pics}}+1; }
+sub Image_Next { \$THIS_IMAGE!=\$#{\$data->{pics}} ? \$THIS_IMAGE+1 : $opt->{image_loop} ? 0 : \$#{\$data->{pics}}+1; }
+sub Set_Image {
+  my (\$to) = \@_;
+  \$IMAGE_CNT = \$to;
+  my \$img = \$data->{pics}[\$to];
+  \$picdata = \$img ? \$data->{obj}{\$img} : undef;
+}
+sub Set_Image_Prev { Set_Image(Image_Prev()); }
+sub Set_Image_Next { Set_Image(Image_Next()); }
+sub Set_Image_This { Set_Image(\$THIS_IMAGE); }
+
+# Child albums
+sub Child_Albums { (\$CHILD_ALBUM_CNT < num('dirs')) ? 1 : 0; }
+sub Child_Album_Cnt { \$CHILD_ALBUM_CNT+1; }
+sub Child_Albums_Left { num('dirs') - \$CHILD_ALBUM_CNT; }
+sub Next_Child_Album { \$CHILD_ALBUM_CNT++; }
+
+##################################################
+# END OF DEPRECATED GLOBAL VARIABLE METHODS
+##################################################
+
+##################################################
+# BORDERS (handle corners)
+##################################################
+# Show an image given an 'image array'
+sub Image_Array {
+  my (\$src,\$x,\$y,\$and,\$alt) = \@_;
+  return '' unless \$src;
+  my \$str = "<img src='\$src'";
+  \$str .= " width='\$x'" if \$x;
+  \$str .= " height='\$y'" if \$y;
+  \$str .= " \$and" if \$and;
+  \$str .= " alt='\$alt'" if \$alt;
+  \$str .= " border='0' />";
+  \$str;
+}
+
+# Borders can be 0 pieces, 4 pieces, 8 or 12
+# Called starting from top (left) going clockwise.
+#   12 piece borders     
+#      TL  T  TR          8 piece borders       4 piece borders
+#      LT     RT            TL  T  TR            TTTTTTT
+#      L  IMG  R            L  IMG  R            L IMG R
+#      LB     RB            BL  B  BR            BBBBBBB
+#      BL  B  BR
+sub Border {
+  # Either call with:
+  #   (img_object, type, href, border_image_arrays)
+  #   (img_string, x,y, border_image_arrays)
+
+  my \$img = shift \@_;
+  my (\$x,\$y);
+
+  if (ref \$img ne 'HASH') {
+    # Called with (img_string,x,y, ..)
+    \$x = shift \@_;
+    \$y = shift \@_;
+  } else {
+    # Called with (img_object,type,href, ..)
+    my \$type = shift \@_;
+    my \$href = shift \@_;
+    # Medium or full if not thumb?
+    \$type = Get(\$img,'medium','x') ? 'medium' : 'full' if \$type ne 'thumb';
+    # Lookup href
+    \$href = Get(\$img,'href',\$href) if \$href;
+    \$x = Get(\$img,\$type,'x');
+    \$y = Get(\$img,\$type,'y');
+    my \$str = Image(\$img,\$type);
+    # Don't put anchor around movies, some browsers will follow href when
+    # they press play on the embedded player controls
+    my \$embed_movie = (\$img->{is_movie} && \$type ne 'thumb') ? 1 : 0;
+    \$str = \$href.\$str.'</a>' if \$href && !\$embed_movie;
+    # And leave space for embedded player controls
+    \$y+=15 if \$embed_movie;
+    \$img = \$str;
+  }
+
+  my \$width=1; my \$height=2;
+
+  if (scalar \@_ == 0) {
+    # No corners
+    print "\$img<br />\n";
+  } elsif (scalar \@_ == 4) {
+    my (\$T,\$R,\$B,\$L) = \@_;
+
+    # Stretch top,bottom to fit image
+    my \@t = \@\$T; my \@b = \@\$B;
+    my \@l = \@\$L; my \@r = \@\$R;
+    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width];
+    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width];
+    \$l[\$height] = \$y;
+    \$r[\$height] = \$y;
+
+    my (\$t,\$r,\$b,\$l) =
+      map( Image_Array(\@\$_), (\\\@t,\\\@r,\\\@b,\\\@l));
+
+    print <<BORDER4;
+					<span style='white-space: nowrap'>\$t</span><br />
+					<span style='white-space: nowrap'>\$l\$img\$r</span><br />
+					<span style='white-space: nowrap'>\$b</span><br />
+BORDER4
+  } elsif (scalar \@_ == 8) {
+    my (\$TL,\$T,\$TR,\$R,\$BR,\$B,\$BL,\$L) = \@_;
+
+    # Stretch top,bottom to fit image
+    my \@t = \@\$T; my \@b = \@\$B;
+    my \@l = \@\$L; my \@r = \@\$R;
+    # Just *try* to read this mess...
+    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width];
+    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width];
+    \$l[\$height] = \$y;
+    \$r[\$height] = \$y;
+
+    my (\$tl,\$t,\$tr,\$r,\$br,\$b,\$bl,\$l) =
+      map( Image_Array(\@\$_), 
+        (\$TL,\\\@t,\$TR,\\\@r,\$BR,\\\@b,\$BL,\\\@l));
+
+    print <<BORDER8;
+					<span style='white-space: nowrap'>\$tl\$t\$tr</span><br />
+					<span style='white-space: nowrap'>\$l\$img\$r</span><br />
+					<span style='white-space: nowrap'>\$bl\$b\$br</span><br />
+BORDER8
+  } elsif (scalar \@_ == 12) {
+    my (\$TL,\$T,\$TR,\$RT,\$R,\$RB,\$BR,\$B,\$BL,\$LB,\$L,\$LT) = \@_;
+
+    # We might be calling without the need for 12 border pieces
+    my \$border = (\@\$T || \@\$R || \@\$B || \@\$L) ? 1 : 0;
+    my \$corners8 = (\@\$TR || \@\$TL || \@\$BL || \@\$BR) ? 1 : 0;
+    my \$corners12 = (\@\$RT || \@\$RB || \@\$LB || \@\$LT) ? 1 : 0;
+    return Border(\$img,\$x,\$y,\$TL,\$T,\$TR,\$R,\$BR,\$B,\$BL,\$L)
+      if \$corners8 && !\$corners12;
+    return Border(\$img,\$x,\$y,\$T,\$R,\$B,\$L) if \$border && !\$corners12;
+    return Border(\$img,\$x,\$y) if !\$border && !\$corners12;
+
+    # Stretch top,bottom,sides to fit image
+    my \@t = \@\$T; my \@b = \@\$B;
+    my \@l = \@\$L; my \@r = \@\$R;
+    # Just *try* to read this mess...
+    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width];
+    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width];
+    \$l[\$height] = \$y-\$LT->[\$height]-\$LB->[\$height];
+    \$r[\$height] = \$y-\$RT->[\$height]-\$RB->[\$height];
+
+    my (\$tl,\$t,\$tr,\$rt,\$r,\$rb,\$br,\$b,\$bl,\$lb,\$l,\$lt) =
+      map( Image_Array(\@\$_), 
+        (\$TL,\\\@t,\$TR,\$RT,\\\@r,\$RB,\$BR,\\\@b,\$BL,\$LB,\\\@l,\$LT));
+
+    # Embedded stuff is aligned top in case there are controls, otherwise
+    # align middle in case the thumbnail is very small and there's blank space.
+    my \$align = \$img =~ /<embed/ ? 'top' : 'middle';
+    print <<BORDER12;
+					<table border='0' cellpadding='0' cellspacing='0'>
+						<tr>
+							<td colspan='3'>\$tl\$t\$tr</td>
+						</tr> <tr>
+							<td>\$lt</td>
+							<td rowspan='3' valign=\$align>\$img</td>
+							<td>\$rt</td>
+						</tr> <tr>
+							<td>\$l</td>
+							<td>\$r</td>
+						</tr> <tr>
+							<td>\$lb</td>
+							<td>\$rb</td>
+						</tr> <tr>
+							<td colspan='3'>\$bl\$b\$br</td>
+						</tr>
+					</table>
+BORDER12
+
+  } else {
+    print STDERR "[",Theme_Path(),"] Error: Border called with wrong number of args\n";
+  }
+}
+
+##################################################
+# END CODE
+##################################################
+srand(time^\$\$);
+sub Credit {
+  my \@start = (
+  "Photo album generated by",
+  "Created with the tool",
+  "Album created by",
+  );
+  my \$start = \$start[int(rand(\$#start+1))];
+
+  my \@album = (
+  "<a href='$ALBUM_URL'>album</a>",
+  "<a href='$ALBUM_URL'>album</a>",
+  "<a href='$ALBUM_URL'>album generator</a>",
+  "<a href='$ALBUM_URL'>album generator</a>",
+  "<a href='$ALBUM_URL'>album tool</a>",
+  "album <a href='$ALBUM_URL'>tool</a>",
+  "album <a href='$ALBUM_URL'>script</a>",
+  "<a href='$ALBUM_URL'>photo album generator</a>",
+  );
+  my \$album = \$album[int(rand(\$#album+1))];
+
+  my \@me = ("Dave","David Ljung","David Madison","D. Madison","David","Dave Madison");
+  my \$me = "<a href='http://GetDave.com/'>";
+  my \@mh = ("MarginalHack","Marginal Hack");
+  my \$mh = "<a href='$HOME'>";
+  my \@tool = (\@mh,"Marginal Hack","tool","free tool","script");
+  \@tool = grep(!/tool/, \@tool) if \$album =~ /tool/;	# tool tool tool tool..
+  my \$tool = "<a href='$HOME'>";
+  my \@formats = ("from {me}'s</a> {mh}s</a>", "from {mh}s</a> by {me}</a>", "a {tool}</a> by {me}</a>", "a {tool}</a> written by {me}</a>");
+  my \$from = \$formats[int(rand(\$#formats+1))];
+  \$from =~ s/{me}/\$me.\$me[int(rand(\$#me+1))]/e;
+  \$from =~ s/{mh}/\$mh.\$mh[int(rand(\$#mh+1))]/e;
+  \$from =~ s/{tool}/\$tool.\$tool[int(rand(\$#tool+1))]/e;
+
+  print "\$start \$album \$from";
+  \$${derc}=1;
+}
 
 # Meta tag needed for regenerating portions of the album tree.
 sub Meta {
   print "<meta name='Generator' content='$GEN_STRING' />\\n";
-  print "<meta name='Album_Path' content='\$ALBUM_PATH' />\\n";
-  print "<meta name='Album_Theme' content='\$THEME_PATH' />\\n";
+  print "<meta name='Album_Path' content='\$data->{paths}{album_path}' />\\n";
+# DEPRECATED: These two are unnecessary unless you want to switch back to v2.0
+# (But see prev_next_theme_path_changed)
+  print "<meta name='Album_Theme' content='\$opt->{theme}' />\\n";
   print "<meta name='caption_edit' content='yes' />\\n" if $opt->{caption_edit};
   if (Image_Page()) {
-    my \$prev = \$PICS[Image_Prev()];
-    my \$next = \$PICS[Image_Next()];
-    my \$prev_med = \$IMAGE_MEDIUMS[Image_Prev()] || Image_URL();
-    my \$next_med = \$IMAGE_MEDIUMS[Image_Next()] || Image_URL();
-    my \$prev_url = \$IMAGE_PAGE_URLS[Image_Prev()];
-    my \$next_url = \$IMAGE_PAGE_URLS[Image_Next()];
+    my \$Prev = Prev(This_Image, \$opt->{image_loop});
+    my \$Prev_pic = Get(\$Prev,'full','file');
+    my \$Prev_url = Get(\$Prev,'URL','image_page','image_page');
+    my \$Prev_src = Get(\$Prev,'URL','image_page','image_src') || "''";
+    my \$Next = Next(This_Image, \$opt->{image_loop});
+    my \$Next_pic = Get(\$Next,'full','file');
+    my \$Next_url = Get(\$Next,'URL','image_page','image_page');
+    my \$Next_src = Get(\$Next,'URL','image_page','image_src') || "''";
     print <<PREV_NEXT;
-<meta name='Prev_Image' content='\$prev' />
-<meta name='Next_Image' content='\$next' />
-<link rel='prev' href=\$prev_url />
-<link rel='next' href=\$next_url />
+<meta name='Prev_Image' content='\$Prev_pic' />
+<meta name='Next_Image' content='\$Next_pic' />
+<link rel='prev' href=\$Prev_url />
+<link rel='next' href=\$Next_url />
 <link rel='up' href='..' />
 <script type='text/javascript'>
 <!--
 if (document.images) {
-  Image1 = new Image(); Image1.src = \$prev_med;
-  Image2 = new Image(); Image2.src = \$next_med;
+  Image1 = new Image(); Image1.src = \$Prev_src;
+  Image2 = new Image(); Image2.src = \$Next_src;
 }
 //-->
 </script>
@@ -1309,51 +2845,26 @@ PREV_NEXT
   }
   \$CALLED_META=1;
 }
-srand(time^\$\$);
-sub Credit {
-  my \@start = (
-  "Photo album generated by ",
-  "Created with the tool ",
-  "Album created by ",
-  );
-  my \@album = (
-  "<a href='$ALBUM_URL'>album</a>",
-  "<a href='$ALBUM_URL'>album</a>",
-  "<a href='$ALBUM_URL'>album</a>",
-  "<a href='$ALBUM_URL'>album generator</a>",
-  "<a href='$ALBUM_URL'>album generator</a>",
-  "<a href='$ALBUM_URL'>album tool</a>",
-  "<a href='$ALBUM_URL'>photo album generator</a>",
-  );
-  my \@from = (
-  " from <a href='http://GetDave.com/'>Dave's</a> <a href='$HOME'>MarginalHacks</a>",
-  " from <a href='$HOME'>MarginalHacks</a> by <a href='http://GetDave.com/'>David Madison</a>",
-  " from <a href='$HOME'>MarginalHacks</a> by <a href='http://GetDave.com/'>David Ljung</a>",
-  " a <a href='$HOME'>Marginal Hack</a> written by <a href='http://GetDave.com/'>Dave</a>",
-  " a <a href='$HOME'>Marginal Hack</a> written by <a href='http://GetDave.com/'>Dave</a>",
-  " a <a href='$HOME'>Marginal Hack</a> written by <a href='http://GetDave.com/'>Dave</a>",
-  " a <a href='$HOME'>Marginal Hack</a> written by <a href='http://GetDave.com/'>David Madison</a>",
-  " a <a href='$HOME'>Marginal Hack</a> written by <a href='http://GetDave.com/'>David Ljung</a>",
-  );
-  print \$start[int(rand(\$#start+1))];
-  print \$album[int(rand(\$#album+1))];
-  print \$from[int(rand(\$#from+1))];
-  \$CALLED_CREDIT=1;
-}
 sub Album_End {
   die("ERROR: Didn't call Meta() in <head>!\\n") unless \$CALLED_META;
-  die("ERROR: Didn't call Credit()!\\n") if (!\$CALLED_CREDIT && !Image_Page());
+  # Please leave this here.  It's the only way I get paid.
+  die("ERROR: Theme $dercerr\\n") if (!\$CALLED_CREDIT && !Image_Page());
 }
 
 :>//
 SUPPORT
+##################################################
+##################################################
+# End album support routines
+##################################################
+##################################################
 
-  push(@{$data_H->{'end_eperl'}},"<:Album_End():>");
+  push(@{$data->{end_eperl}},"<:Album_End():>");
 }
 
 ##################################################
 ##################################################
-# HTML WRITING
+# HTML I/O
 ##################################################
 ##################################################
 sub setup_output {
@@ -1361,13 +2872,13 @@ sub setup_output {
 
   if ($theme) {
     # We pipe into eperl stdin
-    my $qout = file_quote($out);
+    my $qout = file_quote($opt,$out);
     (open(ALBUM,"|$^X > $qout")) ||
-      die("[$PROGNAME] Couldn't start perl pipe for theme [$out]\n");
+      fatal($opt,"Couldn't start perl pipe for theme [$out]\n");
   } else {
     # Just write a file
     (open(ALBUM,">$out")) ||
-      die("[$PROGNAME] Couldn't write html [$out]\n");
+      fatal($opt,"Couldn't write html [$out]\n");
   }
 }
 
@@ -1379,7 +2890,89 @@ sub close_output {
   return unless $ret;
 
   print STDERR "[$PROGNAME] album theme returned error [$?]\n" if ($?);
-  die("\n");
+  fatal($opt);
+}
+
+##################################################
+##################################################
+# Default HTML (no ePerl)
+##################################################
+##################################################
+sub header {
+  my ($opt,$data,$image_page,$name) = @_;
+
+  my $dir = $data->{paths}{dir};
+
+  my @names = @{$data->{paths}{parent_albums}};
+  push(@names,$name) if $name;
+  my $top = (@names || $image_page) ? 0 : 1;
+
+  my $this = pop(@names);
+  my $header = "";
+  my $back = $#names;
+  while (my $n = pop(@names)) {
+    $header = "<a href='".("../"x($back-$#names))."$opt->{index}'>$n</a> : $header";
+  }
+  $header.=$this;
+
+  my $Up = $image_page ? "Back" : "Up";
+  my $UpUrl = $top ? $opt->{top} : "../$opt->{index}";
+  $UpUrl = "<h1><a href='$UpUrl'>$Up</a></h1>" if $UpUrl && $UpUrl ne "''";
+
+  print ALBUM <<END_OF_HEADER;
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN'
+    'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml'>
+  <head>
+    <title> 
+      Album: $this
+    </title>
+    <meta http-equiv='Content-Type' content='text/html; charset=$opt->{charset}' />
+    <meta name='Generator' content='$GEN_STRING' />
+    <meta name='Album_Path' content='$data->{paths}{album_path}' />
+  </head>
+  $opt->{body}
+  <table width='95%'>
+    <tr>
+      <td align='left'>
+        <h2>$header</h2>
+      </td>
+      <td align='right'>
+        $UpUrl
+      </td>
+    </tr>
+  </table>
+  <hr />
+END_OF_HEADER
+
+  if (-f "$dir/$opt->{header}" && (open(HEADER,"<$dir/$opt->{header}"))) {
+    while(<HEADER>) { print ALBUM; }
+    print ALBUM "<hr />\n";
+  }
+}
+
+sub footer {
+  my ($opt,$data) = @_;
+
+  my $dir = $data->{paths}{dir};
+
+  if (-f "$dir/$opt->{footer}" && (open(FOOTER,"<$dir/$opt->{footer}"))) {
+    while(<FOOTER>) { print ALBUM; }
+    print ALBUM "<hr />\n";
+  }
+  my $date = localtime;
+  print ALBUM <<END_OF_FOOTER;
+    <font size='-1'>
+      Photo album generated by
+      <a href='$ALBUM_URL'>$PROGNAME</a>
+      from <a href='http://GetDave.com/'>Dave's</a>
+      <a href='$HOME'>MarginalHacks</a>
+      on $date
+    </font>
+  </body>
+</html>
+END_OF_FOOTER
+
 }
 
 #########################
@@ -1404,47 +2997,63 @@ sub new_element {
   my $new_row = 0;
   if ($TABLE_COUNT) {
     print ALBUM "      </td>\n";
-    unless ($TABLE_COUNT % $opt->{'columns'}) {
+    unless ($TABLE_COUNT % $opt->{columns}) {
       print ALBUM "    </tr><tr>\n";
       $new_row=1;
     }
   }
   print ALBUM "      <td align='center' ";
-  print ALBUM "width='",(100/$opt->{'columns'}),"%' "
-    if ($TABLE_COUNT < $opt->{'columns'});
+  print ALBUM "width='",(100/$opt->{columns}),"%' "
+    if ($TABLE_COUNT < $opt->{columns});
   print ALBUM "valign='top'>\n";
   $TABLE_COUNT++;
 }
 
 #########################
-# Default HTML (no ePerl)
+# Index page
 #########################
 sub caption {
-  my ($cap,$capfile) = @_;
-  if (-f $capfile && (open(CAP,"<$capfile"))) {
+  my ($obj,$image_page) = @_;
+  print ALBUM $obj->{cap};
+  print ALBUM $obj->{exif};
+  print ALBUM $image_page ? $obj->{exif_image} : $obj->{exif_album};
+  if (-f $obj->{capfile} && (open(CAP,"<$obj->{capfile}"))) {
     while(<CAP>) { print ALBUM; }
     close CAP;
-    return;	# Don't use both captions?
   }
-  print ALBUM $cap if $cap;
 }
 
 sub write_index {
-  my ($opt,$d_H,$dir) = @_;
+  my ($opt,$data) = @_;
+
+  my $dir = $data->{paths}{dir};
 
   # TOP
-  setup_output($opt,$d_H->{'album_filename'});
-  header($opt,$d_H,0,$dir,@{$d_H->{'parent_albums'}});
+  setup_output($opt,$data->{paths}{album_file});
+  header($opt,$data,0);
 
   # DIRECTORIES
-  if ($d_H->{'child_album_urls'} && @{$d_H->{'child_album_urls'}}) {
+  if (@{$data->{dirs}}) {
     start_table();
     new_element($opt);
     print ALBUM "<font size='+2'><i>More albums:</i></font>\n";
 
-    for(my $i=0; $i<=$#{$d_H->{'child_album_urls'}}; $i++) {
+    foreach my $child ( @{$data->{dirs}} ) {
       new_element($opt);
-      print ALBUM "<font size='+1'><a href=$d_H->{'child_album_urls'}[$i]>$d_H->{'child_album_names'}[$i]</a></font>\n";
+      my $obj = $data->{obj}{$child};
+      if ($obj->{thumb}) {
+        print ALBUM "<a href=$obj->{URL}{album_page}{dir}>\n";
+        print ALBUM "          <img";
+        print ALBUM " width='$obj->{thumb}{x}'" if $obj->{thumb}{x};
+        print ALBUM " height='$obj->{thumb}{y}'" if $obj->{thumb}{y};
+        print ALBUM " border='0' src=$obj->{URL}{album_page}{thumb}";
+        print ALBUM " alt=$obj->{alt} /><br />\n";
+        print ALBUM "<font size='+1'>$obj->{name}</font></a>\n";
+        print ALBUM "<font size='-1'><br \>$obj->{num_pics} images</font>\n"
+          if defined $obj->{num_pics};
+      } else {
+        print ALBUM "<font size='+1'><a href=$obj->{URL}{album_page}{dir}>$obj->{name}</a></font>\n";
+      }
     }
     end_table();
     print ALBUM "<hr />\n";
@@ -1452,69 +3061,79 @@ sub write_index {
 
   # IMAGES
   start_table();
-  for(my $i=0; $i<=$#{$d_H->{'pics'}}; $i++) {
+  foreach my $pic ( @{$data->{pics}} ) {
     new_element($opt);
-    my $name = $d_H->{'image_names'}[$i];
+    my $obj = $data->{obj}{$pic};
+    my $name = $obj->{name};
     my $pname = $name;
     $pname = substr($name,0,$opt->{name_length}/2) . "..." . substr($name,-$opt->{name_length}/2,$opt->{name_length}/2)
       if ($opt->{name_length} && length($name)>($opt->{name_length}+3));
 
     # Picture - thumbnail and all..
-    if ($d_H->{'image_is_pic'}[$i]) {
-      print ALBUM "        <a href=$d_H->{'image_urls'}[$i]>\n";
-      print ALBUM "          <img ";
-      print ALBUM "width='$opt->{'x'}' height='$opt->{'y'}' " if $opt->{crop};
-      print ALBUM "border='0' src=$d_H->{'image_thumbs'}[$i] alt=$d_H->{'image_alts'}[$i] /><br />\n";
+    if ($obj->{thumb}) {
+      print ALBUM "        <a href=$obj->{URL}{album_page}{image}>\n";
+      print ALBUM "          <img";
+      print ALBUM " width='$obj->{thumb}{x}'" if $obj->{thumb}{x};
+      print ALBUM " height='$obj->{thumb}{y}'" if $obj->{thumb}{y};
+      print ALBUM " border='0' src=$obj->{URL}{album_page}{thumb}";
+      print ALBUM " alt=$obj->{alt} /><br />\n";
       print ALBUM "          $pname\n";
-      print ALBUM "          <font size='-1'><i>[$d_H->{'image_filesizes'}[$i]]</i></font>\n"
-        if ($opt->{'file_sizes'});
+      print ALBUM "          <font size='-1'><i>[$obj->{full}{filesize}]</i></font>\n"
+        if $opt->{file_sizes};
       print ALBUM "        </a><br />\n";
 
     # Not a picture?
     } else {
-      my $type = ($d_H->{'pics'}[$i] =~ /\.([^\.]+)$/) ? $1 : "??";
+      my $type = ($pic =~ /\.([^\.]+)$/) ? $1 : "??";
       print ALBUM "        <font size='+1'><b>$type file:</b></font>\n";
       print ALBUM "        <p>\n";
-      print ALBUM "        <a href=$d_H->{'image_urls'}[$i]>\n";
+      print ALBUM "        <a href=$obj->{URL}{album_page}{image}>\n";
       print ALBUM "          $pname\n";
-      print ALBUM "          <font size='-1'><i>[$d_H->{'image_filesizes'}[$i]]</i></font>\n"
-        if ($opt->{'file_sizes'});
+      print ALBUM "          <font size='-1'><i>[$obj->{full}{filesize}]</i></font>\n"
+        if $opt->{file_sizes};
       print ALBUM "        </a><br />\n";
     }
 
     # Caption?
     print ALBUM "          <font size='-2'>\n";
-    caption($d_H->{'image_captions'}[$i],$d_H->{'image_caption_files'}[$i]);
+    caption($obj,0);
     print ALBUM "          </font>\n";
   }
 
   end_table();
-  print ALBUM "<hr />\n" if (@{$d_H->{'pics'}});
-  footer($dir);
+  print ALBUM "<hr />\n" if @{$data->{pics}};
+  footer($opt,$data);
 
   close_output($opt,0);
 }
 
+#########################
 # Image pages
+#########################
 sub write_img_indexes {
-  my ($opt,$d_H,$dir,$post_url) = @_;
+  my ($opt,$data) = @_;
 
-  my $prev_url = $d_H->{'image_page_urls'}[-1];
-  my $prev_name = $d_H->{'image_names'}[-1];
+  my $dir = $data->{paths}{dir};
 
-  for(my $i=0; $i<=$#{$d_H->{'pics'}}; $i++) {
-    next unless $d_H->{'image_is_pic'}[$i];
-    my $img = $d_H->{'image_image_urls'}[$i];
-    my $medium = $d_H->{'image_mediums'}[$i] || $img;
-    my $pic = $d_H->{'pics'}[$i];
-    my $url = $d_H->{'image_page_urls'}[$i];
-    my $name = $d_H->{'image_names'}[$i];
-    my $next_url = $i+1 > $#{$d_H->{'image_page_urls'}} ? $d_H->{'image_page_urls'}[0] : $d_H->{'image_page_urls'}[$i+1];
-    my $next_name = $i+1 > $#{$d_H->{'image_names'}} ? $d_H->{'image_names'}[0] : $d_H->{'image_names'}[$i+1];
+  # Init the previous info
+  my $last_pic = $data->{pics}[-1];
+  my $prev_url = $data->{obj}{$last_pic}{URL}{image_page}{image_page};
+  my $prev_name = $data->{obj}{$last_pic}{name};
 
-    my $file = "$opt->{'dir'}/$pic$post_url";
+  for(my $i=0; $i<=$#{$data->{pics}}; $i++) {
+    my $pic = $data->{pics}[$i];
+    my $obj = $data->{obj}{$pic};
+    next unless $obj->{thumb} && %{$obj->{thumb}};
+    my $name = $obj->{name};
+
+    my $next = $i+1 > $#{$data->{pics}} ? 0 : $i+1;
+    my $next_pic = $data->{pics}[$next];
+    my $next_url = $data->{obj}{$next_pic}{URL}{image_page}{image_page};
+    my $next_name = $data->{obj}{$next_pic}{name};
+
+    my $file = "$opt->{dir}/$pic$data->{paths}{page_post_url}";
     setup_output($opt,"$dir/$file",0);
-    header($opt,$d_H,1,$dir,@{$d_H->{'parent_albums'}},$name);
+    header($opt,$data,1,$name);
 
     # Image and Previous/next
     my $prev_next = <<PREV_NEXT;
@@ -1533,47 +3152,52 @@ PREV_NEXT
     print ALBUM $prev_next;
 
     print ALBUM "<center><i><font size='+1'>\n";
-    print ALBUM "<a href=$img>\n";
-    print ALBUM "<", Image_Tag($pic)," border='0' src=$medium alt=$d_H->{'image_alts'}[$i] /></a><br />\n";
-    caption($d_H->{'image_captions'}[$i],$d_H->{'image_caption_files'}[$i]);
+    print ALBUM "<a href=$obj->{URL}{image_page}{image}>\n";
+    print ALBUM "<$obj->{full}{tag} border='0'";
+    print ALBUM " src=$obj->{URL}{image_page}{image_src}";
+    print ALBUM " alt=$obj->{alt}";
+    print ALBUM " /></a><br />\n";
+    caption($obj,1);
     print ALBUM "</font></i></center>\n";
 
     print ALBUM $prev_next;
 
     print ALBUM "<hr />\n";
 
-    footer($dir);
+    footer($opt,$data);
 
     close_output($opt,0);
 
-    $prev_url = $url;
+    $prev_url = $obj->{URL}{image_page}{image_page};
     $prev_name = $name;
   }
 }
 
-#########################
+##################################################
+##################################################
 # Themes
-#########################
+##################################################
+##################################################
 sub write_theme {
-  my ($opt,$data_H) = @_;
+  my ($opt,$data) = @_;
 
-  convert_data_to_eperl($opt,$data_H);
-
-  setup_output($opt,$data_H->{'album_filename'},1);
+  setup_output($opt,$data->{paths}{album_file},1);
 
   # Write the support data/functions
   eperl_set_file("album theme initialization",1);
-  eperl($opt,@{$data_H->{eperl}});
+  eperl($opt,@{$data->{eperl}});
 
   # Write the theme
-  eperl_set_file($opt->{'album.th'},$opt->{'album.th.line'});
+  eperl_set_file($opt->{'album.th'},$opt->{_theme_line}{'album.th'});
   eperl($opt,
-    @{$opt->{"album.th.data"}},
-    @{$data_H->{'end_eperl'}});
+    @{$opt->{_theme}{'album.th'}},
+    @{$data->{end_eperl}});
 
   close_output($opt,1);
 }
 
+# Is this worth it?
+# The default image writing is pretty zippy..
 sub dependency_changed {
   my ($file,@dependencies) = @_;
   return 1 unless -f $file;
@@ -1594,6 +3218,7 @@ sub prev_next_theme_path_changed {
   while(<FILE>) {
     $got_next = $1 if (/meta\s+name='Next_Image'\s+content='(.+)'/i);
     $got_prev = $1 if (/meta\s+name='Prev_Image'\s+content='(.+)'/i);
+# DEPRECATED: We should be keeping track of this as a changed opt somehow.
     $got_theme = $1 if (/meta\s+name='Album_Theme'\s+content='(.+)'/i);
     $got_path = $1 if (/meta\s+name='Album_Path'\s+content='(.+)'/i);
     if ($got_next && $got_prev && $got_theme && $got_path) {
@@ -1604,63 +3229,71 @@ sub prev_next_theme_path_changed {
       return 1 unless $path eq $got_path;
       return 0;
     }
+    last if m|</head>|i;
   }
   close(FILE);
   return 1;
 }
 
 sub write_img_themes {
-  my ($opt,$data_H,$dir,$post_url) = @_;
+  my ($opt,$data) = @_;
 
-  convert_data_to_eperl($opt,$data_H);
+  my $dir = $data->{paths}{dir};
 
   my @changed;
   # Which image pages have had source changes?
-  for(my $i=0; $i<=$#{$data_H->{'pics'}}; $i++) {
-    next unless $data_H->{'image_is_pic'}[$i];
+  for(my $i=0; $i<=$#{$data->{pics}}; $i++) {
+    my $pic = $data->{pics}[$i];
+    my $obj = $data->{obj}{$pic};
+    next unless $obj->{thumb} && %{$obj->{thumb}};
 
-    my $pic = $data_H->{'pics'}[$i];
-    my $file = "$opt->{'dir'}/$pic$post_url";
+    my $file = "$opt->{dir}/$pic$data->{paths}{page_post_url}";
+
+    my $theme = search_path($opt,$opt->{theme},@{$opt->{theme_path}});
     $changed[$i] = dependency_changed("$dir/$file",
-      "$dir/$pic",				# The image itself
-      $data_H->{'image_caption_files'}[$i],	# The image.txt file
-      "$dir/$opt->{'captions'}",		# The captions file
-      $0,					# Heck, even this program
-      "$opt->{theme}/image.th",			#   or the theme itself
+      "$dir/$pic",		# The image itself
+      $obj->{capfile},		# The image.txt file
+      "$dir/$opt->{captions}",	# The captions file
+      $0,			# Heck, even this program
+      "$theme/image.th",	#   or the theme itself
     );
   }
 
-  for(my $i=0; $i<=$#{$data_H->{'pics'}}; $i++) {
-    next unless $data_H->{'image_is_pic'}[$i];
+  for(my $i=0; $i<=$#{$data->{pics}}; $i++) {
+    my $pic = $data->{pics}[$i];
+    my $obj = $data->{obj}{$pic};
+    next unless $obj->{thumb} && %{$obj->{thumb}};
 
-    my $pic = $data_H->{'pics'}[$i];
-    my $file = "$opt->{'dir'}/$pic$post_url";
+    my $file = "$opt->{dir}/$pic$data->{paths}{page_post_url}";
 
     # Okay - if the source for this image didn't change, and
     # the prev/next images and theme are the same, *and* the
     # the prev/next images didn't have source changes (because
     # they might have a name change or some such..), *THEN* we
     # can skip generating this file, and save some time.
-    my $prev = $i ? $i-1 : $#{$data_H->{'pics'}};
-    my $next = $i==$#{$data_H->{'pics'}} ? 0 : $i+1;
+    my $prev = $i ? $i-1 : $#{$data->{pics}};
+    my $next = $i==$#{$data->{pics}} ? 0 : $i+1;
+    my $depchanged = $changed[$i] || $changed[$prev] || $changed[$next];
     my $pntp_changed = prev_next_theme_path_changed("$dir/$file",
-      $data_H->{'pics'}[$prev],$data_H->{'pics'}[$next],$opt->{theme},$data_H->{'album_path'});
+      $data->{pics}[$prev],$data->{pics}[$next],$opt->{theme},$data->{paths}{album_path})
+        unless $depchanged;	# we don't need to even check if we know we've changed
 
-    next unless ($changed[$i] || $pntp_changed || $changed[$prev] || $changed[$next]);
+    next unless $depchanged || $pntp_changed;
 
+    (-d $dir) || mkdir($dir,0755) || fatal($opt,"Couldn't make directory [$dir]\n");
     setup_output($opt,"$dir/$file",1);
 
     # Write the support data/functions with IMAGE_NUM/THIS_IMAGE
     eperl_set_file("album theme initialization",1);
     eperl($opt,
-      @{$data_H->{eperl}},
-      "<: \$IMAGE_PAGE = 1; \$IMAGE_CNT = $i; \$THIS_IMAGE = $i; :>//\n");
+      @{$data->{eperl}},
+      "<: \$IMAGE_PAGE = 1; \$PAGE_TYPE = 'image_page'; Set_Image($i); \$THIS_IMAGE = $i; :>//\n");
 
     # Write the theme
-    eperl_set_file($opt->{'image.th'},$opt->{'image.th.line'});
+    eperl_set_file($opt->{'image.th'},$opt->{_theme_line}{'image.th'});
     eperl($opt,
-      @{$opt->{"image.th.data"}},
-      @{$data_H->{'end_eperl'}});
+      @{$opt->{_theme}{"image.th"}},
+      @{$data->{end_eperl}});
 
     close_output($opt,1);
   }
@@ -1671,332 +3304,463 @@ sub write_img_themes {
 # CREATE AN ALBUM
 ##################################################
 ##################################################
-my $HASHES = 20;
+sub is_image {
+  my ($opt,$pic) = @_;
+  return 0 if -f "${pic}$opt->{not_img}";
+  return 0 if $pic =~ /\.html?$/i;
+  return 0 if $opt->{known_images} && $pic !~ /\.($IMAGE_TYPES)$/i;
+  1;
+}
 
-sub do_album {
-  my ($opt,$dir,@dir_names) = @_;
+sub gather_contents {
+  my ($opt,$data) = @_;
 
-  return if $opt->{depth}>=0 && @dir_names > $opt->{depth};
-  return if $#dir_names && $opt->{add} && $dir !~ m#^(\./)?$opt->{add}($|/)#;
-
-  print STDERR "Album: $dir" unless $MAIN::QUIET;
-  if ($opt->{hashes}) {
-    print STDERR " "x(76-$HASHES-length("Album: $dir"));
-    print STDERR "["," "x$HASHES,"]\b","\b"x$HASHES;
-  } else {
-    print STDERR "\n" unless $MAIN::QUIET;
-  }
-  my $hashes_done = 0;
-
-  if (-f "$dir/$NO_ALBUM") {
-    printf STDERR "%${HASHES}s]\n","<$NO_ALBUM>" if $opt->{hashes};
-    return;
-  }
+  my $dir = $data->{paths}{dir};
 
   #########################
   # Get images and subdirectories
   #########################
   opendir(DIR,$dir);
-  my (@dir) = grep(!/^\.{1,2}$/, readdir(DIR));
+  my @contents = grep(!/^\.{1,2}$/, readdir(DIR));
   closedir(DIR);
 
-  my @new_dirs = grep(-d "$dir/$_" &&
-                      !-f "$dir/$_/$HIDE_ALBUM" &&
-                      !/^CVS|SCCS|RCS|\.xvpics$/ &&	# Ignore revision/xv directories
-                      $_ ne $opt->{'dir'} &&
-                      ($opt->{'all'} || !/^\./),
-                      @dir);
+  # Sort through the contents
+  foreach my $bob ( @contents ) {
+    my $path = "$dir/$bob";
+    next if $bob =~ /^CVS|SCCS|RCS$/;	# Ignore revision control directories
+    next if $bob eq ".xvpics";		# Silly xv
+    next if $bob eq $opt->{dir};	# Thumbnail/HTML directory
+    next if -f "$path$opt->{hide_album}";
+    next if -f "$path/$opt->{hide_album}";
+    next if $bob =~ /^\./ && !$opt->{all};	# Dot files/directories
 
-  # Ignore:
-  my @pics = grep(-f "$dir/$_" && 
-                  -s "$dir/$_" &&	# Not zero byte file
-                  !-f "$dir/$_$NO_ALBUM" &&	# Don't show these
-                  !/\Q$NOT_IMG\E$/ &&	# The not_img files themselves
-                  !/\Q$NO_ALBUM\E$/ &&	# The not_img files themselves
-                  !/\.txt$/ &&		# Per image captions
-                  !/\.htaccess$/ &&	# httpd security files
-                  !/\.cvsignore$/ &&	# CVS
-                  !/~$/ &&		# Emacs backup files
-                  $_ ne $opt->{index} &&	# Index html
-                  $_ ne $HEADER &&	# Header/footer
-                  $_ ne $FOOTER &&      
-                  #!(/\Q$HTML\E$/ && -f "$dir/$`") &&	# Image page
-                  $_ ne $opt->{'captions'},	# Captions file
-                  @dir);
+    # Ignore the .no_album/.hide_album/.not_img/.txt.. directive files
+    next unless -s $path;		# Ignore zero byte files
+    next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
+    next if -f "$path/$opt->{no_album}";	# Ignore dir/.no_album
+    next if $bob =~ /\Q$opt->{not_img}\E$/;
+    next if $bob =~ /\Q$opt->{no_album}\E$/;
+    next if $bob =~ /\Q$opt->{hide_album}\E$/;
 
-  # Clean out thumbnail directory of images we don't have anymore
-  clean_thumb_dir($opt,"$dir/$opt->{'dir'}",@pics)
-    if ($opt->{'clean'} && -d "$dir/$opt->{'dir'}");
+    # Directories
+    push(@{$data->{dirs}}, $bob) if -d $path;
+    next if -d $path;
+
+    # Files
+    next if $opt->{known_images} && !is_image($opt,$path);
+    next if $bob =~ /\.(txt|htaccess|cvsignore)$/;
+    next if $bob =~ /~$/;		# Emacs backup files
+    next if $bob eq index_page($opt,1);	# Index html
+    next if $bob eq $opt->{header};	# Header/footer
+    next if $bob eq $opt->{footer};
+    next if $bob eq $opt->{captions};	# Captions
+    next if $bob eq $opt->{conf_file};
+    push(@{$data->{pics}}, $bob);
+  }
+}
+
+# Deal with each image/picture/file/whatever
+sub handle_file {
+  my ($opt,$data,$pic) = @_;
+
+  # Paths
+  my $dir = $data->{paths}{dir};
+  my $path = "$dir/$pic";
+  my $obj = $data->{obj}{$pic};
+
+  $obj->{full}{filesize} = filesize $path if $opt->{file_sizes};
+
+  # Figure out type
+  $obj->{is_movie} = $pic =~ /\.(mpe?g|mpg|mov|avi)$/i ? 1 : 0;
+  my $can_embed = ($pic =~ /\.(mpe?g|mov|avi|pdf|ps)$/i) ? 1 : 0;
+  my $tag = 'img';
+  $tag = 'embed' if $can_embed && $opt->{embed};
+  $obj->{full}{tag} = $tag;
+
+  my $is_image = is_image($opt,$path);
 
   #########################
-  # Did we create the index file here?
+  # Handle pictures, generate thumbnails
   #########################
-  if (unknown_html($opt,$dir)) {
-    return unless $opt->{hashes};
-    printf STDERR "%${HASHES}s]\n","<unknown>";
+  if ($is_image) {
+    snapshot($opt,$dir,$obj);
+    medium($opt,$dir,$obj);
+    thumbnail($opt,$dir,$obj);
+  }
+
+  return if !$obj->{thumb} && $opt->{known_images};
+
+  #########################
+  # Get sizes (in case we didn't generate them this time)
+  #########################
+  if ($is_image) {
+    get_size($opt,'full',$obj);
+    get_size($opt,'medium',$obj);
+    get_size($opt,'thumb',$obj);
+  }
+  # Get rid of any object size hashes that are empty
+  #Bah:#map { undef $obj->{$_} unless keys %{$obj->{$_}} } qw(full medium thumb);
+
+  $obj->{capfile} = $obj->{full}{path};
+  $obj->{capfile} =~ s/(\.[^\.]+)?$/.txt/;
+
+  #########################
+  # URL paths {URL}{from_page}{to}
+  #########################
+  # Okay - this gets confusing.  We have a few URLs:
+  #
+  # {URL}{image_page}{image}
+  # {URL}{album_page}{image}
+  # - image/image_page from album_page/image_page
+  #   (was called "image_urls"/"image_image_urls")
+  #   album_page: $pic -or- tn/$pic.html
+  #   image_page: ../$pic or just_medium
+  #   non-images: $pic or ../$pic
+  #
+  # {URL}{image_page}{image_page}
+  # - This image page from another image page
+  #   (was called "image_page_urls")
+  #   $pic.html
+  #
+  # {URL}{image_page}{image_src}
+  # - The <img src> URL for the image page
+  #   $medium or ../$pic
+  #
+  # {URL}{album_page}{thumb}
+  # {URL}{image_page}{thumb}
+  # - Thumbnail from album_page/image_page
+  #   (was called "image_page_thumbs"/"image_thumbs")
+  #   tn/$
+  #
+  # If we don't have image pages, we'll only use Image_URL
+  #
+  my $use_image_pages = $obj->{thumb} && $opt->{image_pages} ? 1 : 0;
+
+  # -no_embed USED to mean that movie pages didn't have image pages..
+  #$use_image_pages = 0 if $obj->{is_movie} && !$opt->{embed};
+
+  if ($use_image_pages) {
+    my $image_page = "$pic$data->{paths}{page_post_url}";
+    $obj->{URL}{album_page}{image} = quote("$opt->{dir}/$image_page",$opt,1);
+# Kludge - the number of ".." should be equal to the pathsize of $opt->{dir}
+    my $image = ($opt->{just_medium} && $obj->{thumb})
+      ? $obj->{medium}{file} : "../$pic";
+    $obj->{URL}{image_page}{image} = quote($image,$opt,1);
+    $obj->{URL}{image_page}{image_page} = quote($image_page,$opt,1);
+
+    # The image src (only needed for 'image_page' actually).  Possibilites:
+    # -embed: pic or medium, but pic if movie (../$pic)
+    # -noembed and -medium:	medium
+    # -noembed and -nomedium:	snapshot
+    my $image_src = $obj->{medium}{file} || "../$pic";
+    if ($obj->{snapshot}{file}) {
+      $image_src = $opt->{embed} ? "../$pic" :
+        ($obj->{medium}{file} || $obj->{snapshot}{file});
+    }
+    $obj->{URL}{image_page}{image_src} = quote($image_src, $opt, 1);
+
+    # Thumbnail
+    $obj->{URL}{album_page}{thumb} = quote("$opt->{dir}/$obj->{thumb}{file}", $opt, 1);
+    $obj->{URL}{image_page}{thumb} = quote($obj->{thumb}{file}, $opt, 1);
+  } else {
+    $obj->{URL}{album_page}{image} = quote($pic,$opt,1);
+    $obj->{URL}{album_page}{thumb} = quote("$opt->{dir}/$obj->{thumb}{file}", $opt, 1);
+    # We might normally have image pages, just not for this non-image
+    $obj->{URL}{image_page}{image_page} = quote("../$pic",$opt,1)
+      if $opt->{image_pages};
+  }
+
+  # -transform_url
+  if ($opt->{transform_url}) {
+    $obj->{URL}{album_page}{image} = $opt->{transform_url};
+    $obj->{URL}{album_page}{image} =~ s/%S/$pic/g;
+    my $s = $pic;  $s =~ s/\.[\.]+$//;
+    $obj->{URL}{album_page}{image} =~ s/%s/$s/g;
+  }
+
+#  print "\nURL album image: $obj->{URL}{album_page}{image}\n";
+#  print "URL image image: $obj->{URL}{image_page}{image}\n";
+#  print "URL image imagepage: $obj->{URL}{image_page}{image_page}\n";
+
+  push(@{$data->{pics}}, $pic);
+}
+
+# Pick an image to use for the directory thumbnail
+# Returns:  thumbnail path, full path to image, local path to image, image filename.
+# 
+# Thumbnail path:  Where the tn/ directory and the thumbnail gets created
+#   (local path from the current working directory)
+# Local thumbnail path:  Thumbnail path, but from the current album directory.
+# Full path to image:  Path to full size image from current working directory
+# Image filename:  Just the image part of the filename.
+#
+# The thumbnail path and the path used in the full path to the image
+# don't have to be the same, but they probably will be.
+#
+# Example:  (album/dir/, dir/, album/dir/image.gif, image.gif)
+sub dir_image {
+  my ($opt,$data,$child) = @_;
+
+  return undef unless $opt->{dir_thumbs};
+
+  $data->{obj}{$child}{num_pics} = 0;
+  $data->{obj}{$child}{num_dirs} = 0;
+
+  my $dir = $data->{paths}{dir};
+  my $child_path = "$dir/$child";
+
+  # Basic method, choose first picture by captions.txt
+  #   This is redundant work, we'll probably do this again when
+  #   we traverse the child - can we cache this somewhere??
+  my $child_data = new_album_data($opt,$child_path);
+  gather_contents($opt,$child_data);
+  $data->{obj}{$child}{num_dirs} = @{$child_data->{dirs}} if $child_data->{dirs};
+
+  return undef unless $child_data->{pics};
+  get_captions($opt,$child_data);	# For sorting
+  sort_info($opt,$child_data);
+  my @images = grep is_image($opt,$_), @{$child_data->{pics}};
+
+  $data->{obj}{$child}{num_pics} = scalar @images;
+
+  return undef unless @images;
+  ($child_path,$child,"$child_path/$images[0]",$images[0]);
+}
+
+sub handle_child {
+  my ($opt,$data,$child) = @_;
+
+# What if we don't want a thumbnail?
+
+  my $obj = $data->{obj}{$child};
+
+  # Pick an image for thumbnail?
+  my ($tn_path,$url,$full_path,$file) = dir_image($opt,$data,$child);
+  if ($full_path) {
+    ($obj->{full}{path},$obj->{full}{file}) = ($full_path,$file);
+
+    # Simplify for now..
+    $obj->{full}{tag} = 'img';
+
+    thumbnail($opt,$tn_path,$obj);
+    return unless $obj->{thumb};
+    get_size($opt,'thumb',$obj);
+
+    # URL to find the thumbnail
+    $obj->{URL}{album_page}{thumb} = quote("$url/$opt->{dir}/$obj->{thumb}{file}",$opt,1);
+  }
+
+# Should caption be done here?
+}
+
+# Create a new album data structure
+sub new_album_data {
+  my ($opt,$dir) = @_;
+  my %data;
+  my $data = \%data;
+
+  # Directory
+  $data->{paths}{dir} = $dir || '.';
+
+  $data;
+}
+
+# We may have started inside a subalbum.  Figure all this out.
+sub figure_depth {
+  my ($opt,$data,$dir,@dir_pieces) = @_;
+
+  # Our calling depth may be different from album depth.
+  $data->{calling_depth} = $#dir_pieces+1 unless $opt->{_depth_diff};
+
+  # The current index
+  parse_index($opt,$data);
+
+  # Is this the first call to do_album?
+  $data->{start} = $#dir_pieces<1 ? 1 : 0;
+
+  my $alb_path = $data->{paths}{album_path};
+  # If we're starting with a subalbum, update @dir_pieces based on parse_index()
+  if (!$#dir_pieces && $alb_path) {
+    # Can we find the album_path in this directory?
+    if ($dir !~ s|/$alb_path$||) {
+      # They've moved something!  Damn!
+      # Try to figure out where things changed.
+      my @old = split(/\//, $alb_path);
+      while(my $old = pop @old) {
+        last if $dir !~ s|/$old$||;
+      }
+      my @fatal = ("ERROR: Your album has moved");
+      push(@fatal, "\nIt looks like you've moved your top album.",
+        "",
+        "To fix this:",
+        "1) Erase: $dir/$opt->{default_index}",
+        "2) Run:   $PROGNAME $dir") unless @old;
+      push(@fatal, "\nIt looks like you've moved a subalbum.  To fix this, run:",
+        "",
+        "% $PROGNAME -add $dir") if @old;
+      fatal($opt,@fatal);
+    }
+
+    # Correct $opt->{top} and pieces
+    $opt->{top} = $dir;
+    @dir_pieces = split(/\//,$alb_path);
+  }
+  $data->{dir_pieces} = \@dir_pieces;
+
+  # How deep are we?  Album depth:
+  $data->{depth} = $#{$data->{dir_pieces}} + 1;
+  # Calling depth:
+  if ($opt->{_depth_diff}) {
+    $data->{calling_depth} = $data->{depth} - $opt->{_depth_diff};
+  } else {
+    $opt->{_depth_diff} = $data->{depth} - $data->{calling_depth};
+  }
+}
+
+#########################
+# Do an album!
+#########################
+sub do_album {
+  my ($opt,$dir,@dir_pieces) = @_;
+
+  my $data = new_album_data($opt,$dir);
+
+  # How deep?
+  figure_depth($opt,$data,$dir,@dir_pieces);
+  return if $opt->{depth}>=0 && $data->{calling_depth} > $opt->{depth};
+
+  # Deal with album.conf files
+  my $argv_theme_url = $opt->{SAVE}{theme_url};
+  my $pushed = album_confs($opt,$data);
+
+  # Sanity check (no other place to put this!?)
+  usage("-theme_url requires -theme option (it does not replace it)")
+    if $argv_theme_url && $opt->{theme_url} && !$opt->{theme};
+
+  # Print some info
+  my $p = join('/',@{$data->{dir_pieces}});
+  my $w = $opt->{hash_width} - $opt->{num_hashes} - 3 - 8;
+  $p = '..'.substr($p,-$w+2) if (length($p) > $w);
+  start_hashes($opt, "Images: $p");
+  my $noalb = -f "$dir/$opt->{no_album}" ? 1 : 0;
+  if ($noalb || $data->{unknown}) {
+    hash_msg($opt,"<".($noalb ? $opt->{no_album} : "unknown").">");
+    print STDERR "\nCall album with your photo directory as an option.\n\n"
+      if $data->{start};
     return;
   }
+  return hash_msg($opt,"<unknown>") if $data->{unknown};
 
-  # We may be using album to regenerate just a section of an album,
-  # in this case, start with the PATH found in unknown_html()
-  @dir_names = split(/\//,$PATH) if (!$#dir_names && $PATH);
+  # Get the list of pics/dirs
+  gather_contents($opt,$data);
 
-  #########################
-  # Read captions file
-  #########################
-  my $caps_H = read_captions($opt,$dir);
+  # Clean out thumbnail directory of images we don't have anymore
+  clean_thumb_dir($opt,$data) if $opt->{clean};
 
-  # The captions file can rename this directory too, actually
-# Done below, because we don't want to fully clean_name if it's a caption
-#  $dir_names[-1] = $caps_H->{$dir_names[-1]}{name} if ($caps_H->{$dir_names[-1]});
+  # Lookup captions and get names of files
+  get_captions($opt,$data);
 
-  #########################
-  # Get exif info if needed
-  #########################
-  add_exif($opt,$dir,$caps_H,@pics);
+  # Sort pictures/dirs
+  sort_info($opt,$data);
 
   #########################
-  # Sort the pictures, possibly by caption order
+  # Paths
   #########################
-  @pics = sort { caption_order($opt,$caps_H,$dir,$a,$b); } @pics;
+  get_themes($opt);
+  calc_paths($opt,$data);
 
-  # Commented out lines in captions is same as .no_album
-  @pics = grep(!$caps_H->{"#".$_} || $caps_H->{$_}, @pics);
 
   #########################
-  # Write the html
+  # Handle images (make thumbnails, get info, etc..)
   #########################
-  my %d;	# Hold the theme data
+  my @pics = @{$data->{pics}};
+  $data->{pics} = [];
+  my $hashes = $#pics+1 + $#{$data->{dirs}}+1;
 
-  $d{'album_filename'} = "$dir/$opt->{index}";
-
-  $d{'album_path'} = join("/",@dir_names);
-  #@{$d{'parent_albums'}} = map(clean_name($_,undef,1), @dir_names);
-  @{$d{'parent_albums'}} = map(clean_name($_,$caps_H,1), @dir_names);
-  $d{'dir'} = $dir;
-  if ($opt->{theme}) {
-    $d{theme_path} = diff_path(abs_path($dir),$opt->{theme});
-    # assume $opt{'dir'} is one level (we make that assumption in many other places)
-    $d{img_theme_path} = "../".$d{theme_path};
+  foreach my $pic ( @pics ) {
+    handle_file($opt,$data,$pic);
+    show_hashes($opt, $data->{obj}{$pic}{num}+1, $hashes);
+  }
+  foreach my $child ( @{$data->{dirs}} ) {
+    handle_child($opt,$data,$child);
+    show_hashes($opt, $#pics+1+$data->{obj}{$child}{num}+1, $hashes);
   }
 
-  #########################
-  # Links to sub-albums
-  #########################
-  if (@new_dirs) {
-    foreach my $new_dir ( sort { caption_order($opt,$caps_H,$dir,$a,$b); } @new_dirs ) {
-      my ($dir_name,$dir_cap) = get_dir_caption($opt,$caps_H,$dir,$new_dir);
-      push(@{$d{'child_album_names'}}, $dir_name);
-      push(@{$d{'child_album_captions'}}, $dir_cap);
-      my $url = ($opt->{index} eq $DEFAULT_INDEX) ?
-                "$new_dir/" : "$new_dir/$opt->{index}";
-      push(@{$d{'child_album_urls'}},quote($url,$opt));
-    }
-  }
-
-  # Kludge.  Clear the date sorting cache.
-  undef $opt->{DATE_SORT_CACHE};
-
-  # Image page URLs are <img.html> or <img.indexname.html>
-  my $page_post_url = ($opt->{index} eq $DEFAULT_INDEX) ?
-                       $HTML : ".$opt->{index}";
+  $hashes ? stop_hashes($opt) : hash_msg($opt,"<no thumbs>");
 
   #########################
-  # Table of thumbnails
-  #########################
-  if (@pics) {
-
-    for (my $i=0; $i<=$#pics; $i++) {
-      my $pic = $pics[$i];
-      my $name = clean_name($pic,$caps_H);
-      # Image caption file (image_name.txt)
-      my $img_cap = "$dir/$pic";  $img_cap =~ s/\.[^\.]+$//;  $img_cap.=".txt";
-      my $size; $size = filesize "$dir/$pic" if ($opt->{'file_sizes'});
-
-      # Figure out type
-      my $is_a_pic = 1;
-      $is_a_pic = 0
-        if (-f "$dir/${pic}$NOT_IMG" || $pic =~ /\.html?$/i ||
-                 ($opt->{'known_images'} && $pic !~ /\.($IMAGE_TYPES)$/i));
-
-      my ($width,$height,$full_width,$full_height) = (0,0,0,0);
-      my ($thumb,$page_thumb,$medium);
-      if ($is_a_pic) {
-        # Generate -medium if necessary
-        ($medium,$width,$height) = medium($opt,"$dir/$pic");
-
-        # Find out the full image size now, we can skip a step in
-        # thumbnail generation this way.
-        # We can't do this for movies, since we haven't yet extracted the frame
-        ($full_width,$full_height) = get_size($opt,"$dir/$pic")
-          if (!$medium && $opt->{'image_sizes'} && !is_movie($pic));
-        ($width,$height) = ($full_width,$full_height) unless $medium;
-
-        # Generate thumbnail
-        $thumb = thumbnail($opt,"$dir/$pic",$full_width,$full_height);
-
-        # Now we can get movie image size (based on the extracted frame)
-        ($width,$height) = get_size($opt,thumb_name($opt,"$dir/$pic").".ppm")
-          if ($opt->{'image_sizes'} && is_movie($pic));
-
-        # And finally, if we are using medium but we don't have the sizes yet
-        # (because we didn't generate it this time)
-        ($width,$height) = get_size($opt,"$dir/$opt->{dir}/$medium")
-          if ($medium && $opt->{'image_sizes'} && !is_movie($pic) && !$width);
-
-        #next unless defined $thumb;
-        $thumb =~ s/^\Q$dir\E\/?//; # Ugly - remove path component from $thumb
-        $is_a_pic = 0 unless ($thumb);
-        $page_thumb = $thumb;
-        $page_thumb =~ s/^\Q$opt->{'dir'}\E\/?//; # Ugly again
-        $thumb = quote($thumb,$opt);
-        $page_thumb = quote($page_thumb,$opt);
-      }
-
-      next if ($opt->{'known_images'} && !$is_a_pic);
-
-      # URLs (page for each image)?
-      # Okay - this gets confusing.  We have three URLs
-      # 1) Image_URL from Album
-      #    "image_urls"
-      #    $pic -or- tn/$pic.html
-      # 2) Image_URL from Image page
-      #    "image_image_urls"
-      #    ../$pic
-      # 3) Another Image_Page_URL from Image page
-      #    "image_page_urls"
-      #    $pic.html
-      #
-      # If we don't have image pages, we'll only use Image_URL
-      #
-      my $url;
-
-      my $use_medium_page = $is_a_pic && $opt->{'image_pages'} ? 1 : 0;
-      $use_medium_page = 0 if !$opt->{embed} && is_movie($pic);
-      if ($use_medium_page) {
-        $url = quote("$opt->{'dir'}/$pic$page_post_url",$opt);
-      } elsif ($opt->{transform_url}) {
-        $url = $opt->{transform_url};
-        $url =~ s/%S/$pic/g;
-        my $s = $pic;  $s =~ s/\.[^\.]+$//;
-        $url =~ s/%s/$s/g;
-      } else {
-        $url = quote($pic,$opt);
-      }
-      my $image_image_url = $opt->{just_medium} && $is_a_pic ?  quote($medium,$opt) :
-         $opt->{transform_url} ? $url : quote("../$pic",$opt);
-      my $image_page_url = quote("$pic$page_post_url",$opt);
-      # Movies don't have a medium image, so use the actual pic
-      $medium = quote($medium || "../$pic",$opt);
-
-      # Add it to our data list
-      push(@{$d{'pics'}}, $pic);
-      push(@{$d{'image_urls'}}, $url);
-      push(@{$d{'image_image_urls'}}, $image_image_url);
-      push(@{$d{'image_page_urls'}}, $image_page_url);
-      push(@{$d{'image_names'}}, $name);
-      push(@{$d{'image_mediums'}}, $medium);
-      push(@{$d{'image_page_thumbs'}}, $page_thumb);
-      push(@{$d{'image_thumbs'}}, $thumb);
-      push(@{$d{'image_widths'}}, $width);
-      push(@{$d{'image_heights'}}, $height);
-      push(@{$d{'image_filesizes'}}, $size);
-      push(@{$d{'image_path'}}, "$dir/$pic");
-      push(@{$d{'image_caption_files'}}, $img_cap);
-      push(@{$d{'image_captions'}}, $caps_H->{$pic}{cap});
-      # Don't do -fix_urls on alt
-      push(@{$d{'image_alts'}}, quote($caps_H->{$pic}{alt} || $name));
-      push(@{$d{'image_is_pic'}}, $is_a_pic);
-
-      if ($opt->{hashes}) {
-        my $hashes_needed = int($HASHES*($i/($#pics+1)));
-        print STDERR "X"x($hashes_needed-$hashes_done);
-        $hashes_done = $hashes_needed;
-      }
-    }
-    print STDERR "X"x($HASHES-$hashes_done), "]\n" if $opt->{hashes};
-  } else {
-    printf STDERR "%${HASHES}s]\n","<no thumbs>" if $opt->{hashes};
-  }
-
   # Write the HTML
+  #########################
+  data_to_eperl($opt,$data);
+
   ($opt->{'album.th'}) ?
-    write_theme($opt,\%d) :
-    write_index($opt,\%d,$dir);
-
-  #########################
-  # Write the image pages?
-  #########################
+    write_theme($opt,$data) : write_index($opt,$data);
   ($opt->{'image.th'} ?
-      write_img_themes($opt,\%d,$dir,$page_post_url) :
-      write_img_indexes($opt,\%d,$dir,$page_post_url,$caps_H) )
-    if ($opt->{'image_pages'});
+    write_img_themes($opt,$data) : write_img_indexes($opt,$data))
+      if $opt->{image_pages};
 
   #########################
-  # Do all the subdirectories
+  # Do the children albums
   #########################
-  foreach ( @new_dirs ) { do_album($opt,"$dir/$_",@dir_names,$_); }
+  my $first = "$opt->{top}/$data->{dir_pieces}[0]";
+  my @add = $opt->{_album}{$first}{add} ?  @{$opt->{_album}{$first}{add}} : ();
+  foreach my $child ( @{$data->{dirs}} ) {
+    do_album($opt,"$dir/$child",@{$data->{dir_pieces}},$child)
+      unless $data->{start} && @add && !grep($child eq $_, @add);
+  }
+
+  pop_opts($opt) if $pushed;
 }
 
 ##################################################
 # Thumbnail code
 ##################################################
-sub medium_name {
-  my ($opt,$img) = @_;
 
+# Create a new image pathname
+# bob.jpg, jpg  ->  tn/bob.jpg
+# bob.gif, jpg  ->  tn/bob.gif.jpg
+sub new_image_path {
+  my ($opt,$dir,$pic,$type,$add_nodir,$add_dir) = @_;
+
+  # Separate/replace postfix
   my $post="";
-  ($img,$post)=($`,$1) if ($img =~ /\.([^\.\/]+)$/);
-  $post = $opt->{medium_type} || $post;
+  ($pic,$post)=($1,$2) if ($pic =~ /(.+)\.([^\.\/]+)$/);
+  $post = $post || $type;
+  $post .= ".$type" if $type && lc($type) ne lc($post);
 
-  return "${img}.med.$post" unless ($opt->{'dir'});
+  return ("${pic}.${add_nodir}$post","${pic}.${add_nodir}$post")
+    unless $opt->{dir};
+  my $file = "${pic}.${add_dir}$post";
 
-  my $dir = $opt->{'dir'};
-  ($dir,$img) = ("$`/$opt->{'dir'}",$1) if ($img =~ m|/([^/]*)$|);
+  $dir = $dir ? "$dir/$opt->{dir}" : $opt->{dir};
+  (-d $dir) || mkdir($dir,0755) || fatal($opt,"Couldn't make directory [$dir]\n");
 
-  (-d $dir) || mkdir($dir,0755) || die("[$PROGNAME] Couldn't make directory [$dir]\n");
-
-  return "$dir/${img}.med.$post"
+  return ($file,"$dir/$file");
 }
 
-sub thumb_name {
-  my ($opt,$img) = @_;
-
-  # Remove postfix
-  $img =~ s/\.[^\.\/]+$//;
-
-  return "${img}.tn.$opt->{'type'}" unless ($opt->{'dir'});
-
-  my $dir = $opt->{'dir'};
-  ($dir,$img) = ("$`/$opt->{'dir'}",$1) if ($img =~ m|/([^/]*)$|);
-
-  (-d $dir) || mkdir($dir,0755) || die("[$PROGNAME] Couldn't make directory [$dir]\n");
-
-  return "$dir/${img}.$opt->{'type'}"
-}
-
-sub get_size {
+sub get_xy {
   my ($opt,$img) = @_;
 
   return (0,0) unless (-f $img);
 
-  my $qimg = file_quote($img);
+  my $qimg = file_quote($opt,$img);
 
   # if image is a jpeg, try "jhead" first (faster)
-  if ($JHEAD && $img=~/.jpe?g$/) {
-    return ($1,$2) if (qx/$JHEAD -c $qimg 2>\/dev\/null/=~/\s(\d+)x(\d+)(\s)/);
-    undef $JHEAD;	# jhead didn't work, don't keep trying...
+  if ($opt->{jhead} && $img=~/.jpe?g$/) {
+    return ($1,$2) if (qx/$opt->{jhead} -c $qimg 2>$opt->{dev_null}/=~/\s(\d+)x(\d+)(\s)/);
+    undef $opt->{jhead};	# jhead didn't work, don't keep trying...
   }
 
   my $try_noidentify = 0;	# Did identify fail?
 
   # Try to use identify if we have it
-  if ($IDENTIFY && $opt->{'identify'}) {
-    my $size = open_pipe("$IDENTIFY -ping $qimg");
+  if ($opt->{identify}) {
+    my $size = open_pipe($opt,$opt->{identify},"-ping $qimg");
     if ($size) {
       while(<$size>) {
-        print STDERR "get_size(): $_" if ($MAIN::DEBUG);
+        print STDERR "get_xy(): $_" if $opt->{d};
         if (/command not found/) {	# Kind of kludgy
-          $opt->{'identify'} = 0;
+          $opt->{identify} = 0;
           last;
         }
         return (0,0) if (/no delegate for this image format/);
@@ -2012,13 +3776,13 @@ sub get_size {
   }
 
   # Kludgy way to get size, but works with all images that convert reads
-  my $size=open_pipe("$CONVERT -verbose $qimg /dev/null");
-  $size || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
+  my $size=open_pipe($opt,$opt->{convert},"-verbose $qimg $opt->{dev_null}");
+  $size || fatal($opt,"Couldn't run convert!  [$opt->{convert}]\n");
   while(<$size>) {
-    print STDERR "get_size(): $_" if ($MAIN::DEBUG);
+    print STDERR "get_xy(): $_" if $opt->{d};
     if(/\s(\d+)x(\d+)(\s|\+|\-)/) {
       $size->close;
-      $opt->{'identify'} = 0 if $try_noidentify;	# identify didn't work, convert did
+      $opt->{identify} = 0 if $try_noidentify;	# identify didn't work, convert did
       return ($1,$2);
     }
   }
@@ -2028,8 +3792,20 @@ sub get_size {
   # Gentoo has this goofy thing, see:
   print STDERR "\n\tGentoo users: make sure to run as root:\n% USE=\"avi gif jpeg mpeg png quicktime tiff\" emerge imagemagick\n"
     if -f "/etc/gentoo-release";
-  print STDERR "\tWindows users may have an easier time with CygWin installed!\n" if $CRAPPY_OS;
-  die("\n");
+  print STDERR "\tWindows users may have an easier time with Cygwin installed!\n"
+    if $opt->{windows} && !$opt->{cygwin};
+  fatal($opt);
+}
+
+sub get_size {
+  my ($opt,$img,$obj) = @_;
+  return get_xy($opt,$img) unless $obj;
+  # Use snapshot for full if available
+  my $use = $img eq 'full' && $obj->{snapshot} ? 'snapshot' : $img;
+  return ($obj->{$img}{x},$obj->{$img}{y}) if $obj->{$img}{x} && $obj->{$img}{y};
+  my ($x,$y) = get_xy($opt,$obj->{$use}{path});
+  return (0,0) unless $x && $y;
+  ($obj->{$img}{x},$obj->{$img}{y}) = ($x,$y);
 }
 
 # See if they should have used -animated_gifs
@@ -2038,198 +3814,250 @@ sub check_anim_gifs {
   my ($opt,$img,$new) = @_;
   return if -f $new;
   return unless -f "$new.0";
+  # We shouldn't get here if animated_gifs is set
   return if $opt->{animated_gifs};
-  return if $opt->{WARNING_animated_gifs}++;
-  system("mv \Q$new.0\E \Q$new\E");	# Try to fix.
   $opt->{animated_gifs}=1;
+  rename("$new.0",$new);	# Try to fix
   print STDERR "\n[$PROGNAME] Error: Animated gif was found that wasn't scaled properly.\n\tTry using option -animated_gifs in the future.\n\n";
 }
 
 sub scale {
   my ($opt,$img,$scale_arg,$new,$medium) = @_;
 
-  my $scale = $opt->{'sample'} ? "-sample $scale_arg" : "-geometry $scale_arg";
+  my $scale = $opt->{sample} ? "-sample $scale_arg" : "-geometry $scale_arg";
 
-  my $cmd = "$CONVERT ";
-  $cmd .= "$opt->{scale_opts} " if $opt->{scale_opts};
-  $cmd .= ($medium ? ($opt->{med_scale_opts}||"") : ($opt->{full_scale_opts}||""));
-  my $qimg = file_quote($img);
+  # Source image
+  my $qimg = file_quote($opt,$img);
 # This works only on some systems with some versions of convert  :(
   $qimg .= "\[0]" if $opt->{animated_gifs};
-  my $qnew = file_quote($new);
-  $cmd .= " -verbose $qimg $scale $qnew";
-  my $size = open_pipe($cmd);
-  $size || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
+  my $args = "-verbose $qimg $scale ";
+
+  # Scale options
+  $args .= "$opt->{scale_opts} " if $opt->{scale_opts};
+  $args .= "$opt->{med_scale_opts} " if $medium && $opt->{med_scale_opts};
+  $args .= "$opt->{full_scale_opts} " if !$medium && $opt->{full_scale_opts};
+
+  # Sharpen?
+  $args .= "-sharpen $opt->{sharpen} " if $opt->{sharpen};
+
+  # Destination image
+  my $qnew = file_quote($opt,$new);
+  $args .= " $qnew";
+#composite -quality 95 -gravity south -compose difference \.album/copyright.jpg $qnew $qnew
+
+  my $size = open_pipe($opt,$opt->{convert},$args);
+  $size || fatal($opt,"Couldn't run convert!  [$opt->{convert}]\n");
+  my ($ax,$ay,$bx,$by);
   while(<$size>) {
-    print STDERR "scale(): $_" if ($MAIN::DEBUG);
-    if(/=>(\d+)x(\d+)/) {
-      check_anim_gifs($opt,$img,$new);
-      $size->close;
-      return ($1,$2);
+    print STDERR "scale(): $_" if $opt->{d};
+    if (/((\d+)x(\d+))?=>(\d+)x(\d+)/) {
+      ($ax,$ay,$bx,$by) = ($2,$3,$4,$5);
+      last;
     }
   }
   $size->close;
+  check_anim_gifs($opt,$img,$new);
 
   # Sometimes convert doesn't give us the new size information
-  #print STDERR "[$PROGNAME] Error scaling $img\n";
-  check_anim_gifs($opt,$img,$new);
-  get_size($opt,$new);
+  ($bx,$by) = get_size($opt,$new) unless $bx;
+  ($ax,$ay,$bx,$by);
 }
 
 sub crop {
-  my ($img,$x,$y,$off_x,$off_y,$new) = @_;
+  my ($opt,$img,$off_x,$off_y,$new) = @_;
 
-  return print STDERR "[$PROGNAME] Error cropping $img (image not found)\n"
+  my ($x,$y) = ($opt->{x},$opt->{y});
+
+  return hash_warn($opt,"Error cropping $img (image not found)")
     unless -f $img;
-  my $qimg = file_quote($img);
-  my $qnew = file_quote($new);
-  my $cmd = "$CONVERT $qimg -crop ${x}x${y}+${off_x}+${off_y} $qnew";
-  print STDERR "crop() run: $cmd\n" if ($MAIN::DEBUG);
+  my $qimg = file_quote($opt,$img);
+  my $qnew = file_quote($opt,$new);
+  my $cmd = file_quote($opt,$opt->{convert});
+  $cmd .= " $qimg -crop ${x}x${y}+${off_x}+${off_y} $qnew";
+  print STDERR "crop() run: $cmd\n" if $opt->{d};
   system($cmd);
   return unless ($?);
   print STDERR "[$PROGNAME] Error cropping $img\n";
 }
 
 #########################
-# Generate the thumbnail
+# Generate thumbnail/medium images
 #########################
-sub medium {
-  my ($opt,$img) = @_;
-
-  return unless $opt->{'medium'};
-  return if is_movie($img);
-
-  my $med_path = medium_name($opt,$img);
-  my $medium = $med_path;  $medium =~ s|.*/||g;
-
-  # Don't regenerate mediums if we don't need to.
-  return $medium if (-f $med_path && !$opt->{'force'} && -M $med_path < -M $img);
-
-  # If the scaling is <width>x<height>, add ">" on the end so that
-  # convert will only shrink the images, never grow them
-  $opt->{'medium'}.='\>' if ($opt->{'medium'} =~ /^\d+x\d+$/);
-
-  my ($tx,$ty) = scale($opt,$img,$opt->{'medium'},$med_path,1);
-  return undef unless $tx;
-  return ($medium,$tx,$ty);
-}
-
-# Handle movie clips/thumbnails
-# This routine is also copied in the eperl source
-sub is_movie { return $_[0] =~ /\.(mpeg|mpg|mov|avi)$/i ? 1 : 0; }
-sub Image_Tag { return ($_[0] =~ /\.(mpe?g|mov|avi|pdf|ps)$/i ? "embed" : "img"); }
-
 sub movie_frame {
   my ($opt,$movie,$img) = @_;
 
-  my $qmovie = file_quote($movie);
-  my $qimg = file_quote($img);
+  my $qmovie = file_quote($opt,$movie);
+  my $qimg = file_quote($opt,$img);
 
-#OLD## Has problems with conversion, but when it does, it looks better :(
-#OLD## but unfortunately most thumbnails end up clipped/mostly green.
+#OLD## Has problems with conversion, but when it works, it looks better :(
+#OLD## Unfortunately most thumbnails end up clipped/mostly green.
 #OLD#my $cmd = "mpeg2decode -f -o3 -1 $qmovie $qimg";
 
   # ffmpeg has problems recognizing .mov format
   my $format = ($qmovie =~ /\.mov$/i) ? "-f mov" : "";
-  ## ffmpeg -f jpeg
-  #my $tmpout = "album.tmp.$$.%d.jpg";
-  #my $tmpret = "album.tmp.$$.1.jpg";
-  #my $cmd = "$FFMPEG -y -t 00:00:00.01 $format -i $qmovie -f jpeg $tmpout";
-  # ffmpeg -f singlejpeg
-  my $tmpout = "album.tmp.$$.jpg";
-  my $tmpret = "album.tmp.$$.jpg";
-  my $cmd = "$FFMPEG -y -t 00:00:00.01 $format -i $qmovie -f singlejpeg $tmpout";
-  print STDERR "movie_frame() run: $cmd\n" if ($MAIN::DEBUG);
-  system("$cmd > /dev/null 2>&1");
-  return $tmpret unless $?;
-  print STDERR "\n[$PROGNAME] Error extracting movie frame.\n";
-  print STDERR "\n";
-  print STDERR "\tDo you have ffmpeg installed?  http://ffmpeg.org\n";
+
+  ### ffmpeg -f jpeg
+  #my $tmpout = "album.tmp.$$.%d.jpg";	# This is the command output
+  #my $tmpret = "album.tmp.$$.1.jpg";	# This is where the file goes
+  #my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f jpeg $tmpout";
+
+  ### ffmpeg -f singlejpeg
+  my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f singlejpeg $qimg";
+  print STDERR "movie_frame() run: $cmd\n" if $opt->{d};
+  system("$cmd > $opt->{dev_null} 2>&1");
+  return $qimg unless $?;
+
+  hash_warn($opt,"Error extracting movie frame:\n\t$movie\n\n\tDo you have ffmpeg installed?  http://ffmpeg.org");
   return $movie;
+}
+
+# Make a snapshot/preview image for non-image types (like movies)
+sub snapshot {
+  my ($opt,$dir,$obj) = @_;
+
+  # Currently only for movies..  Will re-org when I do plugins.
+  return unless $obj->{is_movie};
+
+  # Based off full
+  my $file = $obj->{full}{file};
+  my $full_path = $obj->{full}{path};
+
+  my $type = $opt->{type};
+  ($obj->{snapshot}{file},$obj->{snapshot}{path})
+    = new_image_path($opt,$dir,$file,$type,'snap.','snap.');
+
+  movie_frame($opt,$full_path,$obj->{snapshot}{path});
+}
+
+sub medium {
+  my ($opt,$dir,$obj) = @_;
+
+  my $file = $obj->{full}{file};
+  # Based off of full, unless we have a snapshot image.
+  my $base = $obj->{snapshot} ? 'snapshot' : 'full';
+  my $full_path = $obj->{$base}{path};
+
+  return 0 unless $opt->{medium};
+  return 0 if $obj->{is_movie} && $opt->{embed};
+
+  my $type = $opt->{medium_type};
+  $type = $opt->{type} if $obj->{is_movie} && !$type;
+  ($obj->{medium}{file},$obj->{medium}{path})
+    = new_image_path($opt,$dir,$file,$type,'med.','med.');
+
+  # Don't regenerate mediums unless the image has changed
+  return get_size($opt,'medium',$obj)
+    if (-f $obj->{medium}{path} && !$opt->{force} && -M $obj->{medium}{path} < -M $full_path);
+
+# It would be neat if we could look at the scale options and figure
+# out if the medium option has changed??  Can we alternatively do
+# this by seeing what .conf options have been respec'd?
+
+  my ($fx,$fy,$mx,$my) = scale($opt,$full_path,$opt->{medium},$obj->{medium}{path},1);
+  ($obj->{full}{x},$obj->{full}{y}) = ($fx,$fy)
+    if $base eq 'full' && $fx;
+
+  return 0 unless $mx;
+  ($obj->{medium}{x},$obj->{medium}{y}) = ($mx,$my);
+  1;
 }
 
 # An image thumbnail
 sub thumbnail {
-  my ($opt,$img,$x,$y) = @_;
+  my ($opt,$dir,$obj) = @_;
 
-  print STDERR "IMAGE: $img\n" if ($MAIN::DEBUG);
+  my $file = $obj->{full}{file};
+  # Based off of full, unless we have a snapshot image.
+  my $base = $obj->{snapshot} ? 'snapshot' : 'full';
+  my $full_path = $obj->{$base}{path};
 
-  my ($thumb) = thumb_name($opt,$img);
+  return unless -r $full_path;
+
+  print STDERR "IMAGE: $full_path\n" if $opt->{d};
+
+  ($obj->{thumb}{file},$obj->{thumb}{path})
+    = new_image_path($opt,$dir,$file,$opt->{type},'tn.','');
 
   # Don't regenerate thumbs if we don't need to.
-  return $thumb if (-f $thumb && !$opt->{'force'} && -M $thumb < -M $img);
-
-  # movie?
-  my $movie = is_movie($img);
-  my $movie_source = $img;
-  $img = movie_frame($opt,$img,$thumb) if $movie;
+  return get_size($opt,'thumb',$obj)
+    if (-f $obj->{thumb}{path} && !$opt->{force} && -M $obj->{thumb}{path} < -M $full_path);
 
   # In case we didn't get the size yet
-  ($x,$y) = get_size($opt,$img) unless ($x && $y);
+  my ($x,$y) = get_size($opt,$base,$obj);
 
   # Which way do we need to shrink?  convert will scale down w/ aspect
   # as much as is needed to *fit* inside the geometry we give it
-  # Hack:  Assume the image is larger than a thumbnail
-  my ($scale_x,$scale_y) = ($opt->{'x'},$opt->{'y'});
-  if ($opt->{'crop'}) {
-    if ( $x/$opt->{'x'} < $y/$opt->{'y'} ) {
-      # Make vertical bigger so that we don't scale horizontal past $opt->{'x'}
+  # Kludge:  Assume the image is larger than a thumbnail
+  my ($scale_x,$scale_y) = ($opt->{x},$opt->{y});
+  if ($opt->{crop}) {
+    if ( $x/$opt->{x} < $y/$opt->{y} ) {
+      # Make vertical bigger so that we don't scale horizontal past $opt->{x}
       $scale_y = $y;
     } else {
       $scale_x = $x;
     }
   }
-  my ($tx,$ty) = scale($opt,$img,$scale_x."x".$scale_y,$thumb,0);
+  my ($fx,$fy,$tx,$ty) = scale($opt,$full_path,$scale_x."x".$scale_y,$obj->{thumb}{path},0);
 
-  # If it was a movie, remove the temp frame we clipped (but not the movie!)
-  unlink $img if $movie && ($img ne $movie_source);
+  return 0 unless $tx;
 
-  return undef unless $tx;
+  ($obj->{thumb}{x},$obj->{thumb}{y}) = ($tx,$ty);
+  return 1 unless $opt->{crop};
 
-  if ($opt->{'crop'}) {
-    # Now crop the other dimension
-    my ($off_x,$off_y) = (0,0);
+  # Now crop the other dimension
+  my ($off_x,$off_y) = (0,0);
 
-    $off_x = int(($tx-$opt->{'x'})/2) if ( $tx > $opt->{'x'} );
-    $off_y = int(($ty-$opt->{'y'})/2) if ($ty > $opt->{'y'} );
+  $off_x = int(($tx-$opt->{x})/2) if ($tx > $opt->{x} );
+  $off_y = int(($ty-$opt->{y})/2) if ($ty > $opt->{y} );
 
-    # Do they have any cropping directives in the image name?
-    if ($img =~ /CROP(top|bottom|left|right)\.[^\.]+$/ ||
-        $opt->{CROP} =~ /^(top|bottom|left|right)$/) {
-      $off_y = 0 if ($1 eq "top");
-      $off_y = $ty-$opt->{'y'} if ($1 eq "bottom");
-      $off_x = 0 if ($1 eq "left");
-      $off_x = $tx-$opt->{'x'} if ($1 eq "right");
-    }
-
-    crop($thumb,$opt->{'x'},$opt->{'y'},$off_x,$off_y,$thumb)
-      unless ($tx==$opt->{'x'} && $ty==$opt->{'y'});
+  # Do they have any cropping directives in the image name?
+  if ($file =~ /CROP(top|bottom|left|right)\.[^\.]+$/ ||
+      $opt->{CROP} =~ /^(top|bottom|left|right)$/) {
+    $off_y = 0 if ($1 eq "top");
+    $off_y = $ty-$opt->{y} if ($1 eq "bottom");
+    $off_x = 0 if ($1 eq "left");
+    $off_x = $tx-$opt->{x} if ($1 eq "right");
   }
 
-  $thumb;
+  crop($opt,$obj->{thumb}{path},$off_x,$off_y,$obj->{thumb}{path})
+    unless ($tx==$opt->{x} && $ty==$opt->{y});
+
+  ($obj->{thumb}{x},$obj->{thumb}{y}) = ($opt->{x},$opt->{y});
+  1;
 }
 
 ##################################################
 # Main code
 ##################################################
 sub main {
-  my ($opt,$dir) = parse_args();
+  my $opt = get_defaults();
+  $opt->{d} = 1 if grep($_ eq '-d', @ARGV);	# Hack to see read_confs debugs
+  read_confs($opt);
+  parse_args($opt);
+  scrub_opts($opt,1);
 
-  my $name = abs_path($dir);
-  $name =~ s|.*/||;
+  version($opt);
 
-  do_album($opt,$dir,$name);
+  virgin_check($opt);
 
-#WIN98#  win_done if $CRAPPY_OS;
+  foreach my $dir ( @{$opt->{_albums}} ) {
+    print "\n" unless $opt->{q};
+    ($opt->{top},my $name) = split_path($opt,$dir);
+
+    do_album($opt,$dir,$name);
+  }
+
 }
 main();
+
+END { all_done(); }
 
 
 ##################################################
 # POD/man
 ##################################################
 
-# Gen options with: album -h | opt2pod -pre '^Album Options:' -post '^Author:'
+# Generate entire "=head1 OPTIONS" section with: album -pod
 
 __END__
 
@@ -2257,204 +4085,424 @@ path, and then use the -theme option.
 
 =head1 OPTIONS
 
+There are three types of options.  Boolean options, string/num options and
+array options.  Boolean options can be turned off by prepending -no_:
+
+% album -no_image_pages
+
+String and number values are specified after a string option:
+
+% album -type gif
+% album -columns 5
+
+Array options can be specified two ways, with one argument at a time:
+
+% album -exif hi -exif there
+
+Or multiple arguments using the '--' form:
+
+% album --exif hi there --
+
+Boolean options:
+
+% album -q, -d, -save_conf, -image_pages, -dir_thumbs, -just_medium, -embed, -clean, -album_captions, -caption_edit, -file_sizes, -fix_urls, -known_images, -all, -hashes, -name_length, -date_sort, -name_sort, -reverse_sort, -image_loop, -crop, -force, -sample, -animated_gifs, -use_tcap
+
+String/number options:
+
+% album -medium, -captions, -top, -body, -charset, -index, -default_index, -html, -type, -medium_type, -CROP, -dir, -sharpen, -theme_url, -theme_path, -convert, -identify, -jhead, -ffmpeg, -conf_file, -dev_null, -windows, -cygwin, -tcap, -tcap_out, -cmdproxy, -header, -footer, -no_album, -hide_album, -not_img
+
+Array options:
+
+% album --exif, --exif_album, --exif_image, --add, --scale_opts, --medium_scale_opts, --full_scale_opts
+
+
+=head2 OPTION DESCRIPTIONS
 
 =over 4
 
+=item B<-h>I<>
 
-=item B<-d>
+Show usage
 
-Set debug mode
+=item B<-q>I<>
 
-=item B<-q>
+Be quiet [Default OFF]
 
-Be quiet (we're hunting wabbits!)
+=item B<-d>I<>
 
-=item B<-medium <geom>>
+Set debug mode [Default OFF]
+
+=item B<-conf>I<=I<file>>
+
+Read a .conf file
+
+=item B<-save_conf>I<>
+
+Save album.conf files in albums [Default ON]
+
+=back
+
+=head2 Album Options:
+
+=over 4
+
+=item B<-image_pages>I<>
+
+Create a page for each image [Default ON]
+
+=item B<-dir_thumbs>I<>
+
+Directories have thumbnail (if supported by theme) [Default ON]
+
+=item B<-medium>I<=I<geom>>
 
 Generate medium size images
 
-=item B<-just_medium>
+=item B<-just_medium>I<>
 
-And don't link to full-size images
+Don't link to full-size images [Default OFF]
 
-=item B<-image_pages>
+=item B<-embed>I<>
 
-Create a page for each image [ON]
+Use image pages for non-picture image pages [Default ON]
 
-=item B<-embed>
+=item B<-columns>I<>
 
-Use image pages for non-picture image pages [ON]
+Number of image columns [Default 4]
 
-=item B<-columns>
+=item B<-clean>I<>
 
-Number of image columns [4]
+Remove unused thumbnails [Default OFF]
 
-=item B<-file_sizes>
+=item B<-captions>I<=I<string>>
 
-Show image file sizes
+Specify captions filename [Default captions.txt]
 
-=item B<-image_sizes>
+=item B<-album_captions>I<>
 
-Get image size (width*height) (for some themes)
+Also show captions on album page [Default ON]
 
-=item B<-clean>
+=item B<-caption_edit>I<>
 
-Remove unused thumbnails
+Add comment tags so that caption_edit.cgi will work [Default OFF]
 
-=item B<-captions>
+=item B<--exif>I<=I<fmt>>
 
-Specify captions filename [captions.txt]
-
-=item B<-caption_edit>
-
-Add comment tags so that caption_edit.cgi will work
-
-=item B<-exif <fmt>>
-
-Add exif info after captions.  Use %key% in fmt string
+Append exif info to captions.  Use %key 0n fmt string
 Example:  -exif "<br>Camera: %Camera model%"
 If any %keys% are not found by jhead, nothing is appended.
 
-=item B<-fix_urls>
+=item B<--exif_album>I<=I<fmt>>
 
-Encode unsafe chars as %xx in URLs [ON]
+-exif for just album pages
 
-=item B<-known_images>
+=item B<--exif_image>I<=I<fmt>>
 
-Only include known image types
+-exif for just image pages
 
-=item B<-body>
+=item B<-file_sizes>I<>
 
-Specify <body> tags for default output (not themes)
+Show image file sizes [Default OFF]
 
-=item B<-all>
+=item B<-fix_urls>I<>
 
-Do not hide directories starting with '.'
+Encode unsafe chars as 0x in URLs [Default ON]
 
-=item B<-depth>
+=item B<-known_images>I<>
 
-Depth to descend directories (default infinite)
+Only include known image types [Default ON]
 
-=item B<-add <dir>>
+=item B<-top>I<=I<string>>
+
+URL for 'Back' link on top page [Default ../]
+
+=item B<-all>I<>
+
+Do not hide files/directories starting with '.' [Default OFF]
+
+=item B<--add>I<=I<dir>>
 
 Add a new directory to the album it's been placed in
 
-=item B<-hashes>
+=item B<-depth>I<>
 
-Show hash marks while generating thumbnails [ON]
+Depth to descend directories (default infinite) [Default -1]
 
-=item B<-name_length>
+=item B<-hashes>I<>
 
-Limit length of image/dir names [40]
+Show hash marks while generating thumbnails [Default ON]
 
-=item B<-date_sort>
+=item B<-name_length>I<>
 
-Sort images/dirs by date instead of captions/name
+Limit length of image/dir names [Default ON]
 
-=item B<-name_sort>
+=item B<-date_sort>I<>
 
-Sort by name, not caption order
+Sort images/dirs by date instead of captions/name [Default OFF]
 
-=item B<-reverse_sort>
+=item B<-name_sort>I<>
 
-Sort in reverse
+Sort by name, not caption order [Default OFF]
 
-=item B<-charset <str>>
+=item B<-reverse_sort>I<>
 
-Charset for non-theme output [iso-8859-1]
+Sort in reverse [Default OFF]
 
-=item B<-image_loop>
+=item B<-body>I<=I<string>>
 
-Do first and last image pages loop around? [ON]
+Specify <body> tags for non-theme output
 
-=item B<-index <file>>
+=item B<-charset>I<=I<str>>
 
-Select the default 'index.html' to use [index.html]
-Specifying '-index index' will force album to
-actually add 'index.html' to the end of links,
-which is useful if you use file://
+Charset for non-theme output [Default iso-8859-1]
 
+=item B<-image_loop>I<>
+
+Do first and last image pages loop around? [Default ON]
+
+=item B<-index>I<=I<file>>
+
+Select the default 'index.html' to use.
+For file://, try '-index index.html' to add 'index.html' to index links.
+
+=item B<-default_index>I<=I<file>>
+
+The file the webserver accesses when no file is specified. [Default index.html]
+
+=item B<-html>I<=I<post>>
+
+Default postfix for HTML files [Default .html]
 
 =back
 
-Thumbnail Options:
-
+=head2 Thumbnail Options:
 
 =over 4
 
+=item B<-geometry>I<=I<E<lt>XE<gt>xE<lt>YE<gt>>>
 
-=item B<-geometry=<X>x<Y>>
+Size of thumbnail [Default 133x133]
 
-Size of thumbnail  [133x100]
+=item B<-type>I<=I<string>>
 
-=item B<-type>
+Thumbnail type (gif, jpg, tiff,...) [Default jpg]
 
-Thumbnail type (gif, jpg, tiff,...) [jpg]
-
-=item B<-medium_type>
+=item B<-medium_type>I<=I<string>>
 
 Medium type (default is same type as full image)
 
-=item B<-crop>
+=item B<-crop>I<>
 
 Crop the image to fit thumbnail size
-else aspect will be maintained [ON]
+otherwise aspect will be maintained [Default OFF]
 
-=item B<-CROP>
+=item B<-CROP>I<=I<string>>
 
 Force cropping to be top, bottom, left or right
 
-=item B<-dir>
+=item B<-dir>I<=I<string>>
 
-Thumbnail directory [tn]
+Thumbnail directory [Default tn]
 
-=item B<-force>
+=item B<-force>I<>
 
 Force overwrite of existing thumbnails
-else they are only written when changed
+otherwise they are only written when changed [Default OFF]
 
-=item B<-sample>
+=item B<-sample>I<>
 
-convert -sample for thumbnails (faster, low quality)
+convert -sample for thumbnails (faster, low quality) [Default OFF]
 
-=item B<-animated_gifs>
+=item B<-sharpen>I<=I<E<lt>radiusE<gt>xE<lt>sigmaE<gt>>>
 
-Take first frame of animated gifs (only some systems)
+Sharpen after scaling
 
-=item B<--scale_opts>
+=item B<-animated_gifs>I<>
 
-List of convert options, end with '--'
-(Also --med_scale_opts and --full_scale_opts..)
+Take first frame of animated gifs (only some systems) [Default OFF]
 
+=item B<--scale_opts>I<=I<strings>>
+
+Options for convert (use '--' for mult)
+
+=item B<--medium_scale_opts>I<=I<strings>>
+
+List of medium convert options
+
+=item B<--full_scale_opts>I<=I<strings>>
+
+List of full convert options
 
 =back
 
-Theme Options:
-
+=head2 Theme Options:
 
 =over 4
 
-
-=item B<-theme <dir>>
+=item B<-theme>I<=I<dir>>
 
 Specify a theme directory
 
-=item B<-theme_url <url>>
+=item B<-theme_url>I<=I<url>>
 
 In case you want to refer to the theme by absolute URL
 
-=item B<-no_theme>
+=item B<-theme_path>I<=I<dir>>
 
-Ignore album's previous theme settings
+Directory that contains themes
 
+=item B<-more>I<>
 
-=item B<-version>
+To show more options.
+
+=item B<-More>I<>
+
+To show even more options.
+
+=item B<-version>I<>
 
 Display program version info
+
+=back
+
+=head2 Paths:
+
+=over 4
+
+=item B<-convert>I<=I<string>>
+
+Path to convert (ImageMagick) [Default convert]
+
+=item B<-identify>I<=I<string>>
+
+Path to identify (ImageMagick) [Default identify]
+
+=item B<-jhead>I<=I<string>>
+
+Path to jhead (extracts exif info) [Default jhead]
+
+=item B<-ffmpeg>I<=I<string>>
+
+Path to ffmpeg (extracting movie frames) [Default ffmpeg]
+
+=item B<-conf_file>I<=I<string>>
+
+Conf filename for album configurations [Default album.conf]
+
+=item B<-dev_null>I<=I<string>>
+
+Throwaway temp file [Default /dev/null]
+
+=item B<-windows>I<=I<string>>
+
+Are we (unfortunately) running windows?
+
+=item B<-cygwin>I<=I<string>>
+
+Are we using the Cygwin environment?
+
+=item B<-use_tcap>I<>
+
+Use tcap? (win98) [Default OFF]
+
+=item B<-tcap>I<=I<string>>
+
+Path to tcap (win98) [Default tcap]
+
+=item B<-tcap_out>I<=I<string>>
+
+tcap output file (win98) [Default atrash.tmp]
+
+=item B<-cmdproxy>I<=I<string>>
+
+Path to cmdproxy (tcap helper for long lines) [Default cmdproxy]
+
+=item B<-header>I<=I<string>>
+
+Path to header file [Default header.txt]
+
+=item B<-footer>I<=I<string>>
+
+Path to footer file [Default footer.txt]
+
+=item B<-no_album>I<=I<string>>
+
+Ignore dir/files if file with this postfix exists [Default .no_album]
+
+=item B<-hide_album>I<=I<string>>
+
+Ignore and don't display these files [Default .hide_album]
+
+=item B<-not_img>I<=I<string>>
+
+Don't treat these files as images [Default .not_img]
+
 
 
 =back
 
+=head1 ENVIRONMENT
+
+=over 6
+
+=item HOME
+
+Home directory for finding user-specific configuration files (.albumrc)
+
+=item DOT
+
+Instead of looking for .albumrc, album also looks for $DOT/album.conf
+(I'm not a big fan of .dotfiles cluttering my home directory).
+
+=item tcap
+
+Set/overwritten by the Win98 version of album for tcap arguments.
+
+=back
+
+=head1 FILES
+
+=over 6
+
+=item F</etc/album/album.conf>
+
+=item F</etc/album.conf>
+
+Site-specific configuration
+
+=item F<$HOME/.albumrc>
+
+=item F<$HOME/.album.conf>
+
+=item F<$DOT/album.conf>
+
+User-specific configuration
+
+=item F<E<lt>albumE<gt>/album.conf>
+
+Album-specific configuration.
+
+B<Will be modified with any new command-line options!>
+
+=item F<E<lt>albumE<gt>/header.txt>
+
+=item F<E<lt>albumE<gt>/footer.txt>
+
+=item F<E<lt>albumE<gt>/captions.txt>
+
+=item F<E<lt>albumE<gt>/.no_album>
+
+=item F<E<lt>albumE<gt>/E<lt>imageE<gt>.no_album>
+
+=item F<E<lt>albumE<gt>/.hide_album>
+
+=item F<E<lt>albumE<gt>/E<lt>imageE<gt>.hide_album>
+
+=item F<E<lt>albumE<gt>/E<lt>imageE<gt>.not_img>
+
+Specifies album information
+
+=back
 
 =head1 SEE ALSO
 

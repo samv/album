@@ -1,0 +1,86 @@
+Configuration Files
+
+ITEM: Configuration Files
+
+Album behavior can be controlled through command-line options, such as:
+
+<code>% album -no_known_images</code>
+
+<code>% album -geometry 133x100</code>
+
+<code>% album -exif "File: %File name% " -exif "taken with %Camera make%"</code>
+
+But these options can also be specified in a configuration file:
+
+<tt># Example configuration file      # comments are ignored
+no_known_images
+known_images       0              # known_images=0 is same as no_known_images
+geometry           133x100
+exif               "File: %File name% "
+exif               "taken with %Camera make%"</tt>
+
+The configuration file format is one option per line optionally followed
+by whitespace and the option value.  Boolean options can be set without
+the option value or can be cleared/set with 0 and 1.
+
+ITEM: Location Of Configuration Files
+
+album looks for configuration files in a few locations, in order:
+
+/etc/album/album.conf        System-wide settings
+/etc/album.conf              System-wide settings
+$BASENAME/album.conf         In the 'album' install directory
+$HOME/.albumrc               User specific settings
+$HOME/.album.conf            User specific settings
+$DOT/album.conf              User specific (I keep my dot files elsewhere)
+$USERPROFILE/album.conf      For Windows (C:\Documents and Settings\TheUser)
+
+album also looks for album.conf files inside the photo album directories.
+Sub-albums can also have album.conf which will alter the settings 
+from parent directories (this allows you to, for example, have a 
+different theme for part of your photo album).  Any album.conf files 
+in your photo album directories will configure the album and any sub-albums
+unless overridden by any album.conf settings found in a sub-album.
+
+As an example, consider a conf for a photo album at 'images/album.conf':
+
+<tt>theme       Dominatrix6
+columns     3</tt>
+
+And another conf inside 'images/europe/album.conf':
+
+<tt>theme       Blue
+crop</tt>
+
+album will use the Dominatrix6 theme for the images/ album and all of
+it's sub-albums except for the images/europe/ album which will use
+the Blue theme.  All of the images/ album and sub-albums will have
+3 columns since that wasn't changed in the images/europe/ album, however
+all of the thumbnails in images/europe/ and all of it's sub-albums
+will be cropped due to the 'crop' configuration setting.
+
+ITEM: Saving Options
+
+Whenever you run an album, the command-line options are saved in
+an album.conf inside the photo album directory.  If an album.conf
+already exists it will be modified not overwritten, so it is safe
+to edit this file in a text editor.
+
+This makes it easy to make subsequent calls to album.  If you
+first generate an album with:
+
+% album -crop -no_known_images -theme Dominatrix6 -name_sort images/
+
+Then the next time you call album you can just:
+
+% album images/
+
+This works for sub-albums as well:
+
+% album images/africa/
+
+Will also find all of the saved options.
+
+Some 'one-time only' options are not saved for obvious reasons, such
+as -add, -clean, -force, etc..
+

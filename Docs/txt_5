@@ -1,0 +1,42 @@
+Feature Requests, Bugs and Patches
+
+ITEM: Feature Requests
+
+If there's something you want added to album, first make sure
+it doesn't already exist!  Check the man page or the usage:
+
+<code>% album -h</code>
+
+If you don't see it there, consider writing a patch.
+
+ITEM: Bug reports
+
+When submitting a bug, I need to know <b>at least</b>:
+
+1) Your operating system
+2) The exact problem and the exact error messages
+
+I'd also like to know, if possible:
+1) The exact album command you ran
+2) The output from the command
+
+And also consider sending me the debug output of album:
+
+<code>% album -d</code>
+
+
+ITEM: Writing Patches, Modifying album
+
+If you want to modify album, you might want to check with me
+first to make sure it's not already on my development plate.
+
+If not, then consider writing it as a plugin instead of patching
+the album source.  This avoids adding complexity to album for
+features that may not be globally used.
+[[plugin support is expected to be included in the 3.1 release]]
+
+If it needs to go into album (for example, if it's a bug), then
+please make sure to first download the most <a href='http://MarginalHacks.com/bin/album'>recent copy of album</a>
+first, then patch that and send me either a diff, a patch, or the
+full script.  If you comment off the changes you make that'd be great too.
+

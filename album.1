@@ -130,7 +130,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ALBUM 1"
-.TH ALBUM 1 "2004-01-29" "album v2.52" ""
+.TH ALBUM 1 "2004-06-28" "album v3.00" ""
 .UC
 album \- Make a web photo album
 .SH "SYNOPSIS"
@@ -150,141 +150,320 @@ To use themes, make sure the \f(CW\*(C`Themes\*(C'\fR directory is inside your w
 path, and then use the \-theme option.
 .SH "OPTIONS"
 .IX Header "OPTIONS"
-.IP "\fB\-d\fR" 4
-.IX Item "-d"
-Set debug mode
+There are three types of options.  Boolean options, string/num options and
+array options.  Boolean options can be turned off by prepending \-no_:
+.PP
+% album \-no_image_pages
+.PP
+String and number values are specified after a string option:
+.PP
+% album \-type gif
+% album \-columns 5
+.PP
+Array options can be specified two ways, with one argument at a time:
+.PP
+% album \-exif hi \-exif there
+.PP
+Or multiple arguments using the '\-\-' form:
+.PP
+% album \-\-exif hi there \*(--
+.PP
+Boolean options:
+.PP
+% album \-q, \-d, \-save_conf, \-image_pages, \-dir_thumbs, \-just_medium, \-embed, \-clean, \-album_captions, \-caption_edit, \-file_sizes, \-fix_urls, \-known_images, \-all, \-hashes, \-name_length, \-date_sort, \-name_sort, \-reverse_sort, \-image_loop, \-crop, \-force, \-sample, \-animated_gifs, \-use_tcap
+.PP
+String/number options:
+.PP
+% album \-medium, \-captions, \-top, \-body, \-charset, \-index, \-default_index, \-html, \-type, \-medium_type, \-CROP, \-dir, \-sharpen, \-theme_url, \-theme_path, \-convert, \-identify, \-jhead, \-ffmpeg, \-conf_file, \-dev_null, \-windows, \-cygwin, \-tcap, \-tcap_out, \-cmdproxy, \-header, \-footer, \-no_album, \-hide_album, \-not_img
+.PP
+Array options:
+.PP
+% album \-\-exif, \-\-exif_album, \-\-exif_image, \-\-add, \-\-scale_opts, \-\-medium_scale_opts, \-\-full_scale_opts
+.Sh "\s-1OPTION\s0 \s-1DESCRIPTIONS\s0"
+.IX Subsection "OPTION DESCRIPTIONS"
+.IP "\fB\-h\fR" 4
+.IX Item "-h"
+Show usage
 .IP "\fB\-q\fR" 4
 .IX Item "-q"
-Be quiet (we're hunting wabbits!)
-.IP "\fB\-medium <geom\fR>" 4
-.IX Item "-medium <geom>"
+Be quiet [Default \s-1OFF\s0]
+.IP "\fB\-d\fR" 4
+.IX Item "-d"
+Set debug mode [Default \s-1OFF\s0]
+.IP "\fB\-conf\fR\fI=\fIfile\fI\fR" 4
+.IX Item "-conf=file"
+Read a .conf file
+.IP "\fB\-save_conf\fR" 4
+.IX Item "-save_conf"
+Save album.conf files in albums [Default \s-1ON\s0]
+.Sh "Album Options:"
+.IX Subsection "Album Options:"
+.IP "\fB\-image_pages\fR" 4
+.IX Item "-image_pages"
+Create a page for each image [Default \s-1ON\s0]
+.IP "\fB\-dir_thumbs\fR" 4
+.IX Item "-dir_thumbs"
+Directories have thumbnail (if supported by theme) [Default \s-1ON\s0]
+.IP "\fB\-medium\fR\fI=\fIgeom\fI\fR" 4
+.IX Item "-medium=geom"
 Generate medium size images
 .IP "\fB\-just_medium\fR" 4
 .IX Item "-just_medium"
-And don't link to full-size images
-.IP "\fB\-image_pages\fR" 4
-.IX Item "-image_pages"
-Create a page for each image [\s-1ON\s0]
+Don't link to full-size images [Default \s-1OFF\s0]
 .IP "\fB\-embed\fR" 4
 .IX Item "-embed"
-Use image pages for non-picture image pages [\s-1ON\s0]
+Use image pages for non-picture image pages [Default \s-1ON\s0]
 .IP "\fB\-columns\fR" 4
 .IX Item "-columns"
-Number of image columns [4]
-.IP "\fB\-file_sizes\fR" 4
-.IX Item "-file_sizes"
-Show image file sizes
-.IP "\fB\-image_sizes\fR" 4
-.IX Item "-image_sizes"
-Get image size (width*height) (for some themes)
+Number of image columns [Default 4]
 .IP "\fB\-clean\fR" 4
 .IX Item "-clean"
-Remove unused thumbnails
-.IP "\fB\-captions\fR" 4
-.IX Item "-captions"
-Specify captions filename [captions.txt]
+Remove unused thumbnails [Default \s-1OFF\s0]
+.IP "\fB\-captions\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-captions=string"
+Specify captions filename [Default captions.txt]
+.IP "\fB\-album_captions\fR" 4
+.IX Item "-album_captions"
+Also show captions on album page [Default \s-1ON\s0]
 .IP "\fB\-caption_edit\fR" 4
 .IX Item "-caption_edit"
-Add comment tags so that caption_edit.cgi will work
-.IP "\fB\-exif <fmt\fR>" 4
-.IX Item "-exif <fmt>"
-Add exif info after captions.  Use \f(CW%key\fR% in fmt string
+Add comment tags so that caption_edit.cgi will work [Default \s-1OFF\s0]
+.IP "\fB\-\-exif\fR\fI=\fIfmt\fI\fR" 4
+.IX Item "--exif=fmt"
+Append exif info to captions.  Use \f(CW%key\fR 0n fmt string
 Example:  \-exif \*(L"<br>Camera: \f(CW%Camera\fR model%\*(R"
 If any \f(CW%keys\fR% are not found by jhead, nothing is appended.
+.IP "\fB\-\-exif_album\fR\fI=\fIfmt\fI\fR" 4
+.IX Item "--exif_album=fmt"
+\&\-exif for just album pages
+.IP "\fB\-\-exif_image\fR\fI=\fIfmt\fI\fR" 4
+.IX Item "--exif_image=fmt"
+\&\-exif for just image pages
+.IP "\fB\-file_sizes\fR" 4
+.IX Item "-file_sizes"
+Show image file sizes [Default \s-1OFF\s0]
 .IP "\fB\-fix_urls\fR" 4
 .IX Item "-fix_urls"
-Encode unsafe chars as \f(CW%xx\fR in URLs [\s-1ON\s0]
+Encode unsafe chars as 0x in URLs [Default \s-1ON\s0]
 .IP "\fB\-known_images\fR" 4
 .IX Item "-known_images"
-Only include known image types
-.IP "\fB\-body\fR" 4
-.IX Item "-body"
-Specify <body> tags for default output (not themes)
+Only include known image types [Default \s-1ON\s0]
+.IP "\fB\-top\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-top=string"
+\&\s-1URL\s0 for 'Back' link on top page [Default ../]
 .IP "\fB\-all\fR" 4
 .IX Item "-all"
-Do not hide directories starting with '.'
+Do not hide files/directories starting with '.' [Default \s-1OFF\s0]
+.IP "\fB\-\-add\fR\fI=\fIdir\fI\fR" 4
+.IX Item "--add=dir"
+Add a new directory to the album it's been placed in
 .IP "\fB\-depth\fR" 4
 .IX Item "-depth"
-Depth to descend directories (default infinite)
-.IP "\fB\-add <dir\fR>" 4
-.IX Item "-add <dir>"
-Add a new directory to the album it's been placed in
+Depth to descend directories (default infinite) [Default \-1]
 .IP "\fB\-hashes\fR" 4
 .IX Item "-hashes"
-Show hash marks while generating thumbnails [\s-1ON\s0]
+Show hash marks while generating thumbnails [Default \s-1ON\s0]
 .IP "\fB\-name_length\fR" 4
 .IX Item "-name_length"
-Limit length of image/dir names [40]
+Limit length of image/dir names [Default \s-1ON\s0]
 .IP "\fB\-date_sort\fR" 4
 .IX Item "-date_sort"
-Sort images/dirs by date instead of captions/name
+Sort images/dirs by date instead of captions/name [Default \s-1OFF\s0]
 .IP "\fB\-name_sort\fR" 4
 .IX Item "-name_sort"
-Sort by name, not caption order
+Sort by name, not caption order [Default \s-1OFF\s0]
 .IP "\fB\-reverse_sort\fR" 4
 .IX Item "-reverse_sort"
-Sort in reverse
-.IP "\fB\-charset <str\fR>" 4
-.IX Item "-charset <str>"
-Charset for non-theme output [iso\-8859\-1]
+Sort in reverse [Default \s-1OFF\s0]
+.IP "\fB\-body\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-body=string"
+Specify <body> tags for non-theme output
+.IP "\fB\-charset\fR\fI=\fIstr\fI\fR" 4
+.IX Item "-charset=str"
+Charset for non-theme output [Default iso\-8859\-1]
 .IP "\fB\-image_loop\fR" 4
 .IX Item "-image_loop"
-Do first and last image pages loop around? [\s-1ON\s0]
-.IP "\fB\-index <file\fR>" 4
-.IX Item "-index <file>"
-Select the default 'index.html' to use [index.html]
-Specifying '\-index index' will force album to
-actually add 'index.html' to the end of links,
-which is useful if you use file://
-.PP
-Thumbnail Options:
-.IP "\fB\-geometry=<X\fRx<Y>>" 4
-.IX Item "-geometry=<Xx<Y>>"
-Size of thumbnail  [133x100]
-.IP "\fB\-type\fR" 4
-.IX Item "-type"
-Thumbnail type (gif, jpg, tiff,...) [jpg]
-.IP "\fB\-medium_type\fR" 4
-.IX Item "-medium_type"
+Do first and last image pages loop around? [Default \s-1ON\s0]
+.IP "\fB\-index\fR\fI=\fIfile\fI\fR" 4
+.IX Item "-index=file"
+Select the default 'index.html' to use.
+For file://, try '\-index index.html' to add 'index.html' to index links.
+.IP "\fB\-default_index\fR\fI=\fIfile\fI\fR" 4
+.IX Item "-default_index=file"
+The file the webserver accesses when no file is specified. [Default index.html]
+.IP "\fB\-html\fR\fI=\fIpost\fI\fR" 4
+.IX Item "-html=post"
+Default postfix for \s-1HTML\s0 files [Default .html]
+.Sh "Thumbnail Options:"
+.IX Subsection "Thumbnail Options:"
+.IP "\fB\-geometry\fR\fI=\fI<X>x<Y>\fI\fR" 4
+.IX Item "-geometry=<X>x<Y>"
+Size of thumbnail [Default 133x133]
+.IP "\fB\-type\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-type=string"
+Thumbnail type (gif, jpg, tiff,...) [Default jpg]
+.IP "\fB\-medium_type\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-medium_type=string"
 Medium type (default is same type as full image)
 .IP "\fB\-crop\fR" 4
 .IX Item "-crop"
 Crop the image to fit thumbnail size
-else aspect will be maintained [\s-1ON\s0]
-.IP "\fB\-CROP\fR" 4
-.IX Item "-CROP"
+otherwise aspect will be maintained [Default \s-1OFF\s0]
+.IP "\fB\-CROP\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-CROP=string"
 Force cropping to be top, bottom, left or right
-.IP "\fB\-dir\fR" 4
-.IX Item "-dir"
-Thumbnail directory [tn]
+.IP "\fB\-dir\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-dir=string"
+Thumbnail directory [Default tn]
 .IP "\fB\-force\fR" 4
 .IX Item "-force"
 Force overwrite of existing thumbnails
-else they are only written when changed
+otherwise they are only written when changed [Default \s-1OFF\s0]
 .IP "\fB\-sample\fR" 4
 .IX Item "-sample"
-convert \-sample for thumbnails (faster, low quality)
+convert \-sample for thumbnails (faster, low quality) [Default \s-1OFF\s0]
+.IP "\fB\-sharpen\fR\fI=\fI<radius>x<sigma>\fI\fR" 4
+.IX Item "-sharpen=<radius>x<sigma>"
+Sharpen after scaling
 .IP "\fB\-animated_gifs\fR" 4
 .IX Item "-animated_gifs"
-Take first frame of animated gifs (only some systems)
-.IP "\fB\-\-scale_opts\fR" 4
-.IX Item "--scale_opts"
-List of convert options, end with '\-\-'
-(Also \-\-med_scale_opts and \-\-full_scale_opts..)
-.PP
-Theme Options:
-.IP "\fB\-theme <dir\fR>" 4
-.IX Item "-theme <dir>"
+Take first frame of animated gifs (only some systems) [Default \s-1OFF\s0]
+.IP "\fB\-\-scale_opts\fR\fI=\fIstrings\fI\fR" 4
+.IX Item "--scale_opts=strings"
+Options for convert (use '\-\-' for mult)
+.IP "\fB\-\-medium_scale_opts\fR\fI=\fIstrings\fI\fR" 4
+.IX Item "--medium_scale_opts=strings"
+List of medium convert options
+.IP "\fB\-\-full_scale_opts\fR\fI=\fIstrings\fI\fR" 4
+.IX Item "--full_scale_opts=strings"
+List of full convert options
+.Sh "Theme Options:"
+.IX Subsection "Theme Options:"
+.IP "\fB\-theme\fR\fI=\fIdir\fI\fR" 4
+.IX Item "-theme=dir"
 Specify a theme directory
-.IP "\fB\-theme_url <url\fR>" 4
-.IX Item "-theme_url <url>"
+.IP "\fB\-theme_url\fR\fI=\fIurl\fI\fR" 4
+.IX Item "-theme_url=url"
 In case you want to refer to the theme by absolute \s-1URL\s0
-.IP "\fB\-no_theme\fR" 4
-.IX Item "-no_theme"
-Ignore album's previous theme settings
+.IP "\fB\-theme_path\fR\fI=\fIdir\fI\fR" 4
+.IX Item "-theme_path=dir"
+Directory that contains themes
+.IP "\fB\-more\fR" 4
+.IX Item "-more"
+To show more options.
+.IP "\fB\-More\fR" 4
+.IX Item "-More"
+To show even more options.
 .IP "\fB\-version\fR" 4
 .IX Item "-version"
 Display program version info
+.Sh "Paths:"
+.IX Subsection "Paths:"
+.IP "\fB\-convert\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-convert=string"
+Path to convert (ImageMagick) [Default convert]
+.IP "\fB\-identify\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-identify=string"
+Path to identify (ImageMagick) [Default identify]
+.IP "\fB\-jhead\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-jhead=string"
+Path to jhead (extracts exif info) [Default jhead]
+.IP "\fB\-ffmpeg\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-ffmpeg=string"
+Path to ffmpeg (extracting movie frames) [Default ffmpeg]
+.IP "\fB\-conf_file\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-conf_file=string"
+Conf filename for album configurations [Default album.conf]
+.IP "\fB\-dev_null\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-dev_null=string"
+Throwaway temp file [Default /dev/null]
+.IP "\fB\-windows\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-windows=string"
+Are we (unfortunately) running windows?
+.IP "\fB\-cygwin\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-cygwin=string"
+Are we using the Cygwin environment?
+.IP "\fB\-use_tcap\fR" 4
+.IX Item "-use_tcap"
+Use tcap? (win98) [Default \s-1OFF\s0]
+.IP "\fB\-tcap\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-tcap=string"
+Path to tcap (win98) [Default tcap]
+.IP "\fB\-tcap_out\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-tcap_out=string"
+tcap output file (win98) [Default atrash.tmp]
+.IP "\fB\-cmdproxy\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-cmdproxy=string"
+Path to cmdproxy (tcap helper for long lines) [Default cmdproxy]
+.IP "\fB\-header\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-header=string"
+Path to header file [Default header.txt]
+.IP "\fB\-footer\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-footer=string"
+Path to footer file [Default footer.txt]
+.IP "\fB\-no_album\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-no_album=string"
+Ignore dir/files if file with this postfix exists [Default .no_album]
+.IP "\fB\-hide_album\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-hide_album=string"
+Ignore and don't display these files [Default .hide_album]
+.IP "\fB\-not_img\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-not_img=string"
+Don't treat these files as images [Default .not_img]
+.SH "ENVIRONMENT"
+.IX Header "ENVIRONMENT"
+.IP "\s-1HOME\s0" 6
+.IX Item "HOME"
+Home directory for finding user-specific configuration files (.albumrc)
+.IP "\s-1DOT\s0" 6
+.IX Item "DOT"
+Instead of looking for .albumrc, album also looks for \f(CW$DOT\fR/album.conf
+(I'm not a big fan of .dotfiles cluttering my home directory).
+.IP "tcap" 6
+.IX Item "tcap"
+Set/overwritten by the Win98 version of album for tcap arguments.
+.SH "FILES"
+.IX Header "FILES"
+.IP "\fI/etc/album/album.conf\fR" 6
+.IX Item "/etc/album/album.conf"
+.PD 0
+.IP "\fI/etc/album.conf\fR" 6
+.IX Item "/etc/album.conf"
+.PD
+Site-specific configuration
+.IP "\fI$HOME/.albumrc\fR" 6
+.IX Item "$HOME/.albumrc"
+.PD 0
+.IP "\fI$HOME/.album.conf\fR" 6
+.IX Item "$HOME/.album.conf"
+.IP "\fI$DOT/album.conf\fR" 6
+.IX Item "$DOT/album.conf"
+.PD
+User-specific configuration
+.IP "\fI<album>/album.conf\fR" 6
+.IX Item "<album>/album.conf"
+Album-specific configuration.
+.Sp
+\&\fBWill be modified with any new command-line options!\fR
+.IP "\fI<album>/header.txt\fR" 6
+.IX Item "<album>/header.txt"
+.PD 0
+.IP "\fI<album>/footer.txt\fR" 6
+.IX Item "<album>/footer.txt"
+.IP "\fI<album>/captions.txt\fR" 6
+.IX Item "<album>/captions.txt"
+.IP "\fI<album>/.no_album\fR" 6
+.IX Item "<album>/.no_album"
+.IP "\fI<album>/<image>.no_album\fR" 6
+.IX Item "<album>/<image>.no_album"
+.IP "\fI<album>/.hide_album\fR" 6
+.IX Item "<album>/.hide_album"
+.IP "\fI<album>/<image>.hide_album\fR" 6
+.IX Item "<album>/<image>.hide_album"
+.IP "\fI<album>/<image>.not_img\fR" 6
+.IX Item "<album>/<image>.not_img"
+.PD
+Specifies album information
 .SH "SEE ALSO"
 .IX Header "SEE ALSO"
 \&\fIImageMagick\fR\|(1), \fIjhead\fR\|(1), \fIffmpeg\fR\|(1)
