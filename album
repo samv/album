@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	1.12
+# Version:	1.13
 # Description:	Makes a photo album
 # Assumes:	'Back' for the top of the album is '..'
 use strict;
@@ -320,11 +320,14 @@ sub clean_thumb_dir {
 }
 
 #########################
-# Fix urls, maybe
+# Quote URLs to avoid errors
 #########################
-sub fix_urls {
-  my ($opt_H,$path) = @_;
-  return $path unless ($opt_H->{'fix_urls'});
+sub quote {
+  my ($path,$opt_H) = @_;
+  $path =~ s/\\/\\\\/g;
+  $path =~ s/"/\\"/g;
+  $path = "\"$path\"";
+  return $path unless ($opt_H && $opt_H->{'fix_urls'});
   # Should probably correct more than just spaces...
   $path =~ s/ /%20/g;
   $path;
@@ -406,7 +409,7 @@ sub do_album {
     foreach my $new ( sort @new_dirs ) {
       my $name = clean_name($new,$caps_H);
       new_element($opt_H);
-      print HTML "<font size='+1'><a href='".fix_urls($opt_H,$new)."'>$name</a></font>\n";
+      print HTML "<font size='+1'><a href=".quote($new,$opt_H).">$name</a></font>\n";
     }
     end_table($opt_H);
     print HTML "<hr />\n";
@@ -434,7 +437,7 @@ sub do_album {
         # Who knows?
         print HTML "        <font size='+1'><b>Unknown file:</b></font>\n";
         print HTML "        <p>\n";
-        print HTML "        <a href='".fix_urls($opt_H,$pic)."'>\n";
+        print HTML "        <a href=".quote($pic,$opt_H).">\n";
         print HTML "          $name\n";
         print HTML "          <font size='-1'><i>[$size]</i></font>\n"
           if ($opt_H->{'sizes'});
@@ -443,7 +446,7 @@ sub do_album {
         # Movie clip - should we have a movie button?
         print HTML "        <font size='+1'><b>Movie Clip:</b></font>\n";
         print HTML "        <p>\n";
-        print HTML "        <a href='".fix_urls($opt_H,$pic)."'>\n";
+        print HTML "        <a href=".quote($pic,$opt_H).">\n";
         print HTML "          $name\n";
         print HTML "          <font size='-1'><i>[$size]</i></font>\n"
           if ($opt_H->{'sizes'});
@@ -456,8 +459,8 @@ sub do_album {
         $thumb =~ s/^\Q$dir\E\/?//;
 
         # The thumbnail
-        print HTML "        <a href='".fix_urls($opt_H,$pic)."'>\n";
-        print HTML "          <img width='$opt_H->{'x'}' height='$opt_H->{'y'}' border='0' src='".fix_urls($opt_H,$thumb)."' alt='$alt'><br \>\n";
+        print HTML "        <a href=".quote($pic,$opt_H).">\n";
+        print HTML "          <img width='$opt_H->{'x'}' height='$opt_H->{'y'}' border='0' src=".quote($thumb,$opt_H)." alt='$alt'><br \>\n";
         print HTML "          $name\n";
         print HTML "          <font size='-1'><i>[$size]</i></font>\n"
           if ($opt_H->{'sizes'});
@@ -509,10 +512,12 @@ sub get_size {
 
   my $try_noidentify = 0;	# Did identify fail?
 
+  my $qimg = quote($img);
+
   # Try to use identify if we have it
   if ($IDENTIFY && $opt_H->{'identify'}) {
     print STDERR "get_size() run: $IDENTIFY -ping $img\n" if ($MAIN::DEBUG);
-    open(SIZE,"$IDENTIFY -ping '$img' 2>&1 |") ||
+    open(SIZE,"$IDENTIFY -ping $qimg 2>&1 |") ||
       die("[$PROGNAME] Couldn't run identify!  [$IDENTIFY]\n");
     while(<SIZE>) {
       print STDERR "get_size(): $_" if ($MAIN::DEBUG);
@@ -533,7 +538,7 @@ sub get_size {
 
   # Kludgy way to get size, but works with all images that convert reads
   print STDERR "get_size() run: $CONVERT -verbose $img /dev/null\n" if ($MAIN::DEBUG);
-  open(SIZE,"$CONVERT -verbose '$img' /dev/null 2>&1 |") ||
+  open(SIZE,"$CONVERT -verbose $qimg /dev/null 2>&1 |") ||
     die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
     print STDERR "get_size(): $_" if ($MAIN::DEBUG);
@@ -551,7 +556,9 @@ sub scale {
 
   print STDERR "scale() run: $CONVERT -verbose $img -sample ${x}x${y} $new\n"
     if ($MAIN::DEBUG);
-  open(SIZE,"$CONVERT -verbose '$img' -sample ${x}x${y} '$new' 2>&1 |") ||
+  my $qimg = quote($img);
+  my $qnew = quote($new);
+  open(SIZE,"$CONVERT -verbose $qimg -sample ${x}x${y} $qnew 2>&1 |") ||
     die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
     print STDERR "scale(): $_" if ($MAIN::DEBUG);
@@ -571,7 +578,9 @@ sub crop {
   my ($img,$x,$y,$off_x,$off_y,$new) = @_;
   print STDERR "crop() run: $CONVERT $img -crop ${x}x${y}+${off_x}+${off_y} $new\n"
     if ($MAIN::DEBUG);
-  system("$CONVERT '$img' -crop ${x}x${y}+${off_x}+${off_y} '$new'");
+  my $qimg = quote($img);
+  my $qnew = quote($new);
+  system("$CONVERT $qimg -crop ${x}x${y}+${off_x}+${off_y} $qnew");
   return unless ($?);
   print STDERR "[$PROGNAME] Error cropping $img\n";
 }
