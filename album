@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.24
+# Version:	2.25
 # Description:	Makes a photo album
 use strict;
 
@@ -611,6 +611,13 @@ sub read_captions {
   }
   close CAPS;
   \%caps;
+}
+
+# See if a directory renames itself in it's own caption file
+sub get_dir_caption {
+  my ($opt,$path,$dir) = @_;
+  my $cap = read_captions($opt,"$path/$dir");
+  return $cap->{$dir}{name} || $dir;
 }
 
 # Sort according to order found in optional captions file
@@ -1246,10 +1253,11 @@ sub do_album {
   # Links to sub-albums
   #########################
   if (@new_dirs) {
-    foreach my $new ( sort { caption_order($caps_H,$a,$b); } @new_dirs ) {
-      push(@{$d{'child_album_names'}}, clean_name($new,$caps_H));
+    foreach my $new_dir ( sort @new_dirs ) {
+      my $new_dir_name = get_dir_caption($opt,$dir,$new_dir);
+      push(@{$d{'child_album_names'}}, clean_name($new_dir_name,$caps_H));
       my $url = ($opt->{'index'} eq $DEFAULT_INDEX) ?
-                "$new/" : "$new/$opt->{'index'}$HTML";
+                "$new_dir/" : "$new_dir/$opt->{'index'}$HTML";
       push(@{$d{'child_album_urls'}},quote($url,$opt));
     }
   }
