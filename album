@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.10
+# Version:	2.11
 # Description:	Makes a photo album
 use strict;
 
@@ -186,6 +186,7 @@ sub get_theme {
 
   my $file = $opt_H->{$which};
   my $data = "$which.data";
+  undef $opt_H->{$data};	# In case we've specified themes twice..
 
   my @new_opts;
   my $top = 1;	# Options can only be specified at the top of the file
@@ -314,14 +315,12 @@ sub header {
   my @names = @parents;
 
   my $path = join("/",@names);
-  my $this = clean_name(pop(@names),undef);
+  my $this = pop(@names);
   my $header;
   my $back = $#names;
-  my $tmp;
   my $index = ("$opt_H->{'index'}" eq "$DEFAULT_INDEX") ? "" : "$opt_H->{'index'}$HTML";
-  while ($tmp = pop(@names)) {
-    $tmp = clean_name($tmp,undef);
-    $header = "<a href='".("../"x($back-$#names))."$index'>$tmp</a> : $header";
+  while ($_ = pop(@names)) {
+    $header = "<a href='".("../"x($back-$#names))."$index'>$_</a> : $header";
   }
   $header.=$this;
 
@@ -377,45 +376,6 @@ sub footer {
 </html>
 END_OF_FOOTER
 
-}
-
-#########################
-# Table stuff
-#########################
-my $TABLE_COUNT;
-sub start_table {
-  my ($opt_H) = @_;
-  return if ($opt_H->{'album.th'});
-  $TABLE_COUNT = 0;
-  print ALBUM "  <table cellspacing='10' width='95%'>\n";
-  print ALBUM "    <tr>\n";
-}
-
-sub end_table {
-  my ($opt_H) = @_;
-  return if ($opt_H->{'album.th'});
-  print ALBUM "       </td>\n";
-  print ALBUM "    </tr>\n";
-  print ALBUM "  </table>\n";
-}
-
-# Return true if we started a new row
-sub new_element {
-  my ($opt_H) = @_;
-  return if ($opt_H->{'album.th'});
-  my $new_row = 0;
-  if ($TABLE_COUNT) {
-    print ALBUM "      </td>\n";
-    unless ($TABLE_COUNT % $opt_H->{'columns'}) {
-      print ALBUM "    </tr><tr>\n";
-      $new_row=1;
-    }
-  }
-  print ALBUM "      <td ";
-  print ALBUM "width='",(100/$opt_H->{'columns'}),"%' "
-    if ($TABLE_COUNT < $opt_H->{'columns'});
-  print ALBUM "valign='top'>\n";
-  $TABLE_COUNT++;
 }
 
 ##################################################
@@ -646,27 +606,18 @@ sub convert_data_to_eperl {
 
   # Set data up to be transferred to eperl
   # Quote arrays
-  push(@{$data_H->{'eperl'}},"<:\n",
-    'my @PARENT_ALBUMS = '.perl_quote_array($data_H->{'parent_albums'}).";\n",
-    'my @CHILD_ALBUM_URLS = '.perl_quote_array($data_H->{'child_album_urls'}).";\n",
-    'my @CHILD_ALBUM_NAMES = '.perl_quote_array($data_H->{'child_album_names'}).";\n",
-    'my @IMAGE_URLS = '.perl_quote_array($data_H->{'image_urls'}).";\n",
-    'my @IMAGE_PAGE_URLS = '.perl_quote_array($data_H->{'image_page_urls'}).";\n",
-    'my @IMAGE_IMAGE_URLS = '.perl_quote_array($data_H->{'image_image_urls'}).";\n",
-    'my @IMAGE_NAMES = '.perl_quote_array($data_H->{'image_names'}).";\n",
-    'my @IMAGE_THUMBS = '.perl_quote_array($data_H->{'image_thumbs'}).";\n",
-    'my @IMAGE_PAGE_THUMBS = '.perl_quote_array($data_H->{'image_page_thumbs'}).";\n",
-    'my @IMAGE_FILESIZES = '.perl_quote_array($data_H->{'image_filesizes'}).";\n",
-    'my @IMAGE_WIDTHS = '.perl_quote_array($data_H->{'image_widths'}).";\n",
-    'my @IMAGE_HEIGHTS = '.perl_quote_array($data_H->{'image_heights'}).";\n",
-    'my @IMAGE_ALTS = '.perl_quote_array($data_H->{'image_alts'}).";\n",
-    'my @IMAGE_CAPTIONS = '.perl_quote_array($data_H->{'image_captions'}).";\n",
-    'my @IMAGE_IS_PIC = '.perl_quote_array($data_H->{'image_is_pic'}).";\n",
-    'my $ALBUM_PATH = '.perl_quote_scalar($data_H->{'path'}).";\n",
-    'my $ALBUM_DIR = '.perl_quote_scalar($data_H->{'dir'}).";\n",
-    'my $ALBUM_FILENAME = '.perl_quote_scalar($data_H->{'album_filename'}).";\n",
-    'my %OPTIONS = '.perl_quote_hash($opt_H).";\n",
-    ":>//\n");
+  push(@{$data_H->{'eperl'}},"<:\n");
+  foreach my $key ( keys %$data_H ) {
+    next if ($key eq "eperl");
+    my $NAME = uc($key);
+    if (ref($data_H->{$key}) eq "ARRAY") {
+      push(@{$data_H->{'eperl'}}, "my \@$NAME = ".perl_quote_array($data_H->{$key}).";\n");
+    } else {
+      push(@{$data_H->{'eperl'}}, "my \$$NAME = ".perl_quote_scalar($data_H->{$key}).";\n");
+    }
+  }
+  push(@{$data_H->{'eperl'}},'my %OPTIONS = '.perl_quote_hash($opt_H).";\n");
+  push(@{$data_H->{'eperl'}},":>//\n");
 
   # Write the support routines to eperl
   my $TN_GEOM = $opt_H->{'crop'} ?
@@ -690,10 +641,10 @@ sub pFile {
   while(<FILE>) { print; }
   close FILE;
 }
-sub isHeader { return (-r "\$ALBUM_DIR/$HEADER") ? 1 : 0; }
-sub pHeader { pFile("\$ALBUM_DIR/$HEADER"); }
-sub isFooter { return (-r "\$ALBUM_DIR/$FOOTER") ? 1 : 0; }
-sub pFooter { pFile("\$ALBUM_DIR/$FOOTER"); }
+sub isHeader { return (-r "\$DIR/$HEADER") ? 1 : 0; }
+sub pHeader { pFile("\$DIR/$HEADER"); }
+sub isFooter { return (-r "\$DIR/$FOOTER") ? 1 : 0; }
+sub pFooter { pFile("\$DIR/$FOOTER"); }
 
 # Get any of the command line options
 sub Get_Opt { return \$OPTIONS{\$_[0]}; }
@@ -785,19 +736,19 @@ sub pImage_Caption { pFile(\$IMAGE_CAPTIONS[\$IMAGE_CNT]); }
 sub Next_Image { \$IMAGE_CNT++; }
 
 # For image pages
-sub Set_Image_Prev {
-  \$IMAGE_CNT = \$THIS_IMAGE ? \$THIS_IMAGE-1 : \$#IMAGE_NAMES;
-}
+sub Image_Prev { \$THIS_IMAGE ? \$THIS_IMAGE-1 : \$#IMAGE_NAMES; }
+sub Image_Next { \$THIS_IMAGE==\$#IMAGE_NAMES ? 0 : \$THIS_IMAGE+1; }
+sub Set_Image_Prev { \$IMAGE_CNT = Image_Prev(); }
+sub Set_Image_Next { \$IMAGE_CNT = Image_Next(); }
 sub Set_Image_This { \$IMAGE_CNT = \$THIS_IMAGE; }
-sub Set_Image_Next {
-  \$IMAGE_CNT = \$THIS_IMAGE==\$#IMAGE_NAMES ? 0 : \$THIS_IMAGE+1;
-}
 
 # Meta tag needed for regenerating portions of the album tree.
 sub Meta {
   print "<meta NAME='Generator' CONTENT='$GEN_STRING'>\\n";
   print "<meta NAME='Album_Path' CONTENT='\$ALBUM_PATH'>\\n";
   print "<meta NAME='Album_Theme' CONTENT='\$OPTIONS{theme}'>\\n";
+  print "<meta NAME='Prev_Image' CONTENT='",\$PICS[Image_Prev()],"'>\\n";
+  print "<meta NAME='Next_Image' CONTENT='",\$PICS[Image_Next()],"'>\\n";
   \$CALLED_META=1;
 }
 sub Credit {
@@ -821,6 +772,8 @@ sub write_theme {
 
   convert_data_to_eperl($opt_H,$data_H);
 
+  setup_output($opt_H,$data_H->{'album_filename'},1);
+
   # Write the support data/functions
   print ALBUM @{$data_H->{'eperl'}};
 
@@ -830,6 +783,43 @@ sub write_theme {
 
   # End support
   print ALBUM @{$data_H->{'end_eperl'}};
+
+  close_output($opt_H,1);
+}
+
+sub dependency_changed {
+  my ($file,@dependencies) = @_;
+  return 1 unless -f $file;
+  my $file_mod = -M $file;
+  foreach my $dep ( @dependencies ) {
+    next unless -f $dep;
+    my $mod = -M $dep;
+    return 1 if $mod <= $file_mod;
+  }
+  return 0;
+}
+
+sub prev_next_theme_path_changed {
+  my ($file,$prev,$next,$theme,$path) = @_;
+  return 1 unless -f $file;
+  return 1 unless open(FILE,"<$file");
+  my ($got_prev,$got_next,$got_theme,$got_path);
+  while(<FILE>) {
+    $got_next = $1 if (/meta\s+NAME='Next_Image'\s+CONTENT='(.+)'/i);
+    $got_prev = $1 if (/meta\s+NAME='Prev_Image'\s+CONTENT='(.+)'/i);
+    $got_theme = $1 if (/meta\s+NAME='Album_Theme'\s+CONTENT='(.+)'/i);
+    $got_path = $1 if (/meta\s+NAME='Album_Path'\s+CONTENT='(.+)'/i);
+    if ($got_next && $got_prev && $got_theme && $got_path) {
+      close(FILE);
+      return 1 unless $next eq $got_next;
+      return 1 unless $prev eq $got_prev;
+      return 1 unless $theme eq $got_theme;
+      return 1 unless $path eq $got_path;
+      return 0;
+    }
+  }
+  close(FILE);
+  return 1;
 }
 
 sub write_img_themes {
@@ -837,11 +827,39 @@ sub write_img_themes {
 
   convert_data_to_eperl($opt_H,$data_H);
 
+  my @changed;
+  # Which image pages have had source changes?
   for(my $i=0; $i<=$#{$data_H->{'pics'}}; $i++) {
     next unless $data_H->{'image_is_pic'}[$i];
 
     my $pic = $data_H->{'pics'}[$i];
     my $file = "$opt_H->{'dir'}/$pic$post_url";
+    $changed[$i] = dependency_changed("$dir/$file",
+      "$dir/$pic",				# The image itself
+      $data_H->{'image_captions'}[$i],		# The image.txt file
+      "$dir/$opt_H->{'captions'}",		# The captions file
+      $0,					# Heck, even this program
+      "$opt_H->{'theme'}/image.th",		#   or the theme itself
+    );
+  }
+
+  for(my $i=0; $i<=$#{$data_H->{'pics'}}; $i++) {
+    next unless $data_H->{'image_is_pic'}[$i];
+
+    my $pic = $data_H->{'pics'}[$i];
+    my $file = "$opt_H->{'dir'}/$pic$post_url";
+
+    # Okay - if the source for this image didn't change, and
+    # the prev/next images and theme are the same, *and* the
+    # the prev/next images didn't have source changes (because
+    # they might have a name change or some such..), *THEN* we
+    # can skip generating this file, and save some time.
+    my $prev = $i ? $i-1 : $#{$data_H->{'pics'}};
+    my $next = $i==$#{$data_H->{'pics'}} ? 0 : $i+1;
+    my $pntp_changed = prev_next_theme_path_changed("$dir/$file",
+      $data_H->{'pics'}[$prev],$data_H->{'pics'}[$next],$opt_H->{'theme'},$data_H->{'album_path'});
+
+    next unless ($changed[$i] || $pntp_changed || $changed[$prev] || $changed[$next]);
 
     setup_output($opt_H,"$dir/$file",1);
 
@@ -863,6 +881,40 @@ sub write_img_themes {
 }
 
 #########################
+# Table stuff
+#########################
+my $TABLE_COUNT;
+sub start_table {
+  $TABLE_COUNT = 0;
+  print ALBUM "  <table cellspacing='10' width='95%'>\n";
+  print ALBUM "    <tr>\n";
+}
+
+sub end_table {
+  print ALBUM "       </td>\n";
+  print ALBUM "    </tr>\n";
+  print ALBUM "  </table>\n";
+}
+
+# Return true if we started a new row
+sub new_element {
+  my ($opt_H) = @_;
+  my $new_row = 0;
+  if ($TABLE_COUNT) {
+    print ALBUM "      </td>\n";
+    unless ($TABLE_COUNT % $opt_H->{'columns'}) {
+      print ALBUM "    </tr><tr>\n";
+      $new_row=1;
+    }
+  }
+  print ALBUM "      <td ";
+  print ALBUM "width='",(100/$opt_H->{'columns'}),"%' "
+    if ($TABLE_COUNT < $opt_H->{'columns'});
+  print ALBUM "valign='top'>\n";
+  $TABLE_COUNT++;
+}
+
+#########################
 # Default HTML (no ePerl)
 #########################
 sub caption {
@@ -876,7 +928,26 @@ sub caption {
 sub write_index {
   my ($opt_H,$d_H,$dir) = @_;
 
-  start_table($opt_H);
+  # TOP
+  setup_output($opt_H,$d_H->{'album_filename'});
+  header($opt_H,0,$dir,@{$d_H->{'parent_albums'}});
+
+  # DIRECTORIES
+  if ($d_H->{'child_album_urls'} && @{$d_H->{'child_album_urls'}}) {
+    start_table();
+    new_element($opt_H);
+    print ALBUM "<font size='+2'><i>More albums:</i></font>\n";
+
+    for(my $i=0; $i<=$#{$d_H->{'child_album_urls'}}; $i++) {
+      new_element($opt_H);
+      print ALBUM "<font size='+1'><a href=$d_H->{'child_album_urls'}[$i]>$d_H->{'child_album_names'}[$i]</a></font>\n";
+    }
+    end_table();
+    print ALBUM "<hr />\n";
+  }
+
+  # IMAGES
+  start_table();
   for(my $i=0; $i<=$#{$d_H->{'pics'}}; $i++) {
     new_element($opt_H);
 
@@ -907,14 +978,16 @@ sub write_index {
     print ALBUM "          </font>\n";
   }
 
-  end_table($opt_H);
+  end_table();
   print ALBUM "<hr />\n" if (@{$d_H->{'pics'}});
   footer($dir);
+
+  close_output($opt_H,0);
 }
 
 # Image pages
 sub write_img_indexes {
-  my ($opt_H,$d_H,$dir,$post_url,@dir_names) = @_;
+  my ($opt_H,$d_H,$dir,$post_url) = @_;
 
   my $prev_url = $d_H->{'image_page_urls'}[-1];
   my $prev_name = $d_H->{'image_names'}[-1];
@@ -929,7 +1002,7 @@ sub write_img_indexes {
 
     my $file = "$opt_H->{'dir'}/$pic$post_url";
     setup_output($opt_H,"$dir/$file",0);
-    header($opt_H,1,$dir,@dir_names,$pic);
+    header($opt_H,1,$dir,@{$d_H->{'parent_albums'}},$pic);
 
     # Image and Previous/next
     my $prev_next = <<PREV_NEXT;
@@ -1023,36 +1096,24 @@ sub do_album {
   #########################
   # Write the html
   #########################
-  my $t = ($opt_H->{'album.th'}) ? 1 : 0;
   my %d;	# Hold the theme data
 
   $d{'album_filename'} = "$dir/$opt_H->{'index'}$HTML";
-  setup_output($opt_H,$d{'album_filename'},$t);
 
-  header($opt_H,0,$dir,@dir_names) unless $t;
   @{$d{'parent_albums'}} = map(clean_name($_,undef), @dir_names);
-  $d{'path'} = join("/",@dir_names);
+  $d{'album_path'} = join("/",@dir_names);
   $d{'dir'} = $dir;
 
   #########################
   # Links to sub-albums
   #########################
   if (@new_dirs) {
-    start_table($opt_H);
-    new_element($opt_H);
-    print ALBUM "<font size='+2'><i>More albums:</i></font>\n" unless $t;
     foreach my $new ( sort @new_dirs ) {
-      my $name = clean_name($new,$caps_H);
+      push(@{$d{'child_album_names'}},clean_name($new,$caps_H));
       my $url = ($opt_H->{'index'} eq $DEFAULT_INDEX) ?
-                $new : "$new/$opt_H->{'index'}$HTML";
-      $url = quote($url,$opt_H);
-      push(@{$d{'child_album_urls'}},$url);
-      push(@{$d{'child_album_names'}},$name);
-      new_element($opt_H);
-      print ALBUM "<font size='+1'><a href=$url>$name</a></font>\n" unless $t;
+                "$new/" : "$new/$opt_H->{'index'}$HTML";
+      push(@{$d{'child_album_urls'}},quote($url,$opt_H));
     }
-    end_table($opt_H);
-    print ALBUM "<hr />\n" unless $t;
   }
 
   # Image page URLs are <img.html> or <img.indexname.html>
@@ -1136,16 +1197,16 @@ sub do_album {
   }
 
   # Write the HTML
-  $t ? write_theme($opt_H,\%d) : write_index($opt_H,\%d,$dir);
-
-  close_output($opt_H,$t);
+  ($opt_H->{'album.th'}) ?
+    write_theme($opt_H,\%d) :
+    write_index($opt_H,\%d,$dir);
 
   #########################
   # Write the image pages?
   #########################
   ($opt_H->{'image.th'} ?
       write_img_themes($opt_H,\%d,$dir,$page_post_url) :
-      write_img_indexes($opt_H,\%d,$dir,$page_post_url,@dir_names) )
+      write_img_indexes($opt_H,\%d,$dir,$page_post_url) )
     if ($opt_H->{'image_pages'});
 
   #########################
