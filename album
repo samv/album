@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.02';
+  my $VERSION=  '3.03';
 # Rewrite branched off from: 2.53
 # Description:	Makes a photo album.
 use strict;
@@ -202,7 +202,7 @@ my $IMAGE_TYPES	=
 # Also:
 # $opt->{image.th}	The image.th file
 # $opt->{album.th}	The album.th file
-# $opt->{top}		The path to the top album.
+# $opt->{topdir}		The path to the top album.
 #
 # $data
 # -----
@@ -749,7 +749,7 @@ sub read_conf {
   }
 
   my $conf_str = $conf;
-  $conf_str =~ s|^\Q$opt->{top}\E/?||;
+  $conf_str =~ s|^\Q$opt->{topdir}\E/?||;
   print STDERR "Read conf: $conf_str\n" unless $opt->{q};
 
   while (<$fh>) {
@@ -905,7 +905,7 @@ sub album_confs {
   if ($data->{start}) {
     my @parents = @{$data->{dir_pieces}};
     for (my $i=0; $i<$#parents; $i++) {
-      my $conf = "$opt->{top}/".join('/',@parents[0..$i])."/$opt->{conf_file}";
+      my $conf = "$opt->{topdir}/".join('/',@parents[0..$i])."/$opt->{conf_file}";
       next unless -r $conf;
       read_conf($opt,undef,$conf,1);
       $scrub = 1;
@@ -1595,7 +1595,7 @@ sub hash_warn {
 ##################################################
 # Nice name for printing
 sub clean_name {
-  my ($opt,$name,$capname,$no_br) = @_;
+  my ($opt,$name,$capname,$no_html) = @_;
 
   $name = $capname || $name;
 
@@ -1619,9 +1619,8 @@ sub clean_name {
   }
 
   # I sort my albums by date:   2001-10-03.some_directory
-  $no_br = $no_br ? " " : "<br>";
-  $name = "<font size='-1'>$1</font>$no_br$3"
-    if $name =~ /^(\d{4}-\d{1,2}(-\d{1,2})?)( .+)$/;
+  $name = "<font size='-1'>$1</font><br>$3"
+    if !$no_html && $name =~ /^(\d{4}-\d{1,2}(-\d{1,2})?)( .+)$/;
 
   $name;
 }
@@ -1844,7 +1843,7 @@ sub get_exif_captions {
 sub get_dir_caption {
   my ($opt,$dir,$name) = @_;
 
-  my $path = $dir ? "$opt->{top}/$dir" : $opt->{top};
+  my $path = $dir ? "$opt->{topdir}/$dir" : $opt->{topdir};
 
   # First check parent directory for $name
   my $caps = read_captions($opt,$path);
@@ -3576,13 +3575,13 @@ sub new_album_data {
 
 # We may have started inside a subalbum.  Figure all this out.
 sub figure_depth {
-  my ($opt,$data,$dir,@dir_pieces) = @_;
+  my ($opt,$data,$dir,$noalb,@dir_pieces) = @_;
 
   # Our calling depth may be different from album depth.
   $data->{calling_depth} = $#dir_pieces+1 unless $opt->{_depth_diff};
 
   # The current index
-  parse_index($opt,$data);
+  parse_index($opt,$data) unless $noalb;
 
   # Is this the first call to do_album?
   $data->{start} = $#dir_pieces<1 ? 1 : 0;
@@ -3610,8 +3609,8 @@ sub figure_depth {
       fatal($opt,@fatal);
     }
 
-    # Correct $opt->{top} and pieces
-    $opt->{top} = $dir;
+    # Correct $opt->{topdir} and pieces
+    $opt->{topdir} = $dir;
     @dir_pieces = split(/\//,$alb_path);
   }
   $data->{dir_pieces} = \@dir_pieces;
@@ -3635,7 +3634,8 @@ sub do_album {
   my $data = new_album_data($opt,$dir);
 
   # How deep?
-  figure_depth($opt,$data,$dir,@dir_pieces);
+  my $noalb = -f "$dir/$opt->{no_album}" ? 1 : 0;
+  figure_depth($opt,$data,$dir,$noalb,@dir_pieces);
   return if $opt->{depth}>=0 && $data->{calling_depth} > $opt->{depth};
 
   # Deal with album.conf files
@@ -3651,7 +3651,6 @@ sub do_album {
   my $w = $opt->{hash_width} - $opt->{num_hashes} - 3 - 8;
   $p = '..'.substr($p,-$w+2) if (length($p) > $w);
   start_hashes($opt, "Images: $p");
-  my $noalb = -f "$dir/$opt->{no_album}" ? 1 : 0;
   if ($noalb || $data->{unknown}) {
     hash_msg($opt,"<".($noalb ? $opt->{no_album} : "unknown").">");
     print STDERR "\nCall album with your photo directory as an option.\n\n"
@@ -3711,7 +3710,7 @@ sub do_album {
   #########################
   # Do the children albums
   #########################
-  #my $first = "$opt->{top}/$data->{dir_pieces}[0]";
+  #my $first = "$opt->{topdir}/$data->{dir_pieces}[0]";
   my @add = $opt->{_album}{$dir}{add} ?  @{$opt->{_album}{$dir}{add}} : ();
   foreach my $child ( @{$data->{dirs}} ) {
     do_album($opt,"$dir/$child",@{$data->{dir_pieces}},$child)
@@ -4053,7 +4052,7 @@ sub main {
 
   foreach my $dir ( @{$opt->{_albums}} ) {
     print "\n" unless $opt->{q};
-    ($opt->{top},my $name) = split_path($opt,$dir);
+    ($opt->{topdir},my $name) = split_path($opt,$dir);
 
     do_album($opt,$dir,$name);
   }

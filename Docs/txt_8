@@ -1,0 +1,14 @@
+Plugins, Usage, Creation,..
+
+ITEM: What are Plugins?
+
+Plugins are snippets of code that allow you to modify the behavior
+of album.  They can be as simple as a new way to create EXIF captions,
+to something as complex as creating the album based on a database of
+images instead of using the filesystem hierarchy.
+
+ITEM: How do I use them?
+
+You don't yet.  Plugin support code is being finished up now and when
+it's done we'll have some info here.
+
