@@ -2,10 +2,10 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-  my $VERSION=  2.34;
+  my $VERSION=  2.35;
 # Description:	Makes a photo album
 use strict;
-use IO::File;	# For windows users
+use IO::File;
 
 umask 022;	# 0755
 
@@ -18,7 +18,12 @@ my $PROGNAME = $0;
 $PROGNAME =~ s|.*/||;
 
 # Windows users will probably want to specify full paths, such as:
-# my $CONVERT   = '"C:/PROGRAM FILES/IMAGEMAGICK/convert"';
+# my $CONVERT   = 'C:/PROGRAM FILES/IMAGEMAGICK/convert.exe';
+# my $IDENTIFY   = 'C:/PROGRAM FILES/IMAGEMAGICK/identify.exe';
+
+# Win98: Needs TCAP:  ftp://ftp.simtel.net/pub/simtelnet/msdos/sysutl/tcap31.zip
+#WIN98#my $TCAP = 'tcap';
+#WIN98#my $TCAP_FILE = "atrash.tmp";
 
 my $CONVERT	= "convert";
 my $IDENTIFY	= "identify";	# Undef if you don't have identify
@@ -106,6 +111,7 @@ my $IMAGE_TYPES	=
 # Windows blows
 #########################
 my $CRAPPY_OS = ($^O =~ /Win/i) ? 1 : 0;
+# Win98=MSWin, WinXP=MSWin (damn), CygWin=cygwin
 
   # 1) Can't handle "\Qfile\E";
   sub file_quote {
@@ -124,13 +130,21 @@ my $CRAPPY_OS = ($^O =~ /Win/i) ? 1 : 0;
   }
 
   # 4) Can't handle 'open(FOO,"cmd |")' or 2>&1
+  #    (According to one mail, 2>&1 works in Win2000)
   sub open_pipe {
     my ($cmd) = @_;
     print STDERR "run: $cmd\n" if ($MAIN::DEBUG);
     my $fh = new IO::File;
+
+    # Happy Unix
     return open($fh, "$cmd 2>&1 |") && $fh unless $CRAPPY_OS;
 
-    # Windows:
+    # Win98 (use TCAP)
+#WIN98#    system("$TCAP -overwrite $TCAP_FILE -c $cmd");
+#WIN98#    open($fh, "$TCAP_FILE") || die("Can't open $TCAP output [$TCAP_FILE]\n");
+#WIN98#    return $fh;
+
+    # Windows2000,XP:  -| pipe method, doesn't seem to work on Win98
     my $pid = open($fh,"-|");
     return undef unless defined $pid;	# Failed
     return $fh if $pid;			# Parent
@@ -139,7 +153,22 @@ my $CRAPPY_OS = ($^O =~ /Win/i) ? 1 : 0;
     exec($cmd);
   }
 
-  # 5) Can't handle /dev/null!  (Need to figure that out...)
+  # 4 1/2)  Clean up the tmp file	(for Win98)
+#WIN98#  sub win_done { print STDERR "@_\n"; unlink($TCAP_FILE);  exit; }
+#WIN98#  if ($CRAPPY_OS) {
+#WIN98#    $SIG{INT} = \&win_done; $SIG{TERM} = \&win_done;
+#WIN98#    $SIG{HUP} = \&win_done; $SIG{QUIT} = \&win_done;
+#WIN98#    $SIG{EXIT} = \&win_done; $SIG{__DIE__} = \&win_done;
+#WIN98#  }
+
+  # 5) Can't handle /dev/null?
+  # (Need to figure this out - make a tmpfile?  $DEV_NULL = ...?)
+
+  # 6) .exe extension if we don't have it
+  if ($CRAPPY_OS) {
+    $CONVERT =~ s/(\.exe)?$/.exe/ig;
+    $IDENTIFY =~ s/(\.exe)?$/.exe/ig;
+  }
 
 #########################
 # URLs for these scripts - don't change
@@ -1736,9 +1765,10 @@ sub get_size {
       return ($1,$2);
     }
   }
-  print STDERR "[$PROGNAME] Can't get [$img] size from 'convert -verbose' output\n";
+  print STDERR "\n\n[$PROGNAME] Can't get [$img] size from 'convert -verbose' output\n";
   print STDERR "\tTry option:  -known_images to ignore garbage files\n"
     unless ($img =~ /\.$IMAGE_TYPES$/i);
+  print STDERR "\tWindows users need to have CygWin installed!\n" if $CRAPPY_OS;
   die("\n");
 }
 
@@ -1751,8 +1781,9 @@ sub scale {
   $cmd .= "$opt->{scale_opts} " if $opt->{scale_opts};
   $cmd .= ($medium ? ($opt->{med_scale_opts}||"") : ($opt->{full_scale_opts}||""));
   my $qimg = file_quote($img);
+  $qimg .= "\[0]" unless $CRAPPY_OS;
   my $qnew = file_quote($new);
-  $cmd .= " -verbose $qimg\[0] $scale $qnew";
+  $cmd .= " -verbose $qimg $scale $qnew";
   my $size = open_pipe($cmd);
   $size || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<$size>) {
@@ -1890,5 +1921,7 @@ sub main {
   $name =~ s|.*/||;
 
   do_album($opt,$dir,$name);
+
+#WIN98#  win_done if $CRAPPY_OS;
 }
 main();
