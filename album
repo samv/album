@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.22
+# Version:	2.23
 # Description:	Makes a photo album
 use strict;
 
@@ -54,6 +54,7 @@ my %DEFAULTS	= (
 	'fix_urls'	=> 1,		# Convert spaces to %20 in URLs?
 	'depth'		=> -1,		# Depth to descend directories
 	'all'		=> 0,		# Do not hide .directories
+	'no_hashes'	=> 0,		# Don't show hash marks
 
 	# deprecated, it's automated now
 	'identify'	=> 1,		# Use identify or convert for get_size?
@@ -127,6 +128,7 @@ sub usage {
   print "\t-body             Specify <body> tags for default output\n";
   print "\t-all              Do not hide directories starting with '.'\n";
   print "\t-depth            Depth to descend directories (default infinite)\n";
+  print "\t-no_hashes        Don't show hash marks while generating thumbnails"; default("no_hashes");
   print "\n";
   print "Thumbnail Options:\n";
   print "\t-geometry=<X>x<Y> Size of thumbnail  [${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
@@ -309,10 +311,13 @@ sub parse_args {
     $opt{'image.th'}=0;
     $opt{'image_pages'}=0;
   }
-  $opt{'image_pages'}=1 if ($opt{'image.th'});
+  $opt{image_pages}=1 if $opt{'image.th'};
+
+  # -clean and hashes is ugly
+  $opt{no_hashes}=1 if $opt{clean};
 
   # -medium needs image pages
-  $opt{'image_pages'}=1 if ($opt{'medium'});
+  $opt{image_pages}=1 if $opt{medium};
 
   # We'll add the .html flag
   $opt{'index'} =~ s/\Q$HTML\E$//;
@@ -448,7 +453,7 @@ my $PATH;
 sub unknown_html {
   my ($opt,$dir) = @_;
 
-  return 1 if (-f "$dir/$NO_ALBUM");
+  return 1 if (-f "\Q$dir/$NO_ALBUM\E");
 
   my $file = "$dir/$opt->{'index'}$HTML";
   return 0 unless -f $file;
@@ -1137,12 +1142,21 @@ PREV_NEXT
 #########################
 # Make an album
 #########################
+my $HASHES = 20;
+
 sub do_album {
   my ($opt,$dir,@dir_names) = @_;
 
   return if $opt->{depth}>=0 && @dir_names > $opt->{depth};
 
-  print STDERR "Album: $dir\n";
+  print STDERR "Album: $dir";
+  if ($opt->{no_hashes}) {
+    print STDERR "\n";
+  } else {
+    print STDERR " "x(76-$HASHES-length("Album: $dir"));
+    print STDERR "["," "x$HASHES,"]\b","\b"x$HASHES;
+  }
+  my $hashes_done = 0;
 
   #########################
   # Get images and subdirectories
@@ -1181,7 +1195,12 @@ sub do_album {
   #########################
   # Did we create the index file here?
   #########################
-  return if (unknown_html($opt,$dir));
+  if (unknown_html($opt,$dir)) {
+    return if $opt->{no_hashes};
+    printf STDERR "%${HASHES}s]\n","<unknown>";
+    return;
+  }
+
   # We may be using album to regenerate just a section of an album,
   # in this case, start with the PATH found in unknown_html()
   @dir_names = split(/\//,$PATH) if (!$#dir_names && $PATH);
@@ -1322,7 +1341,16 @@ sub do_album {
       # Don't do -fix_urls on alt
       push(@{$d{'image_alts'}}, quote($caps_H->{$pic}{alt}));
       push(@{$d{'image_is_pic'}}, $is_a_pic);
+
+      unless ($opt->{no_hashes}) {
+        my $hashes_needed = int($HASHES*($i/($#pics+1)));
+        print STDERR "X"x($hashes_needed-$hashes_done);
+        $hashes_done = $hashes_needed;
+      }
     }
+    print STDERR "X"x($HASHES-$hashes_done), "]\n" unless $opt->{no_hashes};
+  } else {
+    printf STDERR "%${HASHES}s]\n","<no thumbs>";
   }
 
   # Write the HTML
