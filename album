@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.20
+# Version:	2.21
 # Description:	Makes a photo album
 use strict;
 
@@ -35,7 +35,7 @@ my %DEFAULTS	= (
 	'y'		=> 100,
 	'crop'		=> 1,		# Crop or just scale?
 	'force'		=> 0,		# Force thumbnail generation
-	'type'		=> "gif",	# Thumbnail image type
+	'type'		=> "jpg",	# Thumbnail image type
 	'dir'		=> "tn",	# Thumbnail directory
 	'known_images'	=> 0,		# I'd rather keep my album clean
 	'sample'	=> 0,		# -sample:-geometry :: fast:better
@@ -325,11 +325,10 @@ sub parse_args {
 # HTML
 ##################################################
 sub header {
-  my ($opt,$image_page,$dir,@parents) = @_;
+  my ($opt,$d_H,$image_page,$dir,@parents) = @_;
 
   my @names = @parents;
 
-  my $path = join("/",@names);
   my $this = pop(@names);
   my $header;
   my $back = $#names;
@@ -352,7 +351,7 @@ sub header {
       Album: $this
     </title>
     <meta NAME='Generator' CONTENT='$GEN_STRING'>
-    <meta NAME='Album_Path' CONTENT='$path'>
+    <meta NAME='Album_Path' CONTENT='$d_H->{album_path}'>
   </head>
   $opt->{'body'}
   <table width='95%'>
@@ -517,6 +516,9 @@ sub clean_thumb_dir {
       # Thumbnail?
       $name = $`;
       $remove = "unused thumbnail" unless (grep(/^\Q$name.\E/, @pics));
+    } elsif ($name  =~ /(.+)\.$opt->{'type'}\.ppm$/) {
+      my $mov = $1;
+      $remove = "unused ppm thumbnail?" unless (grep(/^\Q$mov.\E/, @pics));
     } else {
       $remove = "unknown file";
     }
@@ -1015,7 +1017,7 @@ sub write_index {
 
   # TOP
   setup_output($opt,$d_H->{'album_filename'});
-  header($opt,0,$dir,@{$d_H->{'parent_albums'}});
+  header($opt,$d_H,0,$dir,@{$d_H->{'parent_albums'}});
 
   # DIRECTORIES
   if ($d_H->{'child_album_urls'} && @{$d_H->{'child_album_urls'}}) {
@@ -1091,7 +1093,7 @@ sub write_img_indexes {
 
     my $file = "$opt->{'dir'}/$pic$post_url";
     setup_output($opt,"$dir/$file",0);
-    header($opt,1,$dir,@{$d_H->{'parent_albums'}},$name);
+    header($opt,$d_H,1,$dir,@{$d_H->{'parent_albums'}},$name);
 
     # Image and Previous/next
     my $prev_next = <<PREV_NEXT;
@@ -1200,8 +1202,8 @@ sub do_album {
 
   $d{'album_filename'} = "$dir/$opt->{'index'}$HTML";
 
-  @{$d{'parent_albums'}} = map(clean_name($_,undef,1), @dir_names);
   $d{'album_path'} = join("/",@dir_names);
+  @{$d{'parent_albums'}} = map(clean_name($_,undef,1), @dir_names);
   $d{'dir'} = $dir;
   if ($opt->{theme}) {
     $d{'theme_path'} = diff_path(abs_path($dir),$opt->{theme});
@@ -1297,7 +1299,8 @@ sub do_album {
       }
       my $image_image_url = quote("../$pic",$opt);
       my $image_page_url = quote("$pic$page_post_url",$opt);
-      $medium = quote($medium,$opt) if $medium;
+      # Movies don't have a medium image, so use the actual pic
+      $medium = quote($medium || "../$pic",$opt);
 
       # Add it to our data list
       push(@{$d{'pics'}}, $pic);
