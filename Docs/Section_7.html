@@ -191,7 +191,11 @@ You can just copy this from another simmer theme.
 Optional files:
 
 <b>Bar Images</b>
-The bar is composed of Bar_L.gif, Bar_R.gif and Bar_M.gif in the middle (stretched).
+The bar is composed of Bar_L.gif, Bar_R.gif and Bar_M.gif in the middle.
+The middle is stretched.  If you need a middle piece that isn't stretched, use:
+  Bar_L.gif, Bar_ML.gif, Bar_M.gif, Bar_MR.gif, Bar_R.gif
+And then the Bar_ML.gif and Bar_MR.gif will be stretched.  (See the
+Craftsman theme for an example of this).
 
 <b>Locked.gif</b>
 A lock image for any directories that have .htaccess
@@ -303,8 +307,6 @@ Last($type)              Last object
 Next($obj)               Given an object, return the next object
 Next($obj,1)             Same, loop past end to beginning.
 Prev($obj), Prev($obj,1)  Similar to Next()
-New_Row($obj,$cols,$off) Should we start a new row after this object?
-                         Use $off if the first object is offset from 1
 
 num('pics') or just num() Total number of images in this album
 num('dirs')               Total number of children/sub-albums
@@ -353,6 +355,7 @@ page it's coming 'from' and the image/page it's pointing 'to':
 
 Get($obj,'URL',$from,$to)   Get a URL for an object from -> to
 Get($obj,'href',$from,$to)  Same but wraps it in an 'href' string.
+Get($obj,'link',$from,$to)  Same but wraps the object name inside the href link.
 
 From         To           Description
 ----         --           ----------
@@ -387,6 +390,13 @@ Name($alb)
 Caption($img)             The caption for an image
 
 <b>Convenience Routines</b>
+Pretty($str,$html,$lines) Pretty formats a name.
+    If $html then HTML is allowed (i.e., use 0 for <title> and the like)
+    Currently just puts prefix dates in a smaller font (i.e. '2004-12-03.Folder')
+    If $lines then multilines are allowed
+    Currently just follows dates with a 'br' line break.
+New_Row($obj,$cols,$off)  Should we start a new row after this object?
+                          Use $off if the first object is offset from 1
 Image_Array($src,$x,$y,$also,$alt)
                           Returns an &lt;img&gt; tag given $src, $x,...
 Border($img,$type,$href,@border)

@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.05';
+  my $VERSION=  '3.06';
 # Rewrite branched off from: 2.53
 # Description:	Makes a photo album.
 use strict;
@@ -610,7 +610,7 @@ sub parse_geometry {
 sub parse_arg {
   my ($opt,$option,$val, $from) = @_;
 
-  print STDERR "[ARG] $option $val - $from\n" if $opt->{d};
+  print STDERR "[ARG] $option $val (<-$ARGV[0]) - $from\n" if $opt->{d};
 
   # Should 'no_' be undef?
   $val = 0 if ($option =~ s/^no_?//);	# Handle 'no_' options
@@ -998,11 +998,13 @@ sub scrub_opts {
 
   # If the medium scaling is <width>x<height>, add ">" on the end so
   # convert will only shrink the images, never grow them
+  $opt->{medium}.='>' if $opt->{medium} =~ /^\d+x\d+$/ && !$opt->{windows};
+
 # Hack!  This doesn't work on Windows - at least on ActivePerl!  :(
 # I think it's because ActivePerl uses DOS for system calls and DOS doesn't
 # let you quote '>' to avoid redirection?  It complains that we need an
-# argument for -geometry option otherwise.
-  $opt->{medium}.='\>' if $opt->{medium} =~ /^\d+x\d+$/ && !$opt->{windows};
+# argument for -geometry option otherwise.  Can we just add '>'??
+  $opt->{medium}="\Q$opt->{medium}\E" unless $opt->{windows};
 
   # -clean and hashes is ugly
   $opt->{hashes}=0 if $opt->{clean} || $opt->{d} || $opt->{q};
@@ -1855,9 +1857,9 @@ sub quote {
   my ($path,$opt,$url) = @_;
 
   if ($url) {
-    # Handle ['"#?*!:%] always, regardless of -fix_urls - see RFC 1630
+    # Handle \'"#?*!:% always, regardless of -fix_urls - see RFC 1630
     # or - RFC1630 legally allows:  [\?\/\+a-zA-Z0-9\$\-_\@\.&!\*"'\(\),]
-    $path =~ s/(['"#?*!:%])/"%".sprintf("%2.2x",ord($1))/eg;
+    $path =~ s/([\\'"#?*!:%])/"%".sprintf("%2.2x",ord($1))/eg;
   } else {
     $path =~ s/\'/%27/g;	# Just quotes
   }
@@ -2005,7 +2007,7 @@ sub get_captions {
   # First read the captions file
   my $caps = read_captions($opt,$data);
 
-  # Commented out lines in captions is same as .no_album
+  # Commented out lines in captions is same as .hide_album
   @{$data->{pics}} = grep(!$caps->{"#".$_} || $caps->{$_}, @{$data->{pics}});
   @{$data->{dirs}} = grep(!$caps->{"#".$_} || $caps->{$_}, @{$data->{dirs}});
 
@@ -2629,7 +2631,8 @@ return \$obj->{URL}{Page_Type()}{\$subfield};
 sub Name {
   my \$obj = get_obj(\@_);
   my \$n = \$obj->{name};
-  return "Back" unless \$n;
+  ##I don't have a clue why this next line was here:
+  #return "Back" unless \$n;
   return \$n if Image_Page() && !\$MAIN::FIRST_NAME_CLEAN++;	#Kludge!
   my \$shorten = !Image_Page() && $opt->{name_length} && length(\$n)>($opt->{name_length}+3);
   # Don't shorten if name has HTML (kludge..)
@@ -2641,6 +2644,18 @@ sub Name {
   my \$name = quote("NAME\$obj->{num}:".\$obj->{full}{file});
   \$s =~ s/\\n//mg;
   "<!--IMAGE_NAME name=\$name value=\$n-->\$s<!--END_IMAGE_NAME-->";
+}
+sub Pretty {
+  my (\$str,\$html,\$lines) = \@_;
+
+  # I sort my albums by date:   2001-10-03.some_directory
+  if (\$str =~ /^(\\d{4}-\\d{1,2}(-\\d{1,2})?)( .+)/) {
+    my (\$date,\$rest) = (\$1,\$3);
+    \$date = "<font size='-1'>\$date</font>" if \$html;
+    \$date .= "<br />" if \$lines;
+    \$str = \$date.\$rest;
+  }
+  \$str;
 }
 sub Caption {
   my \$obj = get_obj(\@_);
@@ -2801,6 +2816,7 @@ sub Border {
   # Either call with:
   #   (img_object, type, href, border_image_arrays)
   #   (img_string, x,y, border_image_arrays)
+  #   border_image_arrays can also just be (color, spacing)
 
   my \$img = shift \@_;
   my (\$x,\$y);
@@ -2831,7 +2847,15 @@ sub Border {
 
   my \$width=1; my \$height=2;
 
-  if (scalar \@_ == 0) {
+  if (ref \$_[0] ne 'ARRAY') {
+    print <<COLOR_BORDER;
+					<table bgcolor='\$_[0]' cellspacing=0 cellpadding='\$_[1]'>
+						<tr>
+							<td>\$img</td>
+						</tr>
+					</table>
+COLOR_BORDER
+  } elsif (scalar \@_ == 0) {
     # No corners
     print "\$img<br />\n";
   } elsif (scalar \@_ == 4) {
@@ -3507,7 +3531,7 @@ sub gather_contents {
     # Ignore the .no_album/.hide_album/.not_img/.txt.. directive files
     next unless -s $path || -d $path;		# Ignore zero byte files
       # (windows can have zero byte directories)
-    next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
+    #next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
     next if $bob =~ /\Q$opt->{not_img}\E$/;
     next if $bob =~ /\Q$opt->{no_album}\E$/;
     next if $bob =~ /\Q$opt->{hide_album}\E$/;
@@ -3877,6 +3901,7 @@ sub do_album {
   #my $first = "$opt->{topdir}/$data->{dir_pieces}[0]";
   my @add = $opt->{_album}{$dir}{add} ?  @{$opt->{_album}{$dir}{add}} : ();
   foreach my $child ( @{$data->{dirs}} ) {
+    next if -f "$dir/$child/$opt->{no_album}" || -f "$dir/$child$opt->{no_album}";
     do_album($opt,"$dir/$child",@{$data->{dir_pieces}},$child)
       unless $data->{start} && @add && !grep($child eq $_, @add);
   }
@@ -4207,6 +4232,8 @@ sub thumbnail {
 sub main {
   my $opt = get_defaults();
   $opt->{d} = 1 if grep($_ eq '-d', @ARGV);	# Hack to see read_confs debugs
+  $opt->{q} = 1 if grep($_ eq '-q', @ARGV); # Hack for read_conf quiet
+
   read_confs($opt);
   parse_args($opt);
   scrub_opts($opt,1);

@@ -32,6 +32,14 @@ To test your install, run the script on a directory with images:
 
 % album /path/to/my/photos/
 
+ITEM: Debian UNIX
+
+album is in debian stable, though right now it's a bit stale.
+I recommend getting the latest version from MarginalHacks.
+You can save the .deb package, and then, as root, run:
+
+% dpkg -i album.deb
+
 ITEM: Macintosh OSX
 
 It works fine on OSX, but you have to run it from a terminal window.  Just
@@ -59,6 +67,7 @@ prompt.
    Do not use the normal ImageMagick install!  You must use the Cygwin ImageMagick packages!
 2) Install <a href='http://MarginalHacks.com/bin/album'>album</a> in bash path or call using absolute path:
    <tt>bash% album /some/path/to/photos</tt>
+3) If you want exif info in your captions, you need the Cygwin version of <a href='http://MarginalHacks.com/Hacks/album/tools/jhead.exe'>jhead</a>
 
 
 <b>ActivePerl method</b>

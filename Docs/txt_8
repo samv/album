@@ -12,3 +12,13 @@ ITEM: How do I use them?
 You don't yet.  Plugin support code is being finished up now and when
 it's done we'll have some info here.
 
+ITEM: Where do they go?
+
+The default locations for plugins are:
+
+  /etc/album/plugins
+  /usr/share/album/plugins
+  $HOME/.album/plugins
+
+You can specify additional paths to search for plugins with --plugin_path
+

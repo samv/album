@@ -191,20 +191,24 @@ on a JPG file and see the comments and information.
 
 EXIF captions are added after the normal captions and are specified with -exif:
 
-<code>% album -exif "File: %File name% taken with %Camera make%"</code>
+<code>% album -exif "&lt;br&gt;File: %File name% taken with %Camera make%"</code>
 
 Any %tags% found will be replaced with EXIF information.  If any %tags%
 aren't found in the EXIF information, then that EXIF caption string is
 thrown out.  Because of this you can specify multiple -exif strings:
 
-<code>% album -exif "File: %File name% " -exif "taken with %Camera make%"</code>
+<code>% album -exif "&lt;br&gt;File: %File name% " -exif "taken with %Camera make%"</code>
 
 This way if the 'Camera make' isn't found you can still get the 'File name'
 caption.
 
 Like any of the array style options you can use --exif as well:
 
-<code>% album --exif "File: %File name% " "taken with %Camera make%" --</code>
+<code>% album --exif "&lt;br&gt;File: %File name% " "taken with %Camera make%" --</code>
+
+Note that, as above, you can include HTML in your EXIF tags:
+
+<code>% album -exif "&lt;br&gt;<font size='-1'>Aperture: %Aperture%</font>"</code>
 
 To see the possible EXIF tags (Resolution, Date/Time, Aperture, etc..)
 run a program like 'jhead' on an digital camera image.
@@ -273,7 +277,7 @@ ITEM: Video
 album can generate snapshot thumbnails of many video formats if you
 install <a href='http://MarginalHacks.com/redir.cgi?http://ffmpeg.org/'>ffmpeg</a>
 
-If you are running linux on an x86, then you can just grab the <a href='../../bin/ffmpeg'>binary</a>,
+If you are running linux on an x86, then you can just grab the <a href='/bin/ffmpeg'>binary</a>,
 otherwise get the whole package from <a href='http://MarginalHacks.com/redir.cgi?http://ffmpeg.org/'>ffmpeg.org</a> (it's an easy install).
 
 ITEM: Burning CDs (using file://)
@@ -284,11 +288,11 @@ index page since the browser probably won't.  Simple add the option:
 
   % album -index index.html ...
 
-You can also look at <a href='http://MarginalHacks.com/redir.cgi?http://duckware.com/winopen/'>winopen</a> for windows users, you can have it
-automatically launch the album in a browser.
+You can also look at <a href='http://MarginalHacks.com/redir.cgi?http://www.squirrel.nl/people/jvromans/software/sw_shellrun.html'>shellrun</a> for windows users, you can have it
+automatically launch the album in a browser.  (Or see <a href='http://MarginalHacks.com/redir.cgi?http://duckware.com/winopen/'>winopen</a>)
 
 ITEM: Indexing your entire album
-To navigate an entire album on one page use the <a href='tools/caption_index'>caption_index</a> tool.
+To navigate an entire album on one page use the <a href='http://MarginalHacks.com/Hacks/album/tools/caption_index'>caption_index</a> tool.
 It uses the same options as album (though it ignores many
 of them) so you can just replace your call to "album" with "caption_index"
 
@@ -311,14 +315,14 @@ file every few minutes, and if it finds it it removes it and runs album.
 in the script for convert)
 
 If you want immediate gratification, you can run album from a CGI script
-such as this <a href='tools/cgi/run_album'>one.</a>
+such as this <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/run_album'>one.</a>
 
 If your photos are not owned by the webserver user, then you
 need to run through a setud script which you run from a CGI [unix only].
 Put the setuid script in a secure place, change it's ownership to be the
 same as the photos, and then run "chmod ug+s" on it.  Here are example
-<a href='tools/cgi/run_setuid_album'>setuid</a> and <a href='tools/cgi/setuid_album'>CGI</a> scripts.  Be sure to edit them.
+<a href='http://MarginalHacks.com/Hacks/album/tools/cgi/run_setuid_album'>setuid</a> and <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/setuid_album'>CGI</a> scripts.  Be sure to edit them.
 
-Also look at <a href='tools/cgi/caption_edit'>caption_edit.cgi</a> which allows you (or others) to edit
+Also look at <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/caption_edit'>caption_edit.cgi</a> which allows you (or others) to edit
 captions/names/headers/footers through the web.
 
