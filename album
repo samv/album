@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.41;
+  my $VERSION=  2.42;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -31,6 +31,7 @@ $PROGNAME =~ s|.*/||;
 
 my $CONVERT	= "convert";
 my $IDENTIFY	= "identify";	# Undef if you don't have identify
+my $JHEAD	= "jhead";	# Extract EXIF info from jpgs
 
 # Default directory page
 my $HTML	= ".html";
@@ -754,9 +755,9 @@ sub read_captions {
 # to add that confusion)
 sub get_dir_caption {
   my ($opt,$caps,$path,$dir) = @_;
-  return $caps->{$dir}{name} if $caps->{$dir}{name};
+  return $caps->{$dir}{name} if $caps->{$dir} && $caps->{$dir}{name};
   my $cap = read_captions($opt,"$path/$dir");
-  return $cap->{$dir}{name} || $dir;
+  return ($cap->{$dir} && $cap->{$dir}{name}) || $dir;
 }
 
 # Sort according to order found in optional captions file
@@ -1078,12 +1079,10 @@ sub Next_Child_Album { \$CHILD_ALBUM_CNT++; }
 # Images
 my \$IMAGE_CNT = 0;
 my \$THIS_IMAGE = 0;
-sub is_movie { return \$_[0] =~ /\.(mpeg|mpg|mov|avi)["']?\$/i ? 1 : 0; }
 sub Images { (\$IMAGE_CNT <= \$#IMAGE_NAMES) ? 1 : 0; }
 sub Image_Src { \$IMAGE_MEDIUMS[\$IMAGE_CNT] || Image_URL(); }
 sub pImage_Src {
-  my \$type = is_movie(Image_Src) ? "embed" : "img";
-  print "<\$type src=",Image_Src()," border='0' alt=",Image_Alt();
+  print "<",Image_Tag(Image_Filename())," src=",Image_Src()," border='0' alt=",Image_Alt();
   print " width='",Image_Width(),"'" if Image_Width();
   print " height='",Image_Height(),"'" if Image_Height();
   print ">";
@@ -1103,6 +1102,9 @@ sub pImage {
   }
   print "</a>";
 }
+sub Image_Filename { \$PICS[\$IMAGE_CNT]; }
+sub Image_Tag { return (\$_[0] =~ /\.(mpe?g|mov|avi|pdf|ps)\$/i ? "embed" : "img"); }
+
 # In the image page we use the real URL (back one dir)
 # Otherwise we use the url to the image page (or just the image)
 sub Image_URL { Image_Page() ? \$IMAGE_IMAGE_URLS[\$IMAGE_CNT] : \$IMAGE_URLS[\$IMAGE_CNT]; }
@@ -1353,8 +1355,7 @@ PREV_NEXT
 
     print ALBUM "<center><i><font size='+1'>\n";
     print ALBUM "<a href=$img>\n";
-    my $type = is_movie($pic) ? "embed" : "img";
-    print ALBUM "<$type border='0' src=$medium alt=$d_H->{'image_alts'}[$i]></a><br />\n";
+    print ALBUM "<", Image_Tag($pic)," border='0' src=$medium alt=$d_H->{'image_alts'}[$i]></a><br />\n";
     caption($d_H->{'image_captions'}[$i],$d_H->{'image_caption_files'}[$i]);
     print ALBUM "</font></i></center>\n";
 
@@ -1600,6 +1601,9 @@ sub do_album {
     }
   }
 
+  # Kludge.  Clear the date sorting cache.
+  undef $opt->{DATE_SORT_CACHE};
+
   # Image page URLs are <img.html> or <img.indexname.html>
   my $page_post_url = ($opt->{'index'} eq $DEFAULT_INDEX) ?
                        $HTML : ".$opt->{'index'}$HTML";
@@ -1774,11 +1778,18 @@ sub get_size {
 
   return (0,0) unless (-f $img);
 
+  my $qimg = file_quote($img);
+
+  # if image is a jpeg, try "jhead" first (faster)
+  if ($JHEAD && $img=~/.jpe?g$/) {
+    return ($1,$2) if (qx/$JHEAD -c $qimg 2>\/dev\/null/=~/\s(\d+)x(\d+)(\s)/);
+    undef $JHEAD;	# jhead didn't work, don't keep trying...
+  }
+
   my $try_noidentify = 0;	# Did identify fail?
 
   # Try to use identify if we have it
   if ($IDENTIFY && $opt->{'identify'}) {
-    my $qimg = file_quote($img);
     my $size = open_pipe("$IDENTIFY -ping $qimg");
     if ($size) {
       while(<$size>) {
@@ -1800,7 +1811,6 @@ sub get_size {
   }
 
   # Kludgy way to get size, but works with all images that convert reads
-  my $qimg = file_quote($img);
   my $size=open_pipe("$CONVERT -verbose $qimg /dev/null");
   $size || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<$size>) {
@@ -1885,6 +1895,7 @@ sub medium {
 # Handle movie clips/thumbnails
 # This routine is also copied in the eperl source
 sub is_movie { return $_[0] =~ /\.(mpeg|mpg|mov|avi)$/i ? 1 : 0; }
+sub Image_Tag { return ($_[0] =~ /\.(mpe?g|mov|avi|pdf|ps)$/i ? "embed" : "img"); }
 
 sub movie_frame {
   my ($opt,$movie,$img) = @_;
