@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-  my $VERSION=  2.39;
+  my $VERSION=  2.40;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -41,6 +41,9 @@ my $NO_ALBUM	= ".no_album";		# Don't run album on these dirs/files
 my $HIDE_ALBUM	= ".hide_album";	# Don't even show these directories
 my $NOT_IMG	= ".not_img";		# Postfix for files that aren't images
 
+
+# Avoid "Broken pipe" messages
+$SIG{PIPE} = 'IGNORE';
 
 #########################
 # abs_path
@@ -97,6 +100,7 @@ my %DEFAULTS	= (
 	# deprecated, it's automated now
 	'identify'	=> 1,		# Use identify or convert for get_size?
 
+	'theme_url'	=> "",		# In case we need to specify theme URL
 	'theme'		=> "",		# So that -no_theme works, ignored.
 	);
 
@@ -247,6 +251,7 @@ sub usage {
   print "\n";
   print "Theme Options:\n";
   print "\t-theme <dir>      Specify a theme directory\n";
+  print "\t-theme_url <url>  In case you want to refer to the theme by absolute URL\n";
   print "\t-no_theme         Ignore album's previous theme settings\n";
   print "\n";
   print "\t-version          Display program version info\n";
@@ -278,10 +283,10 @@ sub set_size {
 sub get_themes {
   my ($opt,$dir_arg) = @_;
 
-  $opt->{'theme'} = abs_path($dir_arg);
+  $opt->{theme} = abs_path($dir_arg);
   $ARG_THEME = $dir_arg;
 
-  my $dir = $opt->{'theme'};
+  my $dir = $opt->{theme};
 
   my @new_opts;	# Options specified by themes
 
@@ -392,7 +397,7 @@ sub parse_args {
       my ($no,$option) = ($1,$2);
       usage("Unknown option: $option") unless (defined $DEFAULTS{$option});
       # Options that take arguments
-      if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|name_length)$/) {
+      if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|name_length|theme_url)$/) {
         usage("Option [$option] can't be -no, it needs an argument") if ($no);
         my $val = shift(@theme_args);
         $val = shift(@ARGV) unless defined $val;
@@ -415,7 +420,7 @@ sub parse_args {
     $dir=$arg;
 
     # Did we specify a theme last time?
-    unless ($opt{'notheme'} || $opt{'theme'}) {
+    unless ($opt{'notheme'} || $opt{theme}) {
       my $theme = previous_build_theme(\%opt,$dir);
       @theme_args = get_themes(\%opt,$theme) if ($theme);
     }
@@ -990,6 +995,7 @@ my \$IMAGE_PAGE = 0;
 sub Image_Page { \$IMAGE_PAGE; }
 sub Album_Filename { \$ALBUM_FILENAME; }
 sub Theme_Path { Image_Page() ? \$IMG_THEME_PATH : \$THEME_PATH; }
+sub Theme_URL { \$OPTIONS{theme_url} || Theme_Path(); }
 
 # Header/footer
 sub pFile {
@@ -1418,7 +1424,7 @@ sub write_img_themes {
       $data_H->{'image_caption_files'}[$i],	# The image.txt file
       "$dir/$opt->{'captions'}",		# The captions file
       $0,					# Heck, even this program
-      "$opt->{'theme'}/image.th",		#   or the theme itself
+      "$opt->{theme}/image.th",			#   or the theme itself
     );
   }
 
@@ -1436,7 +1442,7 @@ sub write_img_themes {
     my $prev = $i ? $i-1 : $#{$data_H->{'pics'}};
     my $next = $i==$#{$data_H->{'pics'}} ? 0 : $i+1;
     my $pntp_changed = prev_next_theme_path_changed("$dir/$file",
-      $data_H->{'pics'}[$prev],$data_H->{'pics'}[$next],$opt->{'theme'},$data_H->{'album_path'});
+      $data_H->{'pics'}[$prev],$data_H->{'pics'}[$next],$opt->{theme},$data_H->{'album_path'});
 
     next unless ($changed[$i] || $pntp_changed || $changed[$prev] || $changed[$next]);
 
@@ -1554,9 +1560,9 @@ sub do_album {
   @{$d{'parent_albums'}} = map(clean_name($_,undef,1), @dir_names);
   $d{'dir'} = $dir;
   if ($opt->{theme}) {
-    $d{'theme_path'} = diff_path(abs_path($dir),$opt->{theme});
+    $d{theme_path} = diff_path(abs_path($dir),$opt->{theme});
     # assume $opt{'dir'} is one level (we make that assumption in many other places)
-    $d{'img_theme_path'} = "../".$d{'theme_path'};
+    $d{img_theme_path} = "../".$d{theme_path};
   }
 
   #########################
