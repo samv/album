@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.07
+# Version:	2.08
 # Description:	Makes a photo album
 use strict;
 
@@ -38,6 +38,7 @@ my %DEFAULTS	= (
 	'dir'		=> "tn",	# Thumbnail directory
 	'known_images'	=> 0,		# I'd rather keep my album clean
 	'sample'	=> 0,		# -sample:-convert :: fast:better
+
 	# Album stuff
 	'image_pages'	=> 1,		# Page per image
 	'index'		=> "index",	# Default index
@@ -49,10 +50,12 @@ my %DEFAULTS	= (
 	'clean'		=> 0,		# Clean garbage out of thumbnail dir?
 	'captions'	=> "",		# Captions filename?
 	'fix_urls'	=> 1,		# Convert spaces to %20 in URLs?
+	'all'		=> 0,		# Do not hide .directories
+
 	# deprecated, it's automated now
 	'identify'	=> 1,		# Use identify or convert for get_size?
-	# So that -no_theme works:
-	'theme'		=> "",		# Use identify or convert for get_size?
+
+	'theme'		=> "",		# So that -no_theme works, ignored.
 	);
 
 # As of "ImageMagick 4.2.9 99/09/01"
@@ -101,7 +104,7 @@ sub usage {
   foreach $msg (@_) { print "ERROR:  $msg\n"; }
   print "\tOption from theme: [$ARG_THEME]\n" if $ARG_THEME;
   print "\n";
-  print "Usage:\t$PROGNAME [-d] [options] <dir>\n";
+  print "Usage:\t$PROGNAME [-d] [--scale_opts .. --] [options] <dir>\n";
   print "\tMakes a photo album\n";
   print "\n";
   print "\tAll boolean options can be turned off with '-no_option'\n";
@@ -118,6 +121,7 @@ sub usage {
   print "\t-fix_urls         Convert spaces to %20 in URLs"; default("fix_urls");
   print "\t-known_images     Only include known image types"; default("known_images");
   print "\t-body             Specify <body> tags for default output\n";
+  print "\t-all              Do not hide directories starting with '.'\n";
   print "\n";
   print "Thumbnail Options:\n";
   print "\t-geometry=geom    Size of thumbnail  [${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
@@ -128,6 +132,7 @@ sub usage {
   print "\t-force            Force overwrite of existing thumbnails\n";
   print "\t                   else they are only written when changed"; default("force");
   print "\t-sample           convert -sample for thumbnails (faster, low quality)"; default("sample");
+  print "\t--scale_opts      List of convert options, end with '--'\n";
   print "\n";
   print "Theme Options:\n";
   print "\t-theme <dir>      Specify a theme directory\n";
@@ -232,6 +237,26 @@ sub parse_args {
     if ($arg =~ /^-g(eom(etry)?)?(=(.+))?$/) { set_size(\%opt,$4 ? $4 : (shift(@theme_args) || shift(@ARGV))); next; }
     if ($arg =~ /^-theme(=(.+))?$/) {
       @theme_args = get_themes(\%opt, ($2?$2:(shift(@theme_args) || shift(@ARGV))));
+      next;
+    }
+    if ($arg =~ /^--scale_opts(=(.+))?$/) {
+      # --scale_opts=<opt>
+      if ($2) {
+        $opt{'scale_opts'} .= "$2 ";
+
+      # Theme:  --scale_opts <opt> <opt> --
+      } elsif (@theme_args) {
+        $opt{'scale_opts'} .= shift(@theme_args)." "
+          while (@theme_args && $theme_args[0] ne "--");
+        usage("Missing -- at end of --scale_opts") unless shift(@theme_args);
+
+      # ARGV:  --scale_opts <opt> <opt> --
+      } else {
+        $opt{'scale_opts'} .= shift(@ARGV)." "
+          while (@ARGV && $ARGV[0] ne "--");
+        usage("Missing -- at end of --scale_opts") unless shift(@ARGV);
+      }
+
       next;
     }
     if ($arg =~ /^-(no_?)?(.+)$/) {
@@ -949,7 +974,8 @@ sub do_album {
 
   my @new_dirs = grep(-d "$dir/$_" &&
                       !-f "$dir/$_/$HIDE_ALBUM" &&
-                      $_ ne $opt_H->{'dir'},
+                      $_ ne $opt_H->{'dir'} &&
+                      ($opt_H->{'all'} || !/^\./),
                       @dir);
 
   # Ignore:
@@ -1187,10 +1213,10 @@ sub scale {
   my ($opt_H,$img,$x,$y,$new) = @_;
 
   my $scale = $opt_H->{'sample'} ? "-sample" : "-geometry";
-  print STDERR "scale() run: $CONVERT -verbose $img $scale ${x}x${y} $new\n"
-    if ($MAIN::DEBUG);
-  open(SIZE,"$CONVERT -verbose \Q$img\E $scale ${x}x${y} \Q$new\E 2>&1 |") ||
-    die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
+
+  my $cmd = "$CONVERT $opt_H->{'scale_opts'} -verbose \Q$img\E $scale ${x}x${y} \Q$new\E";
+  print STDERR "scale() run: $cmd\n" if ($MAIN::DEBUG);
+  open(SIZE,"$cmd 2>&1 |") || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
     print STDERR "scale(): $_" if ($MAIN::DEBUG);
     if(/=>(\d+)x(\d+)\s/) {
@@ -1207,9 +1233,10 @@ sub scale {
 
 sub crop {
   my ($img,$x,$y,$off_x,$off_y,$new) = @_;
-  print STDERR "crop() run: $CONVERT $img -crop ${x}x${y}+${off_x}+${off_y} $new\n"
-    if ($MAIN::DEBUG);
-  system("$CONVERT \Q$img\E -crop ${x}x${y}+${off_x}+${off_y} \Q$new\E");
+
+  my $cmd = "$CONVERT \Q$img\E -crop ${x}x${y}+${off_x}+${off_y} \Q$new\E";
+  print STDERR "crop() run: $cmd\n" if ($MAIN::DEBUG);
+  system($cmd);
   return unless ($?);
   print STDERR "[$PROGNAME] Error cropping $img\n";
 }
