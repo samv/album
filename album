@@ -2,9 +2,8 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.03
+# Version:	2.04
 # Description:	Makes a photo album
-# Assumes:	'Back' for the top of the album is '..'
 use strict;
 
 umask 022;	# 0755
@@ -40,6 +39,7 @@ my %DEFAULTS	= (
 	# Album stuff
 	'image_pages'	=> 1,		# Page per image
 	'index'		=> "index",	# Default index
+	'top'		=> "..",	# The "Back" for the top album
 	'columns'	=> 4,		# Number of images per row
 	'file_sizes'	=> 0,		# Show image file sizes
 	'image_sizes'	=> 0,		# Get image sizes (width*height)
@@ -212,7 +212,7 @@ sub parse_args {
       my ($no,$opt) = ($1,$2);
       usage("Unknown option: $opt") unless (defined $DEFAULTS{$opt});
       # Options that take arguments
-      if ($opt =~ /^(dir|type|columns|captions|index)$/) {
+      if ($opt =~ /^(dir|type|columns|captions|index|top)$/) {
         usage("Option [$opt] can't be -no, it needs an argument") if ($no);
         $opt{$opt} = (shift(@theme_args) || shift(@ARGV));
       } else {
@@ -246,7 +246,9 @@ sub parse_args {
 # HTML
 ##################################################
 sub header {
-  my ($opt_H,$image_page,$dir,@names) = @_;
+  my ($opt_H,$image_page,$dir,@parents) = @_;
+
+  my @names = @parents;
 
   my $path = join("/",@names);
   my $this = clean_name(pop(@names),undef);
@@ -261,6 +263,8 @@ sub header {
   $header.=$this;
 
   my $Up = $image_page ? "Back" : "Up";
+  my $UpUrl = "../" . ($opt_H->{'index'} eq $DEFAULT_INDEX ? "" : "$opt_H->{'index'}$HTML");
+  $UpUrl = $opt_H->{'top'} unless ($#parents || $image_page);
 
   print ALBUM <<END_OF_HEADER;
 <!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN'
@@ -280,7 +284,7 @@ sub header {
         <h2>$header</h2>
       </td>
       <td align='right'>
-        <h1><a href='..'>$Up</a></h1>
+        <h1><a href='$UpUrl'>$Up</a></h1>
       </td>
     </tr>
   </table>
@@ -597,6 +601,11 @@ sub Album_Filename { \$ALBUM_FILENAME; }
 # Get any of the command line options
 sub Get_Opt { return \$OPTIONS{\$_[0]}; }
 
+# Main index page (probably just default of "")
+sub Index { ("$opt_H->{'index'}" eq "$DEFAULT_INDEX") ? "" : "$opt_H->{'index'}$HTML"; }
+# Go back to a previous index, or just ".." for the top page of the album
+sub Back { (\$#PARENT_ALBUMS || Image_Page()) ? "../".Index() : "$opt_H->{'top'}"; }
+
 # Parent albums
 my \$PARENT_ALBUM_CNT = 0;
 sub Parent_Albums { (\$PARENT_ALBUM_CNT <= \$#PARENT_ALBUMS) ? 1 : 0; }
@@ -604,11 +613,11 @@ sub Parent_Album {
   return "" unless Parent_Albums();
   if (\$PARENT_ALBUM_CNT == \$#PARENT_ALBUMS) {
     return \$PARENT_ALBUMS[\$PARENT_ALBUM_CNT] unless Image_Page();
-    return "<a href='../'>\$PARENT_ALBUMS[\$PARENT_ALBUM_CNT]</a>";
+    return "<a href='../".Index()."'>\$PARENT_ALBUMS[\$PARENT_ALBUM_CNT]</a>";
   }
   my \$str = "<a href='";
   \$str .=   "../"x(Parent_Albums_Left() - (Image_Page()?0:1));
-  \$str .=   "$opt_H->{'index'}$HTML" unless ("$opt_H->{'index'}" eq "$DEFAULT_INDEX");
+  \$str .=   Index();
   \$str .=   "'>\$PARENT_ALBUMS[\$PARENT_ALBUM_CNT]</a>";
   \$str;
 }
