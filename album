@@ -2,12 +2,14 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.04';
+  my $VERSION=  '3.05';
 # Rewrite branched off from: 2.53
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
 umask 022;	# 0755
+
+package album;	# For plugins
 
 ##################################################
 ##################################################
@@ -133,7 +135,13 @@ add_option(2,'sharpen', $OPTION_STR, args=>'<radius>x<sigma>', usage=>"Sharpen a
 add_option(1,'animated_gifs',$OPTION_BOOL, usage=>"Take first frame of animated gifs (only some systems)");
 add_option(2,'scale_opts',$OPTION_ARR, usage=>"Options for convert (use '--' for mult)");
 add_option(3,'medium_scale_opts',$OPTION_ARR, usage=>"List of medium convert options");
-add_option(3,'full_scale_opts',$OPTION_ARR, usage=>"List of full convert options");
+add_option(3,'thumb_scale_opts',$OPTION_ARR, usage=>"List of thumbnail convert options");
+
+# Plugin Options:
+add_option(9001,'Plugin Options:',$OPTION_SEP);
+add_option(9001,'plugin', $OPTION_ARR, usage=>"Activate a plugin.");
+add_option(9002,'plugin_path', $OPTION_ARR, one_time=>1, default=>["/etc/$PROGNAME/plugins"], usage=>"Add a path to search for plugins.");
+add_option(9003,'plugin_post', $OPTION_STR, default=>'.alb', usage=>"Default postfix for plugins.");
 
 # Theme Options:
 add_option(1,'Theme Options:',$OPTION_SEP);
@@ -231,6 +239,7 @@ my $IMAGE_TYPES	=
 #
 # $obj->{type}		Which list?  pics or dirs
 # $obj->{is_movie}	Boolean: is this a movie?
+# $obj->{has_thumb}	Boolean: does it have a thumbnail?
 # $obj->{name}		Name (cleaned and optionally from captions)
 # $obj->{cap}		Image caption
 # $obj->{capfile}	Optional caption file
@@ -740,7 +749,6 @@ sub read_conf {
   my ($opt,$option,$conf,$check_argv) = @_;
 
   return if $opt->{_read_conf}{$conf};
-  $opt->{_read_conf}{$conf} = 1;	# We read a conf file
 
   my $fh = new IO::File;
   unless (open($fh,"<$conf")) {
@@ -751,6 +759,7 @@ sub read_conf {
   my $conf_str = $conf;
   $conf_str =~ s|^\Q$opt->{topdir}\E/?||;
   print STDERR "Read conf: $conf_str\n" unless $opt->{q};
+  $opt->{_read_conf}{$conf} = 1;	# We read a conf file
 
   while (<$fh>) {
     s/#.*//;	# Ignore comments
@@ -989,7 +998,11 @@ sub scrub_opts {
 
   # If the medium scaling is <width>x<height>, add ">" on the end so
   # convert will only shrink the images, never grow them
-  $opt->{medium}.='\>' if ($opt->{medium} =~ /^\d+x\d+$/);
+# Hack!  This doesn't work on Windows - at least on ActivePerl!  :(
+# I think it's because ActivePerl uses DOS for system calls and DOS doesn't
+# let you quote '>' to avoid redirection?  It complains that we need an
+# argument for -geometry option otherwise.
+  $opt->{medium}.='\>' if $opt->{medium} =~ /^\d+x\d+$/ && !$opt->{windows};
 
   # -clean and hashes is ugly
   $opt->{hashes}=0 if $opt->{clean} || $opt->{d} || $opt->{q};
@@ -1483,7 +1496,7 @@ sub get_path {
 
 # Returns path and result.
 #   result=2 if found in @dir
-#   result=1 if found elsewhere
+#   result=1 if found elsewhere (absolute path)
 #   result=0 if not found
 sub search_path_test {
   my ($opt,$test,$slash,$path,@dir) = @_;
@@ -1499,6 +1512,7 @@ sub search_path_test {
   # Check @dir
   foreach my $dir ( @dir ) {
     $dir =~ s/$slash$//;
+    $dir =~ s|^~/|$ENV{HOME}/|;
     return ("$dir$slash$path",2) if &$test("$dir$slash$path");
   }
 
@@ -1507,7 +1521,7 @@ sub search_path_test {
 
 sub search_path {
   my ($opt,$path,@dir) = @_;
-  my ($p,$r) = search_path_test($opt, sub {-e $_[0]}, '/', $path, @dir);
+  my ($p,$r) = search_path_test($opt, sub {-r $_[0]}, '/', $path, @dir);
   wantarray ? ($p,$r) : $p;
 }
 
@@ -1587,6 +1601,126 @@ sub hash_warn {
   print STDERR "X"x$_hashes_done;
   undef;
 }
+
+##################################################
+##################################################
+# PLUGIN CODE
+##################################################
+##################################################
+sub collect_plugins {
+  my ($opt) = @_;
+  my @path = @{$opt->{plugin_path}};
+  my @use;
+  foreach my $plugin ( @{$opt->{plugin}} ) {
+    my ($path,$r) = search_path($opt,$plugin,@path);
+    ($path,$r) = search_path($opt,"$plugin$opt->{plugin_post}",@path) unless $r;
+    unless ($r) {
+      print STDERR "[$PROGNAME] WARNING: Couldn't find 'plugin' [$plugin]\n";
+      next;
+    }
+    push(@use,$plugin) if use_plugin($opt,$path);
+  }
+  $opt->{plugin} = \@use;
+}
+
+sub all_plugins {
+  my ($opt) = @_;
+  my @p;
+  foreach my $path ( @{$opt->{plugin_path}} ) {
+    opendir(DIR,$path) || next;
+    my @p = grep(/\Q$opt->{plugin_post}\E$/, readdir(DIR));
+    map( use_plugin($opt,"$path/$_"), @p);
+    closedir(DIR);
+  }
+  @p;
+}
+
+sub use_plugin {
+  my ($opt,$plugin) = @_;
+
+  # Add '.' to @INC if it doesn't have it and plugin path is relative
+  push(@INC,'.') unless $plugin =~ m|^/| || grep($_ eq '.', @INC);
+
+  print STDERR "[$PROGNAME] Using plugin: $plugin\n" unless $opt->{q};
+  # Args to the require (this isn't kludgy, is it??  :)
+  @_ = ($opt);		# Actually this is what @_ already was...
+
+## I hate eval.  Here's a non-eval version, but it can't
+## properly namespace the plugin or catch errors.  :(
+#  {
+#    package Album_Plugin;
+#    my $req = require "$plugin";
+#  }
+
+  # So here's the eval version.
+  my (undef,$package) = split_path($opt,$plugin);
+  my $package = ($package =~ /^([a-z_]+)/i) ? $1 : "Album_Plugin";
+  eval <<END_EVAL;
+    package $package;
+    require "$plugin";
+    \$opt->{_plugin}{\$plugin} = start_plugin(\$opt);
+    #\$sym = \\\%${package}::;
+END_EVAL
+
+  if ($@) {
+    print STDERR "[$PROGNAME] Warning: Problem with plugin [$plugin] - not using:\n$@\n";
+    delete $opt->{_plugin}{$plugin}; return 0;
+  }
+
+  unless (ref $opt->{_plugin}{$plugin} eq 'HASH' && $opt->{_plugin}{$plugin}{category}) {
+    print STDERR "[$PROGNAME] Warning: Plugin did not return info hash.\n\tNot using: $plugin\n$@\n";
+    delete $opt->{_plugin}{$plugin}; return 0;
+  }
+
+  1;
+}
+
+sub plugin_info {
+  my ($opt) = @_;
+  foreach my $plugin ( keys %{$opt->{_plugin}} ) {
+    my $info = $opt->{_plugin}{$plugin};
+    print "$plugin:  [$info->{category}]\n";
+    print "<a href='$info->{href}'>" if $info->{href};
+    print "$info->{author}";
+    print "</a>" if $info->{href};
+    print "\n\n";
+    print "$opt->{_plugin}{$plugin}{description}\n";
+    print "\n";
+  }
+}
+
+# Register a hook for a given hook name
+sub hook {
+  my ($opt,$name,$sub) = @_;
+  push(@{$opt->{_plugin_hooks}{$name}}, $sub);
+}
+
+# Calls all hooks and returns either an array of return values or an 'or'
+sub do_hooks {
+  my ($opt,$data,$name,@args) = @_;
+  my $ret = 0;
+  my @ret;
+  foreach my $sub ( @{$opt->{_plugin_hooks}{$name}} ) {
+    my $val = &$sub($opt,$data,$name,@args);
+    $ret |= $val;
+    push(@ret,$val);
+  }
+  wantarray ? @ret : $ret;
+}
+
+# Calls hooks until one of them returns a defined value
+sub do_hook {
+  my ($opt,$data,$name,@args) = @_;
+  foreach my $sub ( @{$opt->{_plugin_hooks}{$name}} ) {
+    my $val = &$sub($opt,$data,$name,@args);
+    return $val if defined $val;
+  }
+  undef;
+}
+
+## How to print out the plugin info..
+#all_plugins($opt);
+#plugin_info($opt);
 
 ##################################################
 ##################################################
@@ -1784,8 +1918,11 @@ sub read_captions {
 }
 
 # EXIF information added to captions.
-sub get_exif {
+sub get_exif_info {
   my ($opt,$pic) = @_;
+
+  my $val = do_hook($opt,undef, 'get_exif_info', $pic);
+  return $val if defined $val;
 
   my %exif;
   my $qpic = file_quote($opt,$pic);
@@ -1793,7 +1930,7 @@ sub get_exif {
   undef $opt->{jhead} unless $jhead;
   return "" unless $jhead;
   while(<$jhead>) {
-    print STDERR "get_exif(): $_" if $opt->{d};
+    print STDERR "get_exif_info(): $_" if $opt->{d};
     if (/command not found/) {	# Kind of kludgy
       hash_warn($opt,"-exif specified but jhead not found [$opt->{jhead}]");
       undef $opt->{jhead};
@@ -1818,22 +1955,24 @@ sub exif_replace {
   $ret;
 }
 
-sub get_exif_captions {
+sub get_exif_caption {
   my ($opt,$data,$pic) = @_;
 
-  return "" unless $opt->{exif} || $opt->{exif_image} || $opt->{exif_album};
-  return "" if !$opt->{jhead};
-  return "" unless $pic =~ /\.jpe?g$/i;
+  do_hooks($opt,$data, 'get_exif_caption', $pic);
+
+  return unless $opt->{exif} || $opt->{exif_image} || $opt->{exif_album};
+  return if !$opt->{jhead};
+  return unless $pic =~ /\.jpe?g$/i;
 
   my $dir = $data->{paths}{dir};
 
-  my $exif = get_exif($opt,"$dir/$pic");
+  my $exif = get_exif_info($opt,"$dir/$pic");
 
-  $data->{obj}{$pic}{exif} = exif_replace($exif, @{$opt->{exif}})
+  $data->{obj}{$pic}{exif} .= exif_replace($exif, @{$opt->{exif}})
     if $opt->{exif};
-  $data->{obj}{$pic}{exif_image} = exif_replace($exif, @{$opt->{exif_image}})
+  $data->{obj}{$pic}{exif_image} .= exif_replace($exif, @{$opt->{exif_image}})
     if $opt->{exif_image};
-  $data->{obj}{$pic}{exif_album} = exif_replace($exif, @{$opt->{exif_album}})
+  $data->{obj}{$pic}{exif_album} .= exif_replace($exif, @{$opt->{exif_album}})
     if $opt->{exif_album};
 }
 
@@ -1873,7 +2012,7 @@ sub get_captions {
   # Put caption info into %data
   foreach my $pic ( @{$data->{pics}} ) {
     $data->{obj}{$pic} = $caps->{$pic};	# Put cap info into data
-    get_exif_captions($opt,$data,$pic);
+    get_exif_caption($opt,$data,$pic);
 
     $data->{obj}{$pic}{name} = clean_name($opt,$pic,$data->{obj}{$pic}{name});
   }
@@ -1950,7 +2089,7 @@ sub sort_order {
   }
 }
 
-sub sort_count {
+sub obj_count {
   my ($opt,$data,$what) = @_;
   my $i=0;
   foreach my $bob ( @{$data->{$what}} ) {
@@ -1964,8 +2103,8 @@ sub sort_info {
   my ($opt,$data) = @_;
   @{$data->{pics}} = sort { sort_order($opt,$data,$a,$b) } @{$data->{pics}};
   @{$data->{dirs}} = sort { sort_order($opt,$data,$a,$b) } @{$data->{dirs}};
-  sort_count($opt,$data,'pics');
-  sort_count($opt,$data,'dirs');
+  obj_count($opt,$data,'pics');
+  obj_count($opt,$data,'dirs');
 }
 
 #########################
@@ -2185,7 +2324,10 @@ sub eperl {
 sub dumper {
   my ($dmp,$name,$var) = @_;
 
-  return if $name =~ /$dmp->{ignore}/;
+  my $ignore = 0;
+  $ignore = 1 if $dmp->{ignore} && $name =~ /$dmp->{ignore}/;
+  $ignore = 0 if $dmp->{ignore_only_under} && $dmp->{lvl} >= $dmp->{ignore_only_under};
+  return if $ignore;
 
   my $ref = ref($var);
   return hash_warn($dmp->{opt},"Option or data [$name] was used multiple times?\n\t(Internal consistency problem - probably with a module?)")
@@ -2255,6 +2397,7 @@ sub data_to_eperl {
 
   # Ignore the eperl delimiters, 0 vars and '_internal' variables
   $dmp{ignore} = '^(_.*|enter_eperl|leave_eperl|0)$';
+  $dmp{ignore_only_under} = 4;	# Only ignore if below this level
   dumper(\%dmp,'data',$data);
   dumper(\%dmp,'opt',$opt);
 
@@ -2271,13 +2414,13 @@ sub data_to_eperl {
 ##################################################
 ##################################################
 
-  # Position of this line relative to start of SUPPORT is crucial
-  my $start_line = __LINE__ + 4;
   # Think you're clever, eh?  Okay, so you found it.
   # Please leave this requirement in, it's the only way I get paid..
   my $derc = pack('C*',qw(67 65 76 76 69 68 95 67 82 69 68 73 84));
   my $dercerr = pack('C*',qw(100 105 100 110 39 116 32 99 97 108 108 32 67 114 101 100 105 116 40 41 33));
 
+  # Position of this line relative to start of SUPPORT is crucial
+  my $start_line = __LINE__ + 4;
   push(@{$data->{eperl}},<<SUPPORT);
 <:
 # line $start_line "$0"
@@ -2385,6 +2528,15 @@ sub Prev {
   get_obj(\$obj->{num}-1, \$obj->{type}, \$loop);
 }
 
+sub New_Row {
+  my (\$obj,\$cols,\$offset) = \@_;
+  my \$num = \$obj->{num};
+  my \$new_row = !((\$num+1+\$offset) % \$cols) ? 1 : 0;
+  return 0 unless \$new_row;
+  return 0 unless Next(\$obj);
+  1;
+}
+
 #########################
 # Parent albums
 #########################
@@ -2406,7 +2558,8 @@ sub Parent_Album {
 # Return an array or join of all the calls to Parent_Album
 sub Parent_Albums {
   my (\$join) = \@_;
-  my \@pa = map Parent_Album(\$_), 0..(num('parent_albums')-1);
+  # Someday just replace 'CNT' with 0
+  my \@pa = map Parent_Album(\$_), \$PARENT_ALBUM_CNT..(num('parent_albums')-1);
   \$join ? join(\$join, \@pa) : \@pa;
 }
 
@@ -2503,9 +2656,9 @@ sub Caption {
   \$cap;
 }
 
-##################################################
+#########################
 # OBSOLETE/DEPRECATED SUPPORT ROUTINES!
-##################################################
+#########################
 # I've reduced the number of functions that
 # need to be called (and remembered).
 # These old routines may be removed soon.
@@ -2535,9 +2688,9 @@ sub pImage {
   }
   print "</a>";
 }
-sub pImage_Src { print Image(\@_,'full'); }
-sub Image_Src { Image(\@_,'full'); }
-sub pImage_Thumb_Src { print Image(\@_,'thumb'); }
+sub pImage_Src { print Image(\$_[0],'full'); }
+sub Image_Src { Image(\$_[0],'full'); }
+sub pImage_Thumb_Src { print Image(\$_[0],'thumb'); }
 sub Image_Name { Name(\@_); }
 sub Image_Caption { Caption(\@_); }
 sub Image_Thumb { Get(\$_[0],'URL','thumb'); }
@@ -2582,13 +2735,13 @@ sub Child_Album_Name { Name(get_obj(\$_[0],'dirs')); }
 # Use:  \@PARENT_ALBUMS = \@{Path('parent_albums')};
 # \@CHILD_ALBUMS, \@CHILD_ALBUM_NAMES, \@CHILD_ALBUM_URLS, ...
 
-##################################################
+#########################
 # END OF OBSOLETE/DEPRECATED SUPPORT ROUTINES!
-##################################################
+#########################
 
-##################################################
+#########################
 # DEPRECATED GLOBAL VARIABLE METHODS
-##################################################
+#########################
 # These are less likely to be removed anytime soon,
 # I haven't decided if these are a good way to access the info.
 my \$picdata;
@@ -2616,13 +2769,13 @@ sub Child_Album_Cnt { \$CHILD_ALBUM_CNT+1; }
 sub Child_Albums_Left { num('dirs') - \$CHILD_ALBUM_CNT; }
 sub Next_Child_Album { \$CHILD_ALBUM_CNT++; }
 
-##################################################
+#########################
 # END OF DEPRECATED GLOBAL VARIABLE METHODS
-##################################################
+#########################
 
-##################################################
+#########################
 # BORDERS (handle corners)
-##################################################
+#########################
 # Show an image given an 'image array'
 sub Image_Array {
   my (\$src,\$x,\$y,\$and,\$alt) = \@_;
@@ -2774,9 +2927,9 @@ BORDER12
   }
 }
 
-##################################################
+#########################
 # END CODE
-##################################################
+#########################
 srand(time^\$\$);
 sub Credit {
   my \@start = (
@@ -3216,6 +3369,12 @@ sub dependency_changed {
   return 0;
 }
 
+# Allow plugins to specify HTML that needs regen
+sub new_html {
+  my ($opt,$data, $pic) = @_;
+  $data->{_changed}{$pic} = 1;
+}
+
 sub prev_next_theme_path_changed {
   my ($file,$prev,$next,$theme,$path) = @_;
   return 1 unless -f $file;
@@ -3256,13 +3415,14 @@ sub write_img_themes {
     my $file = "$opt->{dir}/$pic$data->{paths}{page_post_url}";
 
     my $theme = search_path($opt,$opt->{theme},@{$opt->{theme_path}});
-    $changed[$i] = dependency_changed("$dir/$file",
-      "$dir/$pic",		# The image itself
-      $obj->{capfile},		# The image.txt file
-      "$dir/$opt->{captions}",	# The captions file
-      $0,			# Heck, even this program
-      "$theme/image.th",	#   or the theme itself
-    );
+    $changed[$i] = $data->{_changed}{$pic} ||
+      dependency_changed("$dir/$file",
+        "$dir/$pic",		# The image itself
+        $obj->{capfile},		# The image.txt file
+        "$dir/$opt->{captions}",	# The captions file
+        $0,			# Heck, even this program
+        "$theme/image.th",	#   or the theme itself
+      );
     # Or if -exif has changed, we have to regen all HTML...
     $changed[$i] = 1 if $opt->{SAVE}{exif};
     $changed[$i] = 1 if $opt->{SAVE}{exif_album};
@@ -3387,23 +3547,23 @@ sub handle_file {
   $tag = 'embed' if $can_embed && $opt->{embed};
   $obj->{full}{tag} = $tag;
 
-  my $is_image = is_image($opt,$path);
+  $obj->{has_thumb} = is_image($opt,$path);
 
   #########################
   # Handle pictures, generate thumbnails
   #########################
-  if ($is_image) {
-    snapshot($opt,$dir,$obj);
+  snapshot($opt,$dir,$obj) if $obj->{has_thumb};
+  if ($obj->{has_thumb}) {
     medium($opt,$dir,$obj);
     thumbnail($opt,$dir,$obj);
   }
 
-  return if !$obj->{thumb} && $opt->{known_images};
+  return if !$obj->{has_thumb} && $opt->{known_images};
 
   #########################
   # Get sizes (in case we didn't generate them this time)
   #########################
-  if ($is_image) {
+  if ($obj->{has_thumb}) {
     get_size($opt,'full',$obj);
     get_size($opt,'medium',$obj);
     get_size($opt,'thumb',$obj);
@@ -3691,10 +3851,12 @@ sub do_album {
     handle_file($opt,$data,$pic);
     show_hashes($opt, $data->{obj}{$pic}{num}+1, $hashes);
   }
+  obj_count($opt,$data,'pics');	# We may have lost some
   foreach my $child ( @{$data->{dirs}} ) {
     handle_child($opt,$data,$child);
     show_hashes($opt, $#pics+1+$data->{obj}{$child}{num}+1, $hashes);
   }
+  obj_count($opt,$data,'dirs');
 
   $hashes ? stop_hashes($opt) : hash_msg($opt,"<no thumbs>");
 
@@ -3843,9 +4005,9 @@ sub scale {
   my $args = "-verbose $qimg $scale ";
 
   # Scale options
-  $args .= "$opt->{scale_opts} " if $opt->{scale_opts};
-  $args .= "$opt->{med_scale_opts} " if $medium && $opt->{med_scale_opts};
-  $args .= "$opt->{full_scale_opts} " if !$medium && $opt->{full_scale_opts};
+  $args .= "@{$opt->{scale_opts}} " if $opt->{scale_opts};
+  $args .= "@{$opt->{medium_scale_opts}} " if $medium && $opt->{medium_scale_opts};
+  $args .= "@{$opt->{thumb_scale_opts}} " if !$medium && $opt->{thumb_scale_opts};
 
   # Sharpen?
   $args .= "-sharpen $opt->{sharpen} " if $opt->{sharpen};
@@ -3917,10 +4079,11 @@ sub movie_frame {
   my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f singlejpeg $qimg";
   print STDERR "movie_frame() run: $cmd\n" if $opt->{d};
   system("$cmd > $opt->{dev_null} 2>&1");
-  return $qimg unless $?;
+  return $img unless $?;
 
-  hash_warn($opt,"Error extracting movie frame:\n\t$movie\n\n\tDo you have ffmpeg installed?  http://ffmpeg.org");
-  return $movie;
+  hash_warn($opt,"Error extracting movie frame:\n\t$movie\n\n\tDo you have ffmpeg installed?  http://ffmpeg.org/\n")
+    unless $MAIN::MOVIE_FRAME_WARN++;
+  return undef;
 }
 
 # Make a snapshot/preview image for non-image types (like movies)
@@ -3931,14 +4094,14 @@ sub snapshot {
   return unless $obj->{is_movie};
 
   # Based off full
-  my $file = $obj->{full}{file};
+  my $full_file = $obj->{full}{file};
   my $full_path = $obj->{full}{path};
 
   my $type = $opt->{type};
-  ($obj->{snapshot}{file},$obj->{snapshot}{path})
-    = new_image_path($opt,$dir,$file,$type,'snap.','snap.');
+  my ($file,$path) = new_image_path($opt,$dir,$full_file,$type,'snap.','snap.');
 
-  movie_frame($opt,$full_path,$obj->{snapshot}{path});
+  return $obj->{has_thumb}=0 unless movie_frame($opt,$full_path,$path);
+  ($obj->{snapshot}{file},$obj->{snapshot}{path}) = ($file,$path);
 }
 
 sub medium {
@@ -4052,6 +4215,8 @@ sub main {
 
   virgin_check($opt);
 
+  collect_plugins($opt);
+
   foreach my $dir ( @{$opt->{_albums}} ) {
     print "\n" unless $opt->{q};
     ($opt->{topdir},my $name) = split_path($opt,$dir);
@@ -4125,7 +4290,7 @@ String/number options:
 
 Array options:
 
-% album --exif, --exif_album, --exif_image, --add, --scale_opts, --medium_scale_opts, --full_scale_opts
+% album --exif, --exif_album, --exif_image, --add, --scale_opts, --medium_scale_opts, --thumb_scale_opts
 
 
 =head2 OPTION DESCRIPTIONS
@@ -4341,9 +4506,9 @@ Options for convert (use '--' for mult)
 
 List of medium convert options
 
-=item B<--full_scale_opts>I<=I<strings>>
+=item B<--thumb_scale_opts>I<=I<strings>>
 
-List of full convert options
+List of thumbnail convert options
 
 =back
 

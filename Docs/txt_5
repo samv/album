@@ -5,9 +5,12 @@ ITEM: Feature Requests
 If there's something you want added to album, first make sure
 it doesn't already exist!  Check the man page or the usage:
 
+<code>% man album</code>
 <code>% album -h</code>
 
-If you don't see it there, consider writing a patch.
+Also see -more and -More options.
+
+If you don't see it there, consider writing a patch or a plugin.
 
 ITEM: Bug reports
 

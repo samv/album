@@ -166,6 +166,8 @@ Last($type)              Last object
 Next($obj)               Given an object, return the next object
 Next($obj,1)             Same, loop past end to beginning.
 Prev($obj), Prev($obj,1)  Similar to Next()
+New_Row($obj,$cols,$off) Should we start a new row after this object?
+                         Use $off if the first object is offset from 1
 
 num('pics') or just num() Total number of images in this album
 num('dirs')               Total number of children/sub-albums
