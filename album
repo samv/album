@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.05
+# Version:	2.06
 # Description:	Makes a photo album
 use strict;
 
@@ -36,9 +36,11 @@ my %DEFAULTS	= (
 	'type'		=> "gif",	# Thumbnail image type
 	'dir'		=> "tn",	# Thumbnail directory
 	'known_images'	=> 0,		# I'd rather keep my album clean
+	'sample'	=> 0,		# -sample:-convert :: fast:better
 	# Album stuff
 	'image_pages'	=> 1,		# Page per image
 	'index'		=> "index",	# Default index
+	'body'		=> "<body bgcolor='white'>",		# <body> tag
 	'top'		=> "..",	# The "Back" for the top album
 	'columns'	=> 4,		# Number of images per row
 	'file_sizes'	=> 0,		# Show image file sizes
@@ -98,6 +100,7 @@ sub usage {
   print "\t-captions         Specify captions filename"; default("captions");
   print "\t-fix_urls         Convert spaces to %20 in URLs"; default("fix_urls");
   print "\t-known_images     Only include known image types"; default("known_images");
+  print "\t-body             Specify <body> tags for default output\n";
   print "\n";
   print "Thumbnail Options:\n";
   print "\t-geometry=geom    Size of thumbnail  [${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
@@ -107,6 +110,7 @@ sub usage {
   print "\t-dir              Thumbnail directory"; default("dir");
   print "\t-force            Force overwrite of existing thumbnails\n";
   print "\t                   else they are only written when changed"; default("force");
+  print "\t-sample           convert -sample for thumbnails (faster, low quality)"; default("sample");
   print "\n";
   print "Theme Options:\n";
   print "\t-theme <dir>      Specify a theme directory\n";
@@ -212,7 +216,7 @@ sub parse_args {
       my ($no,$opt) = ($1,$2);
       usage("Unknown option: $opt") unless (defined $DEFAULTS{$opt});
       # Options that take arguments
-      if ($opt =~ /^(dir|type|columns|captions|index|top)$/) {
+      if ($opt =~ /^(dir|type|columns|captions|index|top|body)$/) {
         usage("Option [$opt] can't be -no, it needs an argument") if ($no);
         $opt{$opt} = (shift(@theme_args) || shift(@ARGV));
       } else {
@@ -277,7 +281,7 @@ sub header {
     <meta NAME='Generator' CONTENT='$GEN_STRING'>
     <meta NAME='Album_Path' CONTENT='$path'>
   </head>
-  <body bgcolor='white'>
+  $opt_H->{'body'}
   <table width='95%'>
     <tr>
       <td align='left'>
@@ -1132,9 +1136,10 @@ sub get_size {
 sub scale {
   my ($opt_H,$img,$x,$y,$new) = @_;
 
-  print STDERR "scale() run: $CONVERT -verbose $img -sample ${x}x${y} $new\n"
+  my $scale = $opt_H->{'sample'} ? "-sample" : "-geometry";
+  print STDERR "scale() run: $CONVERT -verbose $img $scale ${x}x${y} $new\n"
     if ($MAIN::DEBUG);
-  open(SIZE,"$CONVERT -verbose \Q$img\E -sample ${x}x${y} \Q$new\E 2>&1 |") ||
+  open(SIZE,"$CONVERT -verbose \Q$img\E $scale ${x}x${y} \Q$new\E 2>&1 |") ||
     die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
     print STDERR "scale(): $_" if ($MAIN::DEBUG);
