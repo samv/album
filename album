@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.49;
+  my $VERSION=  2.50;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -92,6 +92,7 @@ my %DEFAULTS	= (
 	'clean'		=> 0,		# Clean garbage out of thumbnail dir?
 	'captions'	=> "captions.txt",	# Captions filename?
 	'caption_edit'	=> 0,		# Add tags for editing captions CGI
+	'exif'		=> "",		# Format for EXIF caption string
 	'fix_urls'	=> 1,		# Encode unsafe characters as %xx in URL
 	'depth'		=> -1,		# Depth to descend directories
 	'add'		=> "",		# Add these directories to the album
@@ -244,57 +245,60 @@ sub usage {
   print "\t(Some are default on, defaults shown in [brackets])\n";
   print "\n";
   print "Album Options:\n";
-  print "\t-d                Set debug mode\n";
-  print "\t-q                Be quiet (we're hunting wabbits!)\n";
-  print "\t-medium <geom>    Generate medium size images"; default("medium");
-  print "\t-just_medium      And don't link to full-size images"; default("just_medium");
-  print "\t-image_pages      Create a page for each image"; default("image_pages");
-  print "\t-embed            Use image pages for non-picture image pages"; default("embed");
-  print "\t-columns          Number of image columns"; default("columns");
-  print "\t-file_sizes       Show image file sizes"; default("file_sizes");
-  print "\t-image_sizes      Get image size (width*height) (for some themes)"; default("image_sizes");
-  print "\t-clean            Remove unused thumbnails"; default("clean");
-  print "\t-captions         Specify captions filename"; default("captions");
-  print "\t-caption_edit     Add comment tags so that caption_edit.cgi will work"; default("caption_edit");
-  print "\t-fix_urls         Encode unsafe chars as %xx in URLs"; default("fix_urls");
-  print "\t-known_images     Only include known image types"; default("known_images");
-  print "\t-body             Specify <body> tags for default output (not themes)\n";
-  print "\t-all              Do not hide directories starting with '.'\n";
-  print "\t-depth            Depth to descend directories (default infinite)\n";
-  print "\t-add <dir>        Add a new directory to the album it's been placed in\n";
-  print "\t-hashes           Show hash marks while generating thumbnails"; default("hashes");
-  print "\t-name_length      Limit length of image/dir names"; default("name_length");
-  print "\t-date_sort        Sort images/dirs by date instead of captions/name"; default("date_sort");
-  print "\t-name_sort        Sort by name, not caption order"; default("name_sort");
-  print "\t-reverse_sort     Sort in reverse"; default("reverse_sort");
-  print "\t-charset <str>    Charset for non-theme output"; default("charset");
-  print "\t-image_loop       Do first and last image pages loop around?"; default("image_loop");
-  print "\t-index <file>     Select the default 'index.html' to use"; default("index");
-  print "\t                    Specifying '-index index' will force album to\n";
-  print "\t                    actually add 'index.html' to the end of links,\n";
-  print "\t                    which is useful if you use file://\n";
+  print "  -d                 Set debug mode\n";
+  print "  -q                 Be quiet (we're hunting wabbits!)\n";
+  print "  -medium <geom>     Generate medium size images"; default("medium");
+  print "  -just_medium       And don't link to full-size images"; default("just_medium");
+  print "  -image_pages       Create a page for each image"; default("image_pages");
+  print "  -embed             Use image pages for non-picture image pages"; default("embed");
+  print "  -columns           Number of image columns"; default("columns");
+  print "  -file_sizes        Show image file sizes"; default("file_sizes");
+  print "  -image_sizes       Get image size (width*height) (for some themes)"; default("image_sizes");
+  print "  -clean             Remove unused thumbnails"; default("clean");
+  print "  -captions          Specify captions filename"; default("captions");
+  print "  -caption_edit      Add comment tags so that caption_edit.cgi will work"; default("caption_edit");
+  print "  -exif <fmt>        Append exif info to captions.  Use \%key\% in fmt string"; default("exif");
+  print "                     Example:  -exif \"<br>Camera: %Camera model%\"\n";
+  print "                     If any %keys% are not found by jhead, nothing is appended.\n";
+  print "  -fix_urls          Encode unsafe chars as %xx in URLs"; default("fix_urls");
+  print "  -known_images      Only include known image types"; default("known_images");
+  print "  -body              Specify <body> tags for default output (not themes)\n";
+  print "  -all               Do not hide directories starting with '.'\n";
+  print "  -depth             Depth to descend directories (default infinite)\n";
+  print "  -add <dir>         Add a new directory to the album it's been placed in\n";
+  print "  -hashes            Show hash marks while generating thumbnails"; default("hashes");
+  print "  -name_length       Limit length of image/dir names"; default("name_length");
+  print "  -date_sort         Sort images/dirs by date instead of captions/name"; default("date_sort");
+  print "  -name_sort         Sort by name, not caption order"; default("name_sort");
+  print "  -reverse_sort      Sort in reverse"; default("reverse_sort");
+  print "  -charset <str>     Charset for non-theme output"; default("charset");
+  print "  -image_loop        Do first and last image pages loop around?"; default("image_loop");
+  print "  -index <file>      Select the default 'index.html' to use"; default("index");
+  print "                       Specifying '-index index' will force album to\n";
+  print "                       actually add 'index.html' to the end of links,\n";
+  print "                       which is useful if you use file://\n";
   print "\n";
   print "Thumbnail Options:\n";
-  print "\t-geometry=<X>x<Y> Size of thumbnail  [${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
-  print "\t-type             Thumbnail type (gif, jpg, tiff,...)"; default("type");
-  print "\t-medium_type      Medium type (default is same type as full image)"; default("medium_type");
-  print "\t-crop             Crop the image to fit thumbnail size\n";
-  print "\t                   else aspect will be maintained"; default("crop");
-  print "\t-CROP             Force cropping to be top, bottom, left or right\n";
-  print "\t-dir              Thumbnail directory"; default("dir");
-  print "\t-force            Force overwrite of existing thumbnails\n";
-  print "\t                   else they are only written when changed"; default("force");
-  print "\t-sample           convert -sample for thumbnails (faster, low quality)"; default("sample");
-  print "\t-animated_gifs    Take first frame of animated gifs (only some systems)"; default("animated_gifs");
-  print "\t--scale_opts      List of convert options, end with '--'\n";
-  print "\t                  (Also --med_scale_opts and --full_scale_opts..)\n";
+  print "  -geometry=<X>x<Y>  Size of thumbnail  [${DEFAULTS{'x'}}x${DEFAULTS{'y'}}]\n";
+  print "  -type              Thumbnail type (gif, jpg, tiff,...)"; default("type");
+  print "  -medium_type       Medium type (default is same type as full image)"; default("medium_type");
+  print "  -crop              Crop the image to fit thumbnail size\n";
+  print "                      else aspect will be maintained"; default("crop");
+  print "  -CROP              Force cropping to be top, bottom, left or right\n";
+  print "  -dir               Thumbnail directory"; default("dir");
+  print "  -force             Force overwrite of existing thumbnails\n";
+  print "                      else they are only written when changed"; default("force");
+  print "  -sample            convert -sample for thumbnails (faster, low quality)"; default("sample");
+  print "  -animated_gifs     Take first frame of animated gifs (only some systems)"; default("animated_gifs");
+  print "  --scale_opts       List of convert options, end with '--'\n";
+  print "                     (Also --med_scale_opts and --full_scale_opts..)\n";
   print "\n";
   print "Theme Options:\n";
-  print "\t-theme <dir>      Specify a theme directory\n";
-  print "\t-theme_url <url>  In case you want to refer to the theme by absolute URL\n";
-  print "\t-no_theme         Ignore album's previous theme settings\n";
+  print "  -theme <dir>       Specify a theme directory\n";
+  print "  -theme_url <url>   In case you want to refer to the theme by absolute URL\n";
+  print "  -no_theme          Ignore album's previous theme settings\n";
   print "\n";
-  print "\t-version          Display program version info\n";
+  print "  -version           Display program version info\n";
   print "\n";
   print "Author:      David Ljung Madison\n";
   print "Docs:        $ALBUM_URL\n";
@@ -440,7 +444,7 @@ sub parse_args {
       my ($no,$option) = ($1,$2);
       usage("Unknown option: $option") unless (defined $DEFAULTS{$option});
       # Options that take arguments
-      if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|add|name_length|theme_url|transform_url)$/) {
+      if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|exif|index|top|body|CROP|depth|add|name_length|theme_url|transform_url)$/) {
         usage("Option [$option] can't be -no, it needs an argument") if ($no);
         my $val = shift(@theme_args);
         $val = shift(@ARGV) unless defined $val;
@@ -789,11 +793,11 @@ sub read_captions {
   my ($opt,$dir) = @_;
   my %caps;
   my $caps = $opt->{'captions'};
-  return unless ($caps);
-  return unless (-r "$dir/$caps");
+  return \%caps unless ($caps);
+  return \%caps unless (-r "$dir/$caps");
   if (!open(CAPS,"<$dir/$caps")) {
     print STDERR "[$PROGNAME] Couldn't read captions: [$dir/$caps]";
-    return;
+    return \%caps;
   }
   while (<CAPS>) {
     chomp;
@@ -863,6 +867,48 @@ sub caption_order {
     return $bn ? ($an <=> $bn) : -1;
   } else {
     return $bn ? 1 : ($a cmp $b);
+  }
+}
+
+# EXIF information added to captions.
+# Any EXIF key found in the exif string inside %% is replaced.
+sub get_exif {
+  my ($pic,$exif) = @_;
+
+  return unless $pic =~ /\.jpe?g$/i;
+
+  my $qpic = file_quote($pic);
+  my $jhead = open_pipe("$JHEAD $qpic");
+  return undef $JHEAD unless $jhead;
+  while(<$jhead>) {
+    print STDERR "get_exif(): $_" if ($MAIN::DEBUG);
+    if (/command not found/) {	# Kind of kludgy
+      undef $JHEAD;
+      $jhead->close;
+      return;
+    }
+    if (/(.+?)\s*:\s*(\S.*)/) {
+      my ($key,$val) = ($1,$2);
+      $exif =~ s/%$key%/$val/g;
+    }
+  }
+  $jhead->close;
+
+  # Ignore EXIF info if we missed any keys.
+  # I'd like to come up with a better system..
+  return "" if $exif =~ /%.*%/;
+
+  $exif;
+}
+
+# Add the exif info to captions
+sub add_exif {
+  my ($opt,$dir,$caps_H,@pics) = @_;
+
+  return unless my $exif = $opt->{exif} || !$JHEAD;
+
+  foreach my $pic ( @pics ) {
+    $caps_H->{$pic}{cap} .= get_exif("$dir/$pic",$exif);
   }
 }
 
@@ -1183,7 +1229,7 @@ sub Image_Name {
   my \$n = \$IMAGE_NAMES[\$IMAGE_CNT];
   return "Back" unless \$n;
   return \$n if Image_Page() && !\$MAIN::FIRST_NAME_CLEAN++;	#Kludge!
-  my \$shorten = $opt->{name_length} && length(\$n)>($opt->{name_length}+3);
+  my \$shorten = !Image_Page() && $opt->{name_length} && length(\$n)>($opt->{name_length}+3);
   my \$s = !\$shorten ? \$n :
     substr(\$n,0,$opt->{name_length}/2) . "..." . substr(\$n,-$opt->{name_length}/2,$opt->{name_length}/2);
   return \$s if !$opt->{caption_edit};
@@ -1666,6 +1712,11 @@ sub do_album {
 #  $dir_names[-1] = $caps_H->{$dir_names[-1]}{name} if ($caps_H->{$dir_names[-1]});
 
   #########################
+  # Get exif info if needed
+  #########################
+  add_exif($opt,$dir,$caps_H,@pics);
+
+  #########################
   # Sort the pictures, possibly by caption order
   #########################
   @pics = sort { caption_order($opt,$caps_H,$dir,$a,$b); } @pics;
@@ -2111,3 +2162,245 @@ sub main {
 #WIN98#  win_done if $CRAPPY_OS;
 }
 main();
+
+
+##################################################
+# POD/man
+##################################################
+
+# Gen options with: album -h | opt2pod -pre '^Album Options:' -post '^Author:'
+
+__END__
+
+=pod
+=head1 NAME
+
+album - Make a web photo album
+
+=head1 SYNOPSIS
+
+B<album> [S<I<album options>>]
+
+=head1 DESCRIPTION
+
+album is an HTML photo album generator that supports themes. It takes 
+a directory of images and creates all the thumbnails and HTML that 
+you need. It's fast, easy to use, and very powerful.
+
+Place your photos in a new directory somewhere inside your web pages.
+Then run C<album> from a command-line prompt with the directory path
+as an argument, and that's it.
+
+To use themes, make sure the C<Themes> directory is inside your web
+path, and then use the -theme option.
+
+=head1 OPTIONS
+
+
+=over 4
+
+
+=item B<-d>
+
+Set debug mode
+
+=item B<-q>
+
+Be quiet (we're hunting wabbits!)
+
+=item B<-medium <geom>>
+
+Generate medium size images
+
+=item B<-just_medium>
+
+And don't link to full-size images
+
+=item B<-image_pages>
+
+Create a page for each image [ON]
+
+=item B<-embed>
+
+Use image pages for non-picture image pages [ON]
+
+=item B<-columns>
+
+Number of image columns [4]
+
+=item B<-file_sizes>
+
+Show image file sizes
+
+=item B<-image_sizes>
+
+Get image size (width*height) (for some themes)
+
+=item B<-clean>
+
+Remove unused thumbnails
+
+=item B<-captions>
+
+Specify captions filename [captions.txt]
+
+=item B<-caption_edit>
+
+Add comment tags so that caption_edit.cgi will work
+
+=item B<-exif <fmt>>
+
+Add exif info after captions.  Use %key% in fmt string
+Example:  -exif "<br>Camera: %Camera model%"
+If any %keys% are not found by jhead, nothing is appended.
+
+=item B<-fix_urls>
+
+Encode unsafe chars as %xx in URLs [ON]
+
+=item B<-known_images>
+
+Only include known image types
+
+=item B<-body>
+
+Specify <body> tags for default output (not themes)
+
+=item B<-all>
+
+Do not hide directories starting with '.'
+
+=item B<-depth>
+
+Depth to descend directories (default infinite)
+
+=item B<-add <dir>>
+
+Add a new directory to the album it's been placed in
+
+=item B<-hashes>
+
+Show hash marks while generating thumbnails [ON]
+
+=item B<-name_length>
+
+Limit length of image/dir names [40]
+
+=item B<-date_sort>
+
+Sort images/dirs by date instead of captions/name
+
+=item B<-name_sort>
+
+Sort by name, not caption order
+
+=item B<-reverse_sort>
+
+Sort in reverse
+
+=item B<-charset <str>>
+
+Charset for non-theme output [iso-8859-1]
+
+=item B<-image_loop>
+
+Do first and last image pages loop around? [ON]
+
+=item B<-index <file>>
+
+Select the default 'index.html' to use [index.html]
+Specifying '-index index' will force album to
+actually add 'index.html' to the end of links,
+which is useful if you use file://
+
+
+=back
+
+Thumbnail Options:
+
+
+=over 4
+
+
+=item B<-geometry=<X>x<Y>>
+
+Size of thumbnail  [133x100]
+
+=item B<-type>
+
+Thumbnail type (gif, jpg, tiff,...) [jpg]
+
+=item B<-medium_type>
+
+Medium type (default is same type as full image)
+
+=item B<-crop>
+
+Crop the image to fit thumbnail size
+else aspect will be maintained [ON]
+
+=item B<-CROP>
+
+Force cropping to be top, bottom, left or right
+
+=item B<-dir>
+
+Thumbnail directory [tn]
+
+=item B<-force>
+
+Force overwrite of existing thumbnails
+else they are only written when changed
+
+=item B<-sample>
+
+convert -sample for thumbnails (faster, low quality)
+
+=item B<-animated_gifs>
+
+Take first frame of animated gifs (only some systems)
+
+=item B<--scale_opts>
+
+List of convert options, end with '--'
+(Also --med_scale_opts and --full_scale_opts..)
+
+
+=back
+
+Theme Options:
+
+
+=over 4
+
+
+=item B<-theme <dir>>
+
+Specify a theme directory
+
+=item B<-theme_url <url>>
+
+In case you want to refer to the theme by absolute URL
+
+=item B<-no_theme>
+
+Ignore album's previous theme settings
+
+
+=item B<-version>
+
+Display program version info
+
+
+=back
+
+
+=head1 SEE ALSO
+
+L<ImageMagick(1)>, L<jhead(1)>, L<ffmpeg(1)>
+
+=head1 AUTHOR
+
+David Ljung Madison <http://MarginalHacks.com/>
+
+=cut
