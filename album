@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.26
+# Version:	2.27
 # Description:	Makes a photo album
 use strict;
 
@@ -429,9 +429,9 @@ END_OF_FOOTER
 ##################################################
 # Nice name for printing
 sub clean_name {
-  my ($name,$captions,$no_br) = @_;
+  my ($name,$caps,$no_br) = @_;
 
-  return $captions->{$name}{name} if ($captions->{$name});
+  return $caps->{$name}{name} if $caps->{$name} && $caps->{$name}{name};
 
   # No tags in filenames  :)
   $name =~ s/\</&lt;/g;
@@ -620,7 +620,7 @@ sub read_captions {
     my ($file,$name,$cap,$alt)=
       $split_tabs ? split(/\t+/, $_, 4) : split(/\s*::\s*/, $_, 4);
     $name=$file if (!$name && $cap);
-    next unless $file && $name;
+    next unless $file; # && $name;
     $caps{$file}{name}=$name;
     $caps{$file}{cap}=$cap if $cap;
     $caps{$file}{alt}=$alt if $alt;
