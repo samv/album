@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.01';
+  my $VERSION=  '3.02';
 # Rewrite branched off from: 2.53
 # Description:	Makes a photo album.
 use strict;
@@ -37,13 +37,12 @@ my $PROGFILE = ($PROGNAME =~ /^([^\.-]{3,})[\.-]/) ? $1 : $PROGNAME;
 my @CONFS = (
 	"/etc/$PROGFILE/$PROGFILE.conf",
 	"/etc/$PROGFILE.conf",
-	"$BASENAME/$PROGFILE.conf",
-	"$ENV{HOME}/.${PROGFILE}rc",
-	"$ENV{HOME}/.$PROGFILE.conf",
 	);
-
+push(@CONFS, "$BASENAME/$PROGFILE.conf") if $BASENAME ne '.';
+push(@CONFS, "$ENV{HOME}/.${PROGFILE}rc") if $ENV{HOME};
+push(@CONFS, "$ENV{HOME}/.$PROGFILE.conf") if $ENV{HOME};
 # I like to keep all my dot files in one directory besides my $HOME
-push(@CONFS, "$ENV{DOT}/$PROGFILE.conf") if $ENV{DOT};
+map { push(@CONFS, "$_/${PROGFILE}.conf") } split(':',$ENV{CONF}) if $ENV{CONF};
 
 # Windows: "C:\Documents and Settings\TheUser"
 push(@CONFS, "$ENV{USERPROFILE}/$PROGFILE.conf") if $ENV{USERPROFILE};
@@ -548,7 +547,7 @@ POD_SEP
     }
     $args = $args ? ($args =~ /^<.*>$/ ? "=I$args" : "=I<$args>") : "";
     my $usage = $OPTIONS{$option}{usage};
-    my $usage_str = $usage ? join("\n",@$usage) : "";
+    my $usage_str = ref $usage eq 'ARRAY' ? join("\n",@$usage) : $usage;
     printf "=item B<-$opt>I<$args>\n\n$usage_str$def\n\n";
   }
 
@@ -615,10 +614,7 @@ sub parse_arg {
   # Theme options don't override any options that are previously set.
   return if $from =~ /theme option/ && $opt->{_set}{$option};
 
-  # Keep track of which args were on the command-line ('SAVE' hash)
-  $opt->{SAVE}{$option} = 1 unless $from
-    || (defined($OPTIONS{$option}{default}) && $val eq $OPTIONS{$option}{default});
-  $opt->{_set}{$option} = 1;
+  my $prev_val = $opt->{$option};	#duplicate($opt->{$option});
 
   if ($type==$OPTION_SEP) {
     usage("Unknown option: $option");
@@ -659,6 +655,13 @@ sub parse_arg {
     usage("Bad -$option number [$val]") if $val=~/\D/ && $type==$OPTION_NUM;
     $opt->{$option} = $val;
   }
+
+  # Keep track of which args were on the command-line ('SAVE' hash)
+  # Always save array options when spec'd in ARGV, too hard to figure
+  # out if they've changed.
+  $opt->{SAVE}{$option} = 1 unless $from
+    || ($type!=$OPTION_ARR && defined($prev_val) && $val eq $prev_val);
+  $opt->{_set}{$option} = 1;
 }
 
 # Add to the list of albums
@@ -727,7 +730,7 @@ sub parse_args {
   }
 
   # Default is current directory
-  add_album_dir($opt,'.') unless $opt->{_albums};
+  add_album_dir($opt,'.') unless $opt->{_albums} || $opt->{add};
 }
 
 #########################
@@ -745,18 +748,20 @@ sub read_conf {
     return 0;
   }
 
-  print STDERR "Read conf: $conf\n" unless $opt->{q};
+  my $conf_str = $conf;
+  $conf_str =~ s|^\Q$opt->{top}\E/?||;
+  print STDERR "Read conf: $conf_str\n" unless $opt->{q};
 
   while (<$fh>) {
     s/#.*//;	# Ignore comments
     next unless /\S/;	# And white-space
     unless (/^(\S+)(\s+(\S.*?))?\s*$/) {
-      print STDERR "[$PROGNAME] Can't understand conf: [$conf, line $.]\n  $_";
+      print STDERR "[$PROGNAME] Can't understand conf: [$conf_str, line $.]\n  $_";
       next;
     }
     my ($option,$val) = ($1,$3);
     $val = $1 if $val =~ /^"(.*)"$/ || $val =~ /^'(.*)'$/;
-    parse_arg($opt,$option,$val, "conf option [$conf]")
+    parse_arg($opt,$option,$val, "conf option [$conf_str]")
       unless $check_argv && $opt->{SAVE}{$option};
   }
   close $fh;
@@ -812,6 +817,7 @@ sub save_conf {
 
       $changed++ if $conf_val ne $opt_val;
       $opt_val = "'$opt_val'" if $opt_val =~ /\s/;
+      $sp = "\t" unless $sp;
       push(@new,"$option$sp$opt_val$comment\n") unless $array_empty;
     }
     close CONF;
@@ -1677,7 +1683,8 @@ sub clean_thumb_dir {
   foreach my $file ( @files ) {
     my $remove;
     my $name = $file;
-    if ($name =~ s/\Q$opt->{html}\E$//) {
+    my $html = $opt->{index} ? ('.'.$opt->{index}) : $opt->{html};
+    if ($name =~ s/\Q$html\E$//) {
       $remove = "unused image page"
         unless ($opt->{image_pages} && grep($_ eq $name, @pics));
     } elsif ($name  =~ /(.+)\.med\.(.+)/) {
@@ -3257,6 +3264,8 @@ sub write_img_themes {
       $0,			# Heck, even this program
       "$theme/image.th",	#   or the theme itself
     );
+    # Or if -exif has changed, we have to regen all HTML...
+    $changed[$i] = 1 if $opt->{SAVE}{exif};
   }
 
   for(my $i=0; $i<=$#{$data->{pics}}; $i++) {
@@ -3335,7 +3344,8 @@ sub gather_contents {
     next if $bob =~ /^\./ && !$opt->{all};	# Dot files/directories
 
     # Ignore the .no_album/.hide_album/.not_img/.txt.. directive files
-    next unless -s $path;		# Ignore zero byte files
+    next unless -s $path || -d $path;		# Ignore zero byte files
+      # (windows can have zero byte directories)
     next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
     next if $bob =~ /\Q$opt->{not_img}\E$/;
     next if $bob =~ /\Q$opt->{no_album}\E$/;
@@ -3701,8 +3711,8 @@ sub do_album {
   #########################
   # Do the children albums
   #########################
-  my $first = "$opt->{top}/$data->{dir_pieces}[0]";
-  my @add = $opt->{_album}{$first}{add} ?  @{$opt->{_album}{$first}{add}} : ();
+  #my $first = "$opt->{top}/$data->{dir_pieces}[0]";
+  my @add = $opt->{_album}{$dir}{add} ?  @{$opt->{_album}{$dir}{add}} : ();
   foreach my $child ( @{$data->{dirs}} ) {
     do_album($opt,"$dir/$child",@{$data->{dir_pieces}},$child)
       unless $data->{start} && @add && !grep($child eq $_, @add);
@@ -3891,6 +3901,8 @@ sub movie_frame {
 #OLD## Has problems with conversion, but when it works, it looks better :(
 #OLD## Unfortunately most thumbnails end up clipped/mostly green.
 #OLD#my $cmd = "mpeg2decode -f -o3 -1 $qmovie $qimg";
+
+  return $img if -f $img && !$opt->{force} && -M $img < -M $movie;
 
   # ffmpeg has problems recognizing .mov format
   my $format = ($qmovie =~ /\.mov$/i) ? "-f mov" : "";
