@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-  my $VERSION=  2.36;
+  my $VERSION=  2.37;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -24,7 +24,7 @@ $PROGNAME =~ s|.*/||;
 # Win98: Needs TCAP:  ftp://ftp.simtel.net/pub/simtelnet/msdos/sysutl/tcap31.zip
 #WIN98#my $TCAP = 'tcap';
 #WIN98#my $TCAP_FILE = "atrash.tmp";
-#WIN98# Put tcap args in the tcap env var, so to reduce line length (128 limit)
+#WIN98## Put tcap args in the tcap env var, so to reduce line length (128 limit)
 #WIN98#$ENV{tcap}="-overwrite *${TCAP_FILE}";
 
 
@@ -88,6 +88,7 @@ my %DEFAULTS	= (
 	'date_sort'	=> 0,		# Sort by date
 	'name_sort'	=> 0,		# Sort by name, ignore caption order
 	'reverse_sort'	=> 0,		# Reverse sorting
+	'charset'	=> "iso-8859-1",# Charset for default theme
 
 	# eperl stuff
 	'enter_eperl'	=> '<:',	# Start code region in theme
@@ -222,6 +223,7 @@ sub usage {
   print "\t-date_sort        Sort images/dirs by date instead of captions/name"; default("date_sort");
   print "\t-name_sort        Sort by name, not caption order"; default("name_sort");
   print "\t-reverse_sort     Sort in reverse"; default("reverse_sort");
+  print "\t-charset <str>    Charset for non-theme output"; default("charset");
   print "\t-index <file>     Select the default 'index.html' to use"; default("index");
   print "\t                    Specifying '-index index' will force album to\n";
   print "\t                    actually add 'index.html' to the end of links,\n";
@@ -388,7 +390,7 @@ sub parse_args {
       my ($no,$option) = ($1,$2);
       usage("Unknown option: $option") unless (defined $DEFAULTS{$option});
       # Options that take arguments
-      if ($option =~ /^(medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|name_length)$/) {
+      if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|name_length)$/) {
         usage("Option [$option] can't be -no, it needs an argument") if ($no);
         my $val = (shift(@theme_args) || shift(@ARGV));
         if ($option eq "index" && $val eq $DEFAULT_INDEX) {
@@ -477,7 +479,7 @@ sub header {
     <title> 
       Album: $this
     </title>
-    <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>
+    <meta http-equiv='Content-Type' content='text/html; charset=$opt->{charset}'>
     <meta NAME='Generator' CONTENT='$GEN_STRING'>
     <meta NAME='Album_Path' CONTENT='$d_H->{album_path}'>
   </head>
@@ -531,10 +533,11 @@ END_OF_FOOTER
 sub clean_name {
   my ($name,$caps,$no_br) = @_;
 
-  $name = $caps->{$name}{name} if $caps->{$name} && $caps->{$name}{name};
+  my $usecap = ($caps->{$name} && $caps->{$name}{name}) ? 1 : 0;
+  $name = $caps->{$name}{name} if $usecap;
 
   # No tags in filenames  :)
-  $name =~ s/\</&lt;/g;
+  $name =~ s/\</&lt;/g unless $usecap;
 
   # Remove postfixes
   $name =~ s/\.($IMAGE_TYPES)$//i;
@@ -548,7 +551,7 @@ sub clean_name {
   $name =~ s/\./ /g;
 
   # No paths
-  $name =~ s|^.*/||g;
+  $name =~ s|^.*/||g unless $usecap;
 
   # I sort my albums by date:   2001-10-03.some_directory
   $no_br = $no_br ? " " : "<br>";
@@ -1090,6 +1093,7 @@ sub Image_Thumb { Image_Page() ? \$IMAGE_PAGE_THUMBS[\$IMAGE_CNT] : \$IMAGE_THUM
 sub Image_Is_Pic { \$IMAGE_IS_PIC[\$IMAGE_CNT]; }
 sub Image_Alt { \$IMAGE_ALTS[\$IMAGE_CNT]; }
 sub Image_Filesize { \$IMAGE_FILESIZES[\$IMAGE_CNT]; }
+sub Image_Path { \$IMAGE_PATH[\$IMAGE_CNT]; }
 sub Image_Width { \$IMAGE_WIDTHS[\$IMAGE_CNT]; }
 sub Image_Height { \$IMAGE_HEIGHTS[\$IMAGE_CNT]; }
 sub Image_Cnt { \$IMAGE_CNT+1; }
@@ -1659,6 +1663,7 @@ sub do_album {
       push(@{$d{'image_widths'}}, $width);
       push(@{$d{'image_heights'}}, $height);
       push(@{$d{'image_filesizes'}}, $size);
+      push(@{$d{'image_path'}}, "$dir/$pic");
       push(@{$d{'image_caption_files'}}, $img_cap);
       push(@{$d{'image_captions'}}, $caps_H->{$pic}{cap});
       # Don't do -fix_urls on alt
