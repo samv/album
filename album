@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.30
+# Version:	2.31
 # Description:	Makes a photo album
 use strict;
 
@@ -15,7 +15,7 @@ my $PROGNAME = $0;
 $PROGNAME =~ s|.*/||;
 
 # Windows users will probably want to specify full paths, such as:
-# my $CONVERT   = '"C:\PROGRAM FILES\IMAGEMAGICK\convert"';
+# my $CONVERT   = '"C:/PROGRAM FILES/IMAGEMAGICK/convert"';
 
 my $CONVERT	= "convert";
 my $IDENTIFY	= "identify";	# Undef if you don't have identify
@@ -60,6 +60,8 @@ my %DEFAULTS	= (
 	'depth'		=> -1,		# Depth to descend directories
 	'all'		=> 0,		# Do not hide .directories
 	'hashes'	=> 1,		# Show hash progress marks
+	'name_length'	=> 40,		# Limit length of image names
+	'date_sort'	=> 0,		# Sort by date
 
 	# deprecated, it's automated now
 	'identify'	=> 1,		# Use identify or convert for get_size?
@@ -150,7 +152,9 @@ sub usage {
   print "\t-body             Specify <body> tags for default output\n";
   print "\t-all              Do not hide directories starting with '.'\n";
   print "\t-depth            Depth to descend directories (default infinite)\n";
-  print "\t-hashes           Don't show hash marks while generating thumbnails"; default("hashes");
+  print "\t-hashes           Show hash marks while generating thumbnails"; default("hashes");
+  print "\t-name_length      Limit length of image/dir names"; default("name_length");
+  print "\t-date_sort        Sort images/dirs by date instead of captions/name"; default("date_sort");
   print "\t-index <file>     Select the default 'index.html' to use"; default("index");
   print "\t                    Specifying '-index index' will force album to\n";
   print "\t                    actually add 'index.html' to the end of links,\n";
@@ -302,7 +306,7 @@ sub parse_args {
       my ($no,$option) = ($1,$2);
       usage("Unknown option: $option") unless (defined $DEFAULTS{$option});
       # Options that take arguments
-      if ($option =~ /^(medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth)$/) {
+      if ($option =~ /^(medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|name_length)$/) {
         usage("Option [$option] can't be -no, it needs an argument") if ($no);
         my $val = (shift(@theme_args) || shift(@ARGV));
         if ($option eq "index" && $val eq $DEFAULT_INDEX) {
@@ -315,7 +319,7 @@ sub parse_args {
       } else {
         $opt{$option} = $no ? 0 : 1;
         # Need to override image themes
-        $opt{'no_image_pages'} if ($option eq "image_pages" && $no);
+        $opt{'no_image_pages'} = 1 if ($option eq "image_pages" && $no);
       }
       next;
     }
@@ -366,7 +370,7 @@ sub header {
   my @names = @parents;
 
   my $this = pop(@names);
-  my $header;
+  my $header = "";
   my $back = $#names;
   my $index = ("$opt->{'index'}" eq "$DEFAULT_INDEX") ? "" : "$opt->{'index'}$HTML";
   while (my $n = pop(@names)) {
@@ -576,6 +580,7 @@ sub quote {
   my ($path,$opt) = @_;
   $path =~ s/'/%27/g;	# Convert ' to %27
   $path =~ s/"/%22/g;	# Convert " to %22
+  $path =~ s/#/%23/g;	# Convert # to %23
   $path = "'$path'";	# And quote the rest
   return $path unless ($opt && $opt->{'fix_urls'});
   # Should probably correct more than just whitespace
@@ -636,17 +641,30 @@ sub read_captions {
 }
 
 # See if a directory renames itself in it's own caption file
+# (But let the local captions file override it, if someone really wants
+# to add that confusion)
 sub get_dir_caption {
-  my ($opt,$path,$dir) = @_;
+  my ($opt,$caps,$path,$dir) = @_;
+  return $caps->{$dir}{name} if $caps->{$dir}{name};
   my $cap = read_captions($opt,"$path/$dir");
   return $cap->{$dir}{name} || $dir;
 }
 
 # Sort according to order found in optional captions file
+sub sort_rank {
+  my ($opt,$caps,$dir,$f) = @_;
+  return $caps->{$f} && $caps->{$f}{num} unless $opt->{date_sort};
+  # Save mod times in a cache
+  return $opt->{DATE_SORT_CACHE}{$f}
+    if $opt->{DATE_SORT_CACHE} && $opt->{DATE_SORT_CACHE}{$f};
+  $opt->{DATE_SORT_CACHE}{$f} = -M "$dir/$f";
+  $opt->{DATE_SORT_CACHE}{$f};
+}
+
 sub caption_order {
-  my ($caps_H,$a,$b) = @_;
-  my $an = $caps_H->{$a} && $caps_H->{$a}{num};
-  my $bn = $caps_H->{$b} && $caps_H->{$b}{num};
+  my ($opt,$caps,$dir,$a,$b) = @_;
+  my $an = sort_rank($opt,$caps,$dir,$a);
+  my $bn = sort_rank($opt,$caps,$dir,$b);
 
 # This tries to mingle captioned images with non-captioned.  It won't work,
 # because what do you do if you have images:  a, b, c and the captions
@@ -855,7 +873,12 @@ sub pImage {
 # Otherwise we use the url to the image page (or just the image)
 sub Image_URL { Image_Page() ? \$IMAGE_IMAGE_URLS[\$IMAGE_CNT] : \$IMAGE_URLS[\$IMAGE_CNT]; }
 sub Image_Page_URL { \$IMAGE_PAGE_URLS[\$IMAGE_CNT]; }
-sub Image_Name { \$IMAGE_NAMES[\$IMAGE_CNT]; }
+# We can chop down extra long image names on the album page if needed
+sub Image_Name {
+  my \$n = \$IMAGE_NAMES[\$IMAGE_CNT];
+  return \$n if (!$opt->{name_length} || length(\$n)<=($opt->{name_length}+3) || Image_Page());
+  substr(\$n,0,$opt->{name_length}/2) . "..." . substr(\$n,-$opt->{name_length}/2,$opt->{name_length}/2)
+}
 sub Image_Thumb { Image_Page() ? \$IMAGE_PAGE_THUMBS[\$IMAGE_CNT] : \$IMAGE_THUMBS[\$IMAGE_CNT]; }
 sub Image_Is_Pic { \$IMAGE_IS_PIC[\$IMAGE_CNT]; }
 sub Image_Alt { \$IMAGE_ALTS[\$IMAGE_CNT]; }
@@ -1087,6 +1110,10 @@ sub write_index {
   start_table();
   for(my $i=0; $i<=$#{$d_H->{'pics'}}; $i++) {
     new_element($opt);
+    my $name = $d_H->{'image_names'}[$i];
+    my $pname = $name;
+    $pname = substr($name,0,$opt->{name_length}/2) . "..." . substr($name,-$opt->{name_length}/2,$opt->{name_length}/2)
+      if ($opt->{name_length} && length($name)>($opt->{name_length}+3));
 
     # Picture - thumbnail and all..
     if ($d_H->{'image_is_pic'}[$i]) {
@@ -1094,18 +1121,18 @@ sub write_index {
       print ALBUM "          <img ";
       print ALBUM "width='$opt->{'x'}' height='$opt->{'y'}' " if $opt->{crop};
       print ALBUM "border='0' src=$d_H->{'image_thumbs'}[$i] alt=$d_H->{'image_alts'}[$i]><br />\n";
-      print ALBUM "          $d_H->{'image_names'}[$i]\n";
+      print ALBUM "          $pname\n";
       print ALBUM "          <font size='-1'><i>[$d_H->{'image_filesizes'}[$i]]</i></font>\n"
         if ($opt->{'file_sizes'});
       print ALBUM "        </a><br />\n";
 
     # Not a picture?
     } else {
-      my $type = ($d_H->{'image_names'}[$i] =~ /\.([^\.]+)$/) ? $1 : "??";
+      my $type = ($name =~ /\.([^\.]+)$/) ? $1 : "??";
       print ALBUM "        <font size='+1'><b>$type file:</b></font>\n";
       print ALBUM "        <p>\n";
       print ALBUM "        <a href=$d_H->{'image_urls'}[$i]>\n";
-      print ALBUM "          $d_H->{'image_names'}[$i]\n";
+      print ALBUM "          $pname\n";
       print ALBUM "          <font size='-1'><i>[$d_H->{'image_filesizes'}[$i]]</i></font>\n"
         if ($opt->{'file_sizes'});
       print ALBUM "        </a><br />\n";
@@ -1262,7 +1289,7 @@ sub do_album {
   #########################
   # Sort the pictures, possibly by caption order
   #########################
-  @pics = sort { caption_order($caps_H,$a,$b); } @pics;
+  @pics = sort { caption_order($opt,$caps_H,$dir,$a,$b); } @pics;
 
   #########################
   # Write the html
@@ -1284,8 +1311,8 @@ sub do_album {
   # Links to sub-albums
   #########################
   if (@new_dirs) {
-    foreach my $new_dir ( sort { caption_order($caps_H,$a,$b); } @new_dirs ) {
-      my $new_dir_name = get_dir_caption($opt,$dir,$new_dir);
+    foreach my $new_dir ( sort { caption_order($opt,$caps_H,$dir,$a,$b); } @new_dirs ) {
+      my $new_dir_name = get_dir_caption($opt,$caps_H,$dir,$new_dir);
       push(@{$d{'child_album_names'}}, clean_name($new_dir_name,$caps_H));
       my $url = ($opt->{'index'} eq $DEFAULT_INDEX) ?
                 "$new_dir/" : "$new_dir/$opt->{'index'}$HTML";
@@ -1392,7 +1419,7 @@ sub do_album {
       push(@{$d{'image_caption_files'}}, $img_cap);
       push(@{$d{'image_captions'}}, $caps_H->{$pic}{cap});
       # Don't do -fix_urls on alt
-      push(@{$d{'image_alts'}}, quote($caps_H->{$pic}{alt}));
+      push(@{$d{'image_alts'}}, quote($caps_H->{$pic}{alt} || $name));
       push(@{$d{'image_is_pic'}}, $is_a_pic);
 
       if ($opt->{hashes}) {
@@ -1515,8 +1542,9 @@ sub scale {
 
   my $scale = $opt->{'sample'} ? "-sample $scale_arg" : "-geometry $scale_arg";
 
-  my $cmd = "$CONVERT $opt->{'scale_opts'} ";
-  $cmd .= ($medium ? $opt->{'med_scale_opts'} : $opt->{'full_scale_opts'});
+  my $cmd = "$CONVERT ";
+  $cmd .= "$opt->{scale_opts} " if $opt->{scale_opts};
+  $cmd .= ($medium ? ($opt->{med_scale_opts}||"") : ($opt->{full_scale_opts}||""));
   my $qimg = file_quote($img);
   my $qnew = file_quote($new);
   $cmd .= " -verbose $qimg $scale $qnew";
