@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-  my $VERSION=  2.32;
+  my $VERSION=  2.33;
 # Description:	Makes a photo album
 use strict;
 
@@ -77,6 +77,7 @@ my %DEFAULTS	= (
 	'hashes'	=> 1,		# Show hash progress marks
 	'name_length'	=> 40,		# Limit length of image names
 	'date_sort'	=> 0,		# Sort by date
+	'reverse_sort'	=> 0,		# Reverse sorting
 
 	# eperl stuff
 	'enter_eperl'	=> '<:',	# Start code region in theme
@@ -173,6 +174,7 @@ sub usage {
   print "\t-hashes           Show hash marks while generating thumbnails"; default("hashes");
   print "\t-name_length      Limit length of image/dir names"; default("name_length");
   print "\t-date_sort        Sort images/dirs by date instead of captions/name"; default("date_sort");
+  print "\t-reverse_sort     Sort in reverse"; default("reverse_sort");
   print "\t-index <file>     Select the default 'index.html' to use"; default("index");
   print "\t                    Specifying '-index index' will force album to\n";
   print "\t                    actually add 'index.html' to the end of links,\n";
@@ -700,6 +702,9 @@ sub sort_rank {
 
 sub caption_order {
   my ($opt,$caps,$dir,$a,$b) = @_;
+
+  ($a,$b) = ($b,$a) if ($opt->{reverse_sort});
+
   my $an = sort_rank($opt,$caps,$dir,$a);
   my $bn = sort_rank($opt,$caps,$dir,$b);
 
