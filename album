@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.25
+# Version:	2.26
 # Description:	Makes a photo album
 use strict;
 
@@ -73,6 +73,23 @@ my $IMAGE_TYPES	=
 	"PNM|PPM|PREVIEW|PS|PS2|PS3|PSD|PTIF|PWP|RAS|RGB|RGBA|RLA|RLE|SCT|SFW|".
 	"SGI|SHTML|STEGANO|SUN|TEXT|TGA|TIF|TIFF|TIFF24|TILE|TIM|TTF|TXT|UIL|".
 	"UYVY|VDA|VICAR|VID|VIFF|VST|X|XBM|XC|XPM|XV|XWD|YUV";
+
+# Windows blows
+my $CRAPPY_OS = ($^O =~ /Win/i) ? 1 : 0;
+
+  # 1) Needs "perl eperl"
+  # This is wrong if they use Ralf's version of eperl which isn't a script.  Urgh.
+  $EPERL = "perl $EPERL" if $CRAPPY_OS;
+
+  # 2) Can't handle "\Qfile\E";
+  sub file_quote {
+    my ($file) = @_;
+    $CRAPPY_OS ? $file : "\Q$file\E";
+  }
+
+  # 3) Can't create .files
+  $NO_ALBUM =~ s/^\.//g;
+  $HIDE_ALBUM =~ s/^\.//g;
 
 #########################
 # abs_path
@@ -165,10 +182,10 @@ sub set_size {
 
 # Theme directories contain album.th and image.th
 sub get_themes {
-  my ($opt,$dir) = @_;
+  my ($opt,$dir_arg) = @_;
 
-  $opt->{'theme'} = abs_path($dir);
-  $ARG_THEME = $dir;
+  $opt->{'theme'} = abs_path($dir_arg);
+  $ARG_THEME = $dir_arg;
 
   my $dir = $opt->{'theme'};
 
@@ -462,7 +479,7 @@ my $PATH;
 sub unknown_html {
   my ($opt,$dir) = @_;
 
-  return 1 if (-f "\Q$dir/$NO_ALBUM\E");
+  return 1 if (-f file_quote("$dir/$NO_ALBUM"));
 
   my $file = "$dir/$opt->{'index'}$HTML";
   return 0 unless -f $file;
@@ -645,7 +662,8 @@ sub setup_output {
 
   if ($theme) {
     # We pipe into eperl stdin
-    open(ALBUM,"|$EPERL -P - -o \Q$out\E") ||
+    my $qout = file_quote($out);
+    open(ALBUM,"|$EPERL -P - -o $qout") ||
       die("[$PROGNAME] Couldn't start $EPERL to write [$out]\n");
   } else {
     # Just write a file
@@ -1434,7 +1452,8 @@ sub get_size {
   # Try to use identify if we have it
   if ($IDENTIFY && $opt->{'identify'}) {
     print STDERR "get_size() run: $IDENTIFY -ping $img\n" if ($MAIN::DEBUG);
-    open(SIZE,"$IDENTIFY -ping \Q$img\E 2>&1 |") ||
+    my $qimg = file_quote($img);
+    open(SIZE,"$IDENTIFY -ping $qimg 2>&1 |") ||
       die("[$PROGNAME] Couldn't run identify!  [$IDENTIFY]\n");
     while(<SIZE>) {
       print STDERR "get_size(): $_" if ($MAIN::DEBUG);
@@ -1455,7 +1474,8 @@ sub get_size {
 
   # Kludgy way to get size, but works with all images that convert reads
   print STDERR "get_size() run: $CONVERT -verbose $img /dev/null\n" if ($MAIN::DEBUG);
-  open(SIZE,"$CONVERT -verbose \Q$img\E /dev/null 2>&1 |") ||
+  my $qimg = file_quote($img);
+  open(SIZE,"$CONVERT -verbose $qimg /dev/null 2>&1 |") ||
     die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
     print STDERR "get_size(): $_" if ($MAIN::DEBUG);
@@ -1472,13 +1492,15 @@ sub get_size {
 }
 
 sub scale {
-  my ($opt,$img,$scale,$new,$medium) = @_;
+  my ($opt,$img,$scale_arg,$new,$medium) = @_;
 
-  my $scale = $opt->{'sample'} ? "-sample $scale" : "-geometry $scale";
+  my $scale = $opt->{'sample'} ? "-sample $scale_arg" : "-geometry $scale_arg";
 
   my $cmd = "$CONVERT $opt->{'scale_opts'} ";
   $cmd .= ($medium ? $opt->{'med_scale_opts'} : $opt->{'full_scale_opts'});
-  $cmd .= " -verbose \Q$img\E $scale \Q$new\E";
+  my $qimg = file_quote($img);
+  my $qnew = file_quote($new);
+  $cmd .= " -verbose $qimg $scale $qnew";
   print STDERR "scale() run: $cmd\n" if ($MAIN::DEBUG);
   open(SIZE,"$cmd 2>&1 |") || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
@@ -1498,7 +1520,9 @@ sub scale {
 sub crop {
   my ($img,$x,$y,$off_x,$off_y,$new) = @_;
 
-  my $cmd = "$CONVERT \Q$img\E -crop ${x}x${y}+${off_x}+${off_y} \Q$new\E";
+  my $qimg = file_quote($img);
+  my $qnew = file_quote($new);
+  my $cmd = "$CONVERT $qimg -crop ${x}x${y}+${off_x}+${off_y} $qnew";
   print STDERR "crop() run: $cmd\n" if ($MAIN::DEBUG);
   system($cmd);
   return unless ($?);
@@ -1537,7 +1561,9 @@ sub is_movie { return $_[0] =~ /\.mpe?g$/i ? 1 : 0; }
 sub movie_frame {
   my ($opt,$movie,$img) = @_;
 
-  my $cmd = "$MPG_EXTRACT \Q$movie\E \Q$img\E";
+  my $qmovie = file_quote($movie);
+  my $qimg = file_quote($img);
+  my $cmd = "$MPG_EXTRACT $qmovie $qimg";
   print STDERR "movie_frame() run: $cmd\n" if ($MAIN::DEBUG);
   system("$cmd > /dev/null 2>&1");
   return "$img.ppm" unless ($?);
