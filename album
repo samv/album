@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.42;
+  my $VERSION=  2.43;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -85,7 +85,7 @@ my %DEFAULTS	= (
 	'clean'		=> 0,		# Clean garbage out of thumbnail dir?
 	'captions'	=> "captions.txt",	# Captions filename?
 	'caption_edit'	=> 0,		# Add tags for editing captions CGI
-	'fix_urls'	=> 1,		# Convert spaces to %20 in URLs?
+	'fix_urls'	=> 1,		# Encode unsafe characters as %xx in URL
 	'depth'		=> -1,		# Depth to descend directories
 	'all'		=> 0,		# Do not hide .directories
 	'hashes'	=> 1,		# Show hash progress marks
@@ -223,7 +223,7 @@ sub usage {
   print "\t-clean            Remove unused thumbnails"; default("clean");
   print "\t-captions         Specify captions filename"; default("captions");
   print "\t-caption_edit     Add comment tags so that caption_edit.cgi will work"; default("caption_edit");
-  print "\t-fix_urls         Convert spaces to %20 in URLs"; default("fix_urls");
+  print "\t-fix_urls         Encode unsafe chars as %xx in URLs"; default("fix_urls");
   print "\t-known_images     Only include known image types"; default("known_images");
   print "\t-body             Specify <body> tags for default output\n";
   print "\t-all              Do not hide directories starting with '.'\n";
@@ -685,15 +685,21 @@ sub clean_thumb_dir {
 #########################
 sub quote {
   my ($path,$opt) = @_;
-  $path =~ s/'/%27/g;	# Convert ' to %27
-  $path =~ s/"/%22/g;	# Convert " to %22
-  $path =~ s/#/%23/g;	# Convert # to %23
+
+  # Handle ['"#?*!:%] always, regardless of -fix_urls - see RFC 1630
+  $path =~ s/(['"#?*!:%])/"%".sprintf("%2.2x",ord($1))/eg;
+
   $path = "'$path'";	# And quote the rest
   return $path unless ($opt && $opt->{'fix_urls'});
+
   # Should probably correct more than just whitespace
   $path =~ s/(\s)/"%".sprintf("%2.2x",ord($1))/eg;
   # Handle umlauts and whatnot
   $path =~ s/([\xE4\xF6\xFC\xC4\xD6\xDC\xDF])/"%".sprintf("%2.2x",ord($1))/eg;
+
+  # Handle unsafe characters including space.
+  # Encode everything below space and above hex 127
+  $path =~ s/([\x00-\x20\x7F-\xFF])/"%".sprintf("%2.2x",ord($1))/eg;
 
   $path;
 }
@@ -741,6 +747,7 @@ sub read_captions {
       $split_tabs ? split(/\t+/, $_, 4) : split(/\s*::\s*/, $_, 4);
     $name=$file if (!$name && $cap);
     next unless $file; # && $name;
+    $file=$1 if ($file eq "." && $dir =~ m|([^/]+)$|);
     $caps{$file}{name}=$name;
     $caps{$file}{cap}=$cap if $cap;
     $caps{$file}{alt}=$alt if $alt;
@@ -1151,8 +1158,25 @@ sub Meta {
   print "<meta NAME='Generator' CONTENT='$GEN_STRING'>\\n";
   print "<meta NAME='Album_Path' CONTENT='\$ALBUM_PATH'>\\n";
   print "<meta NAME='Album_Theme' CONTENT='\$THEME_PATH'>\\n";
-  print "<meta NAME='Prev_Image' CONTENT='",\$PICS[Image_Prev()],"'>\\n";
-  print "<meta NAME='Next_Image' CONTENT='",\$PICS[Image_Next()],"'>\\n";
+  if (Image_Page()) {
+    my \$prev = \$PICS[Image_Prev()];
+    my \$next = \$PICS[Image_Next()];
+    my \$prev_med = \$IMAGE_MEDIUMS[Image_Prev()] || Image_URL();
+    my \$next_med = \$IMAGE_MEDIUMS[Image_Next()] || Image_URL();
+    print <<PREV_NEXT;
+<meta NAME='Prev_Image' CONTENT='\$prev'>
+<meta NAME='Next_Image' CONTENT='\$next'>
+<script language='javascript'>
+<!--
+if (document.images) {
+  Image1 = new Image(); Image1.src = \$prev_med;
+  Image2 = new Image(); Image2.src = \$next_med;
+}
+//-->
+</script>
+
+PREV_NEXT
+  }
   \$CALLED_META=1;
 }
 sub Credit {
@@ -1624,7 +1648,6 @@ sub do_album {
       my $is_a_pic = 1;
       $is_a_pic = 0
         if (-f "$dir/${pic}$NOT_IMG" || $pic =~ /\.html?$/i ||
-                  $pic =~ /\.mov$/i ||
                  ($opt->{'known_images'} && $pic !~ /\.($IMAGE_TYPES)$/i));
 
       my ($width,$height,$full_width,$full_height) = (0,0,0,0);
@@ -1909,7 +1932,9 @@ sub movie_frame {
 
   my $tmpout = "album.tmp.$$.%d.jpg";
   my $tmpret = "album.tmp.$$.1.jpg";
-  my $cmd = "ffmpeg -y -t 00:00:00.01 -i $qmovie -f jpeg $tmpout";
+  # ffmpeg has problems recognizing .mov format
+  my $format = ($qmovie =~ /\.mov$/i) ? "-f mov" : "";
+  my $cmd = "ffmpeg -y -t 00:00:00.01 $format -i $qmovie -f jpeg $tmpout";
   print STDERR "movie_frame() run: $cmd\n" if ($MAIN::DEBUG);
   system("$cmd > /dev/null 2>&1");
   return $tmpret unless $?;
@@ -1932,6 +1957,7 @@ sub thumbnail {
 
   # movie?
   my $movie = is_movie($img);
+  my $movie_source = $img;
   $img = movie_frame($opt,$img,$thumb) if $movie;
 
   # In case we didn't get the size yet
@@ -1951,8 +1977,8 @@ sub thumbnail {
   }
   my ($tx,$ty) = scale($opt,$img,$scale_x."x".$scale_y,$thumb,0);
 
-  # If it was a movie, remove the temp frame we clipped
-  unlink $img if $movie;
+  # If it was a movie, remove the temp frame we clipped (but not the movie!)
+  unlink $img if $movie && ($img ne $movie_source);
 
   return undef unless $tx;
 
