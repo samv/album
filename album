@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	1.15
+# Version:	1.16
 # Description:	Makes a photo album
 # Assumes:	'Back' for the top of the album is '..'
 use strict;
@@ -392,6 +392,7 @@ sub do_album {
   my @pics = grep(-f "$dir/$_" && 
                   !/\Q$NOT_IMG\E$/ &&	# The "file.$NOT_IMG" files
                   !/\.txt$/ &&		# Per image captions
+                  !/\.htaccess$/ &&	# httpd security files
                   !/~$/ &&		# Emacs backup files
                   $_ ne $HTML &&	# Index html
                   $_ ne $HEADER &&	# Header/footer
