@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.29
+# Version:	2.30
 # Description:	Makes a photo album
 use strict;
 
@@ -13,6 +13,9 @@ umask 022;	# 0755
 ##################################################
 my $PROGNAME = $0;
 $PROGNAME =~ s|.*/||;
+
+# Windows users will probably want to specify full paths, such as:
+# my $CONVERT   = '"C:\PROGRAM FILES\IMAGEMAGICK\convert"';
 
 my $CONVERT	= "convert";
 my $IDENTIFY	= "identify";	# Undef if you don't have identify
@@ -85,7 +88,7 @@ my $CRAPPY_OS = ($^O =~ /Win/i) ? 1 : 0;
   # 2) Can't handle "\Qfile\E";
   sub file_quote {
     my ($file) = @_;
-    $CRAPPY_OS ? $file : "\Q$file\E";
+    $CRAPPY_OS ? "\"$file\"" : "\Q$file\E";
   }
 
   # 3) Can't create .files
@@ -236,12 +239,12 @@ sub get_theme {
     }
     $top = 0;
     push(@{$opt->{$data}},$_);
-    $in_head=1 if (/<head>/);
+    $in_head=1 if (/<head>/i);
     if (/Meta\(\)/) {
       usage("Meta() must be inside <head>...</head>") if (!$in_head);
       $saw_meta=1;
     }
-    $in_head=0 if (/<\/head>/);
+    $in_head=0 if (/<\/head>/i);
     $saw_credit=1 if (/Credit\(\)/);
   }
   close(TEMP);
@@ -545,9 +548,9 @@ sub clean_thumb_dir {
       $remove = "unused image page"
         unless ($opt->{'image_pages'} && grep($_ eq $name, @pics));
     } elsif ($name  =~ /\.med\./) {
-      $name = $`.".".$';
+      $name = $`;
       $remove = "unused medium image"
-        unless ($opt->{'medium'} && grep($_ eq $name, @pics));
+        unless ($opt->{'medium'} && grep(/^\Q$name.\E/, @pics));
     } elsif ($name  =~ /\.$opt->{'type'}$/) {
       # Thumbnail?
       $name = $`;
@@ -1281,7 +1284,7 @@ sub do_album {
   # Links to sub-albums
   #########################
   if (@new_dirs) {
-    foreach my $new_dir ( sort @new_dirs ) {
+    foreach my $new_dir ( sort { caption_order($caps_H,$a,$b); } @new_dirs ) {
       my $new_dir_name = get_dir_caption($opt,$dir,$new_dir);
       push(@{$d{'child_album_names'}}, clean_name($new_dir_name,$caps_H));
       my $url = ($opt->{'index'} eq $DEFAULT_INDEX) ?
@@ -1332,6 +1335,11 @@ sub do_album {
         # Now we can get movie image size (based on the extracted frame)
         ($width,$height) = get_size($opt,thumb_name($opt,"$dir/$pic").".ppm")
           if ($opt->{'image_sizes'} && is_movie($pic));
+
+        # And finally, if we are using medium but we don't have the sizes yet
+        # (because we didn't generate it this time)
+        ($width,$height) = get_size($opt,"$dir/$opt->{dir}/$medium")
+          if ($medium && $opt->{'image_sizes'} && !is_movie($pic) && !$width);
 
         next unless defined $thumb;
         $thumb =~ s/^\Q$dir\E\/?//; # Ugly - remove path component from $thumb
