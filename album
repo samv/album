@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-  my $VERSION=  2.35;
+  my $VERSION=  2.36;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -24,6 +24,9 @@ $PROGNAME =~ s|.*/||;
 # Win98: Needs TCAP:  ftp://ftp.simtel.net/pub/simtelnet/msdos/sysutl/tcap31.zip
 #WIN98#my $TCAP = 'tcap';
 #WIN98#my $TCAP_FILE = "atrash.tmp";
+#WIN98# Put tcap args in the tcap env var, so to reduce line length (128 limit)
+#WIN98#$ENV{tcap}="-overwrite *${TCAP_FILE}";
+
 
 my $CONVERT	= "convert";
 my $IDENTIFY	= "identify";	# Undef if you don't have identify
@@ -110,7 +113,8 @@ my $IMAGE_TYPES	=
 #########################
 # Windows blows
 #########################
-my $CRAPPY_OS = ($^O =~ /Win/i) ? 1 : 0;
+my $OSX = ($^O =~ /darwin/i) ? 1 : 0;
+my $CRAPPY_OS = (!$OSX && ($^O =~ /Win/i)) ? 1 : 0;
 # Win98=MSWin, WinXP=MSWin (damn), CygWin=cygwin
 
   # 1) Can't handle "\Qfile\E";
@@ -140,7 +144,7 @@ my $CRAPPY_OS = ($^O =~ /Win/i) ? 1 : 0;
     return open($fh, "$cmd 2>&1 |") && $fh unless $CRAPPY_OS;
 
     # Win98 (use TCAP)
-#WIN98#    system("$TCAP -overwrite $TCAP_FILE -c $cmd");
+#WIN98#    system("$TCAP -c $cmd");
 #WIN98#    open($fh, "$TCAP_FILE") || die("Can't open $TCAP output [$TCAP_FILE]\n");
 #WIN98#    return $fh;
 
@@ -435,6 +439,8 @@ sub parse_args {
   usage("-CROP must be top, bottom, left or right")
     if ($opt{CROP} && $opt{CROP} !~ /^(top|bottom|left|right)$/);
 
+  printf "[$PROGNAME version %4.2f]\n",$VERSION if $MAIN::DEBUG;
+
   $dir =~ s|/$||;	# Little cleanup
   (\%opt,$dir);
 }
@@ -461,6 +467,7 @@ sub header {
   my $Up = $image_page ? "Back" : "Up";
   my $UpUrl = "../" . ($opt->{'index'} eq $DEFAULT_INDEX ? "" : "$opt->{'index'}$HTML");
   $UpUrl = $opt->{'top'} unless ($#parents || $image_page);
+  $UpUrl = "<h1><a href='$UpUrl'>$Up</a></h1>" if $UpUrl && $UpUrl ne "''";
 
   print ALBUM <<END_OF_HEADER;
 <!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN'
@@ -470,6 +477,7 @@ sub header {
     <title> 
       Album: $this
     </title>
+    <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>
     <meta NAME='Generator' CONTENT='$GEN_STRING'>
     <meta NAME='Album_Path' CONTENT='$d_H->{album_path}'>
   </head>
@@ -480,7 +488,7 @@ sub header {
         <h2>$header</h2>
       </td>
       <td align='right'>
-        <h1><a href='$UpUrl'>$Up</a></h1>
+        $UpUrl
       </td>
     </tr>
   </table>
@@ -998,7 +1006,7 @@ sub Get_Opt { return \$OPTIONS{\$_[0]}; }
 # Main index page (probably just default of "")
 sub Index { ("$opt->{'index'}" eq "$DEFAULT_INDEX") ? "" : "$opt->{'index'}$HTML"; }
 # Go back to a previous index, or just ".." for the top page of the album
-sub Back { (\$#PARENT_ALBUMS || Image_Page()) ? "../".Index() : "$opt->{'top'}"; }
+sub Back { (\$#PARENT_ALBUMS || Image_Page()) ? "'../".Index()."'" : "'$opt->{top}'"; }
 
 # Parent albums
 my \$PARENT_ALBUM_CNT = 0;
@@ -1056,7 +1064,7 @@ sub pImage_Src {
 sub pImage_Thumb_Src {
   print "<img src=",Image_Thumb()," border='0' alt=",Image_Alt();
   #print " width='$opt->{'x'}' height='$opt->{'y'}' border='0'>";
-  print " $TN_GEOM border='0'>";
+  print " $TN_GEOM>";
 }
 sub pImage {
   return undef unless Images();
@@ -1788,7 +1796,7 @@ sub scale {
   $size || die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<$size>) {
     print STDERR "scale(): $_" if ($MAIN::DEBUG);
-    if(/=>(\d+)x(\d+)\s/) {
+    if(/=>(\d+)x(\d+)/) {
       $size->close;
       return ($1,$2);
     }
@@ -1860,7 +1868,7 @@ sub movie_frame {
 sub thumbnail {
   my ($opt,$img,$x,$y) = @_;
 
-  print STDERR "\nIMAGE: $img\n" if ($MAIN::DEBUG);
+  print STDERR "IMAGE: $img\n" if ($MAIN::DEBUG);
 
   my ($thumb) = thumb_name($opt,$img);
 
