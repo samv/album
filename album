@@ -2,10 +2,11 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-  my $VERSION=  2.38;
+  my $VERSION=  2.39;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
+#use locale;	# Does Windows have this?
 
 umask 022;	# 0755
 
@@ -30,7 +31,6 @@ $PROGNAME =~ s|.*/||;
 
 my $CONVERT	= "convert";
 my $IDENTIFY	= "identify";	# Undef if you don't have identify
-my $MPG_EXTRACT	= "mpeg2decode -f -o3 -1";	# Extracts a single mpg frame
 
 # Default directory page
 my $HTML	= ".html";
@@ -171,8 +171,10 @@ my $CRAPPY_OS = (!$OSX && ($^O =~ /Win/i)) ? 1 : 0;
 
   # 6) .exe extension if we don't have it
   if ($CRAPPY_OS) {
-    $CONVERT =~ s/(\.exe)?$/.exe/ig;
-    $IDENTIFY =~ s/(\.exe)?$/.exe/ig;
+    $CONVERT =~ s/\.exe$//;
+    $IDENTIFY =~ s/\.exe$//;
+    $CONVERT .= ".exe";
+    $IDENTIFY .= ".exe";
   }
 
 #########################
@@ -392,7 +394,8 @@ sub parse_args {
       # Options that take arguments
       if ($option =~ /^(charset|medium|dir|type|medium_type|columns|captions|index|top|body|CROP|depth|name_length)$/) {
         usage("Option [$option] can't be -no, it needs an argument") if ($no);
-        my $val = (shift(@theme_args) || shift(@ARGV));
+        my $val = shift(@theme_args);
+        $val = shift(@ARGV) unless defined $val;
         if ($option eq "index" && $val eq $DEFAULT_INDEX) {
           undef $DEFAULT_INDEX;
         } else {
@@ -1042,8 +1045,10 @@ sub pJoin_Parent_Albums {
 my \$CHILD_ALBUM_CNT = 0;
 sub Child_Albums { (\$CHILD_ALBUM_CNT <= \$#CHILD_ALBUM_NAMES) ? 1 : 0; }
 sub pChild_Album {
-  print "<a href=\$CHILD_ALBUM_URLS[\$CHILD_ALBUM_CNT]>";
-  print "\$CHILD_ALBUM_NAMES[\$CHILD_ALBUM_CNT]</a>";
+  my (\$nobr) = \@_;
+  my \$name = \$CHILD_ALBUM_NAMES[\$CHILD_ALBUM_CNT];
+  \$name =~ s/<br>//g if \$nobr;
+  print "<a href=\$CHILD_ALBUM_URLS[\$CHILD_ALBUM_CNT]>\$name</a>";
 }
 sub Child_Album_URL { \$CHILD_ALBUM_URLS[\$CHILD_ALBUM_CNT]; }
 sub Child_Album_Name { \$CHILD_ALBUM_NAMES[\$CHILD_ALBUM_CNT]; }
@@ -1054,7 +1059,7 @@ sub Next_Child_Album { \$CHILD_ALBUM_CNT++; }
 # Images
 my \$IMAGE_CNT = 0;
 my \$THIS_IMAGE = 0;
-sub is_movie { return \$_[0] =~ /\.(mpe?g|avi)["']?\$/i ? 1 : 0; }	# Ignore quotes
+sub is_movie { return \$_[0] =~ /\.(mpeg|mpg|mov|avi)["']?\$/i ? 1 : 0; }
 sub Images { (\$IMAGE_CNT <= \$#IMAGE_NAMES) ? 1 : 0; }
 sub Image_Src { \$IMAGE_MEDIUMS[\$IMAGE_CNT] || Image_URL(); }
 sub pImage_Src {
@@ -1781,7 +1786,7 @@ sub get_size {
   print STDERR "\n\n[$PROGNAME] Can't get [$img] size from 'convert -verbose' output\n";
   print STDERR "\tTry option:  -known_images to ignore garbage files\n"
     unless ($img =~ /\.$IMAGE_TYPES$/i);
-  print STDERR "\tWindows users need to have CygWin installed!\n" if $CRAPPY_OS;
+  print STDERR "\tWindows users may have an easier time with CygWin installed!\n" if $CRAPPY_OS;
   die("\n");
 }
 
@@ -1850,22 +1855,28 @@ sub medium {
 }
 
 # Handle movie clips/thumbnails
-# We can only handle mpg right now
 # This routine is also copied in the eperl source
-sub is_movie { return $_[0] =~ /\.mpe?g$/i ? 1 : 0; }
+sub is_movie { return $_[0] =~ /\.(mpeg|mpg|mov|avi)$/i ? 1 : 0; }
 
 sub movie_frame {
   my ($opt,$movie,$img) = @_;
 
   my $qmovie = file_quote($movie);
   my $qimg = file_quote($img);
-  my $cmd = "$MPG_EXTRACT $qmovie $qimg";
+
+#OLD## Has problems with conversion, but when it does, it looks better :(
+#OLD## but unfortunately most thumbnails end up clipped/mostly green.
+#OLD#my $cmd = "mpeg2decode -f -o3 -1 $qmovie $qimg";
+
+  my $tmpout = "album.tmp.$$.%d.jpg";
+  my $tmpret = "album.tmp.$$.1.jpg";
+  my $cmd = "ffmpeg -y -t 00:00:00.01 -i $qmovie -f jpeg $tmpout";
   print STDERR "movie_frame() run: $cmd\n" if ($MAIN::DEBUG);
   system("$cmd > /dev/null 2>&1");
-  return "$img.ppm" unless ($?);
+  return $tmpret unless $?;
   print STDERR "[$PROGNAME] Error extracting movie frame.\n";
   print STDERR "\n";
-  print STDERR "\tDo you have mpeg2decode installed with the -1 patch from MarginalHacks.com?\n";
+  print STDERR "\tDo you have ffmpeg installed?  http://ffmpeg.org\n";
   return $movie;
 }
 
@@ -1881,7 +1892,8 @@ sub thumbnail {
   return $thumb if (-f $thumb && !$opt->{'force'} && -M $thumb < -M $img);
 
   # movie?
-  $img = movie_frame($opt,$img,$thumb) if is_movie($img);
+  my $movie = is_movie($img);
+  $img = movie_frame($opt,$img,$thumb) if $movie;
 
   # In case we didn't get the size yet
   ($x,$y) = get_size($opt,$img) unless ($x && $y);
@@ -1899,6 +1911,10 @@ sub thumbnail {
     }
   }
   my ($tx,$ty) = scale($opt,$img,$scale_x."x".$scale_y,$thumb,0);
+
+  # If it was a movie, remove the temp frame we clipped
+  unlink $img if $movie;
+
   return undef unless $tx;
 
   if ($opt->{'crop'}) {
