@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License
-# Version:	2.28
+# Version:	2.29
 # Description:	Makes a photo album
 use strict;
 
@@ -25,7 +25,7 @@ my $HTML	= ".html";
 my $DEFAULT_INDEX = "index";		# Don't need to specify this index
 my $HEADER	= "header.txt";
 my $FOOTER	= "footer.txt";
-my $NO_ALBUM	= ".no_album";		# Don't run album on these directories
+my $NO_ALBUM	= ".no_album";		# Don't run album on these dirs/files
 my $HIDE_ALBUM	= ".hide_album";	# Don't even show these directories
 my $NOT_IMG	= ".not_img";		# Postfix for files that aren't images
 
@@ -56,7 +56,7 @@ my %DEFAULTS	= (
 	'fix_urls'	=> 1,		# Convert spaces to %20 in URLs?
 	'depth'		=> -1,		# Depth to descend directories
 	'all'		=> 0,		# Do not hide .directories
-	'no_hashes'	=> 0,		# Don't show hash marks
+	'hashes'	=> 1,		# Show hash progress marks
 
 	# deprecated, it's automated now
 	'identify'	=> 1,		# Use identify or convert for get_size?
@@ -89,8 +89,8 @@ my $CRAPPY_OS = ($^O =~ /Win/i) ? 1 : 0;
   }
 
   # 3) Can't create .files
-  $NO_ALBUM =~ s/^\.//g;
-  $HIDE_ALBUM =~ s/^\.//g;
+  $NO_ALBUM =~ s/^\.//g if $CRAPPY_OS;
+  $HIDE_ALBUM =~ s/^\.//g if $CRAPPY_OS;
 
 #########################
 # abs_path
@@ -147,7 +147,7 @@ sub usage {
   print "\t-body             Specify <body> tags for default output\n";
   print "\t-all              Do not hide directories starting with '.'\n";
   print "\t-depth            Depth to descend directories (default infinite)\n";
-  print "\t-no_hashes        Don't show hash marks while generating thumbnails"; default("no_hashes");
+  print "\t-hashes           Don't show hash marks while generating thumbnails"; default("hashes");
   print "\t-index <file>     Select the default 'index.html' to use"; default("index");
   print "\t                    Specifying '-index index' will force album to\n";
   print "\t                    actually add 'index.html' to the end of links,\n";
@@ -339,7 +339,7 @@ sub parse_args {
   $opt{image_pages}=1 if $opt{'image.th'};
 
   # -clean and hashes is ugly
-  $opt{no_hashes}=1 if $opt{clean};
+  $opt{hashes}=0 if $opt{clean} || $MAIN::DEBUG;
 
   # -medium needs image pages
   $opt{image_pages}=1 if $opt{medium};
@@ -645,15 +645,18 @@ sub caption_order {
   my $an = $caps_H->{$a} && $caps_H->{$a}{num};
   my $bn = $caps_H->{$b} && $caps_H->{$b}{num};
 
-  return $an <=> $bn if ($an && $bn);
-  return ($a cmp $b);
+# This tries to mingle captioned images with non-captioned.  It won't work,
+# because what do you do if you have images:  a, b, c and the captions
+# file only has c and then a.  There's no way to sort that.
+#  return $an <=> $bn if ($an && $bn);
+#  return ($a cmp $b);
 
-#  # This code will put captioned images above non-captioned images
-#  if ($an) {
-#    return $bn ? ($an <=> $bn) : -1;
-#  } else {
-#    return $bn ? 1 : ($a cmp $b);
-#  }
+  # This code will put captioned images above non-captioned images
+  if ($an) {
+    return $bn ? ($an <=> $bn) : -1;
+  } else {
+    return $bn ? 1 : ($a cmp $b);
+  }
 }
 
 #########################
@@ -820,7 +823,7 @@ sub Next_Child_Album { \$CHILD_ALBUM_CNT++; }
 # Images
 my \$IMAGE_CNT = 0;
 my \$THIS_IMAGE = 0;
-sub is_movie { return \$_[0] =~ /\.mpe?g["']?\$/i ? 1 : 0; }	# Ignore quotes
+sub is_movie { return \$_[0] =~ /\.(mpe?g|avi)["']?\$/i ? 1 : 0; }	# Ignore quotes
 sub Images { (\$IMAGE_CNT <= \$#IMAGE_NAMES) ? 1 : 0; }
 sub Image_Src { \$IMAGE_MEDIUMS[\$IMAGE_CNT] || Image_URL(); }
 sub pImage_Src {
@@ -1186,13 +1189,18 @@ sub do_album {
   return if $opt->{depth}>=0 && @dir_names > $opt->{depth};
 
   print STDERR "Album: $dir";
-  if ($opt->{no_hashes}) {
-    print STDERR "\n";
-  } else {
+  if ($opt->{hashes}) {
     print STDERR " "x(76-$HASHES-length("Album: $dir"));
     print STDERR "["," "x$HASHES,"]\b","\b"x$HASHES;
+  } else {
+    print STDERR "\n";
   }
   my $hashes_done = 0;
+
+  if (-f "$dir/$NO_ALBUM") {
+    printf STDERR $opt->{hashes} ? ("%${HASHES}s]\n","<$NO_ALBUM>") : "\n";
+    return;
+  }
 
   #########################
   # Get images and subdirectories
@@ -1232,7 +1240,7 @@ sub do_album {
   # Did we create the index file here?
   #########################
   if (unknown_html($opt,$dir)) {
-    return if $opt->{no_hashes};
+    return unless $opt->{hashes};
     printf STDERR "%${HASHES}s]\n","<unknown>";
     return;
   }
@@ -1305,23 +1313,23 @@ sub do_album {
                   $pic =~ /\.mov$/i ||
                  ($opt->{'known_images'} && $pic !~ /\.($IMAGE_TYPES)$/i));
 
-      my ($width,$height);
+      my ($width,$height,$full_width,$full_height) = (0,0,0,0);
       my ($thumb,$page_thumb,$medium);
       if ($is_a_pic) {
         # Generate -medium if necessary
-        $medium = medium($opt,"$dir/$pic");
+        ($medium,$width,$height) = medium($opt,"$dir/$pic");
 
         # Find out the full image size now, we can skip a step in
         # thumbnail generation this way.
         # We can't do this for movies, since we haven't yet extracted the frame
-        ($width,$height) = get_size($opt,
-          $medium ? "$dir/$opt->{'dir'}/$medium" : "$dir/$pic")
-          if ($opt->{'image_sizes'} && !is_movie($pic));
+        ($full_width,$full_height) = get_size($opt,"$dir/$pic")
+          if (!$medium && $opt->{'image_sizes'} && !is_movie($pic));
+        ($width,$height) = ($full_width,$full_height) unless $medium;
 
         # Generate thumbnail
-        $thumb = thumbnail($opt,"$dir/$pic",$width,$height);
+        $thumb = thumbnail($opt,"$dir/$pic",$full_width,$full_height);
 
-        # Now get full image size for movies (the frame)
+        # Now we can get movie image size (based on the extracted frame)
         ($width,$height) = get_size($opt,thumb_name($opt,"$dir/$pic").".ppm")
           if ($opt->{'image_sizes'} && is_movie($pic));
 
@@ -1379,13 +1387,13 @@ sub do_album {
       push(@{$d{'image_alts'}}, quote($caps_H->{$pic}{alt}));
       push(@{$d{'image_is_pic'}}, $is_a_pic);
 
-      unless ($opt->{no_hashes}) {
+      if ($opt->{hashes}) {
         my $hashes_needed = int($HASHES*($i/($#pics+1)));
         print STDERR "X"x($hashes_needed-$hashes_done);
         $hashes_done = $hashes_needed;
       }
     }
-    print STDERR "X"x($HASHES-$hashes_done), "]\n" unless $opt->{no_hashes};
+    print STDERR "X"x($HASHES-$hashes_done), "]\n" if $opt->{hashes};
   } else {
     printf STDERR "%${HASHES}s]\n","<no thumbs>";
   }
@@ -1454,37 +1462,37 @@ sub get_size {
 
   # Try to use identify if we have it
   if ($IDENTIFY && $opt->{'identify'}) {
-    print STDERR "get_size() run: $IDENTIFY -ping $img\n" if ($MAIN::DEBUG);
     my $qimg = file_quote($img);
-    open(SIZE,"$IDENTIFY -ping $qimg 2>&1 |") ||
-      die("[$PROGNAME] Couldn't run identify!  [$IDENTIFY]\n");
-    while(<SIZE>) {
-      print STDERR "get_size(): $_" if ($MAIN::DEBUG);
-      if (/command not found/) {	# Kind of kludgy
-        $opt->{'identify'} = 0;
-        last;
-      }
-      if (/\s(\d+)x(\d+)(\s|\+)/) {
-        close(SIZE);
-        return ($1,$2);
+    print STDERR "get_size() run: $IDENTIFY -ping $qimg\n" if ($MAIN::DEBUG);
+    if (open(SIZE,"$IDENTIFY -ping $qimg 2>&1 |")) {
+      while(<SIZE>) {
+        print STDERR "get_size(): $_" if ($MAIN::DEBUG);
+        if (/command not found/) {	# Kind of kludgy
+          $opt->{'identify'} = 0;
+          last;
+        }
+        return (0,0) if (/no delegate for this image format/);
+        return (0,0) if (/support .*not yet available/);
+        if (/\s(\d+)x(\d+)(\s|\+)/) {
+          close(SIZE);
+          return ($1,$2);
+        }
       }
     }
     # I wish there was an easy way to tell if they had identify!
     $try_noidentify = 1;
-#    die("[$PROGNAME] Can't get [$img] size from '$IDENTIFY -ping' output\n".
-#        "\tIf you don't have the $IDENTIFY tool, try the '-noidentify' option\n");
   }
 
   # Kludgy way to get size, but works with all images that convert reads
-  print STDERR "get_size() run: $CONVERT -verbose $img /dev/null\n" if ($MAIN::DEBUG);
   my $qimg = file_quote($img);
+  print STDERR "get_size() run: $CONVERT -verbose $qimg /dev/null\n" if ($MAIN::DEBUG);
   open(SIZE,"$CONVERT -verbose $qimg /dev/null 2>&1 |") ||
     die("[$PROGNAME] Couldn't run convert!  [$CONVERT]\n");
   while(<SIZE>) {
     print STDERR "get_size(): $_" if ($MAIN::DEBUG);
     if(/\s(\d+)x(\d+)(\s|\+)/) {
       close(SIZE);
-      $opt->{'identify'} = 0 if ($try_noidentify);	# identify didn't work, convert did
+      $opt->{'identify'} = 0 if $try_noidentify;	# identify didn't work, convert did
       return ($1,$2);
     }
   }
@@ -1553,7 +1561,7 @@ sub medium {
 
   my ($tx,$ty) = scale($opt,$img,$opt->{'medium'},$med_path,1);
   return undef unless $tx;
-  return $medium;
+  return ($medium,$tx,$ty);
 }
 
 # Handle movie clips/thumbnails
