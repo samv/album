@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.47;
+  my $VERSION=  2.48;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -36,7 +36,7 @@ my $FFMPEG	= "ffmpeg";	# For extracting movie frames
 
 # Default directory page
 my $HTML	= ".html";
-my $DEFAULT_INDEX = "index";		# Don't need to specify this index
+my $DEFAULT_INDEX = "index$HTML";		# Don't need to specify this index
 my $HEADER	= "header.txt";
 my $FOOTER	= "footer.txt";
 my $NO_ALBUM	= ".no_album";		# Don't run album on these dirs/files
@@ -79,7 +79,7 @@ my %DEFAULTS	= (
 	'medium'	=> "",		# Make medium size pictures?
 	'just_medium'	=> 0,		# Don't link to full size images
 	'image_pages'	=> 1,		# Page per image
-	'index'		=> "index",	# Default index
+	'index'		=> $DEFAULT_INDEX,	# Default index
 	'body'		=> "<body bgcolor='white'>",		# <body> tag
 	'top'		=> "..",	# The "Back" for the top album
 	'columns'	=> 4,		# Number of images per row
@@ -488,8 +488,8 @@ sub parse_args {
   usage("Need to specify -medium <geom> with -just_medium option")
     if $opt{just_medium} && !$opt{medium};
 
-  # We'll add the .html flag
-  $opt{'index'} =~ s/\Q$HTML\E$//;
+  # Add the .html flag if missing a postscript?
+  $opt{index}.=$HTML unless $opt{index} =~ /\./;
 
   # -theme_url needs -theme
   usage("-theme_url requires -theme option (it does not replace it)")
@@ -520,14 +520,14 @@ sub header {
   my $this = pop(@names);
   my $header = "";
   my $back = $#names;
-  my $index = ("$opt->{'index'}" eq "$DEFAULT_INDEX") ? "" : "$opt->{'index'}$HTML";
+  my $index = ($opt->{index} eq $DEFAULT_INDEX) ? "" : $opt->{index};
   while (my $n = pop(@names)) {
     $header = "<a href='".("../"x($back-$#names))."$index'>$n</a> : $header";
   }
   $header.=$this;
 
   my $Up = $image_page ? "Back" : "Up";
-  my $UpUrl = "../" . ($opt->{'index'} eq $DEFAULT_INDEX ? "" : "$opt->{'index'}$HTML");
+  my $UpUrl = "../$index";
   $UpUrl = $opt->{'top'} unless ($#parents || $image_page);
   $UpUrl = "<h1><a href='$UpUrl'>$Up</a></h1>" if $UpUrl && $UpUrl ne "''";
 
@@ -646,7 +646,7 @@ sub unknown_html {
 
   return 1 if (-f file_quote("$dir/$NO_ALBUM"));
 
-  my $file = "$dir/$opt->{'index'}$HTML";
+  my $file = "$dir/$opt->{index}";
   return 0 unless -f $file;
   return 0 if -z $file;
 
@@ -672,7 +672,7 @@ sub unknown_html {
 sub previous_build_theme {
   my ($opt,$dir) = @_;
 
-  my $file = "$dir/$opt->{'index'}$HTML";
+  my $file = "$dir/$opt->{index}";
   (open(FILE,"<$file")) || return undef;
   while(<FILE>) {
     if (/meta\s+name='Album_Theme'\s+content='(.+)'/i) {
@@ -795,7 +795,7 @@ sub read_captions {
     my ($file,$name,$cap,$alt)=
       $split_tabs ? split(/\t+/, $_, 4) : split(/\s*::\s*/, $_, 4);
     $name=$file if (!$name && $cap);
-    next unless $file; # && $name;
+    next unless $file;
     $file=$1 if ($file eq "." && $dir =~ m|([^/]+)$|);
     $caps{$file}{name}=$name;
     $caps{$file}{cap}=$cap if $cap;
@@ -827,7 +827,7 @@ sub sort_rank {
   # Save mod times in a cache
   return $opt->{DATE_SORT_CACHE}{$f}
     if $opt->{DATE_SORT_CACHE} && $opt->{DATE_SORT_CACHE}{$f};
-  $opt->{DATE_SORT_CACHE}{$f} = -M "$dir/$f";
+  $opt->{DATE_SORT_CACHE}{$f} = -(-M "$dir/$f");
   $opt->{DATE_SORT_CACHE}{$f};
 }
 
@@ -1093,7 +1093,7 @@ sub pFooter {
 sub Get_Opt { return \$OPTIONS{\$_[0]}; }
 
 # Main index page (probably just default of "")
-sub Index { ("$opt->{'index'}" eq "$DEFAULT_INDEX") ? "" : "$opt->{'index'}$HTML"; }
+sub Index { ("$opt->{index}" eq "$DEFAULT_INDEX") ? "" : "$opt->{index}"; }
 # Go back to a previous index, or just ".." for the top page of the album
 sub Back { (\$#PARENT_ALBUMS || Image_Page()) ? "'../".Index()."'" : "'$opt->{top}'"; }
 
@@ -1148,7 +1148,7 @@ sub pImage_Src {
   print "<",Image_Tag(Image_Filename())," src=",Image_Src()," border='0' alt=",Image_Alt();
   print " width='",Image_Width(),"'" if Image_Width();
   print " height='",Image_Height(),"'" if Image_Height();
-  print ">";
+  print " />";
 }
 sub pImage_Thumb_Src {
   print "<img src=",Image_Thumb()," border='0' alt=",Image_Alt();
@@ -1626,7 +1626,7 @@ sub do_album {
                   !/\.htaccess$/ &&	# httpd security files
                   !/\.cvsignore$/ &&	# CVS
                   !/~$/ &&		# Emacs backup files
-                  $_ ne "$opt->{'index'}$HTML" &&	# Index html
+                  $_ ne $opt->{index} &&	# Index html
                   $_ ne $HEADER &&	# Header/footer
                   $_ ne $FOOTER &&      
                   #!(/\Q$HTML\E$/ && -f "$dir/$`") &&	# Image page
@@ -1664,12 +1664,15 @@ sub do_album {
   #########################
   @pics = sort { caption_order($opt,$caps_H,$dir,$a,$b); } @pics;
 
+  # Commented out lines in captions is same as .no_album
+  @pics = grep(!$caps_H->{"#".$_} || $caps_H->{$_}, @pics);
+
   #########################
   # Write the html
   #########################
   my %d;	# Hold the theme data
 
-  $d{'album_filename'} = "$dir/$opt->{'index'}$HTML";
+  $d{'album_filename'} = "$dir/$opt->{index}";
 
   $d{'album_path'} = join("/",@dir_names);
   #@{$d{'parent_albums'}} = map(clean_name($_,undef,1), @dir_names);
@@ -1687,8 +1690,8 @@ sub do_album {
   if (@new_dirs) {
     foreach my $new_dir ( sort { caption_order($opt,$caps_H,$dir,$a,$b); } @new_dirs ) {
       push(@{$d{'child_album_names'}}, get_dir_caption($opt,$caps_H,$dir,$new_dir));
-      my $url = ($opt->{'index'} eq $DEFAULT_INDEX) ?
-                "$new_dir/" : "$new_dir/$opt->{'index'}$HTML";
+      my $url = ($opt->{index} eq $DEFAULT_INDEX) ?
+                "$new_dir/" : "$new_dir/$opt->{index}";
       push(@{$d{'child_album_urls'}},quote($url,$opt));
     }
   }
@@ -1697,8 +1700,8 @@ sub do_album {
   undef $opt->{DATE_SORT_CACHE};
 
   # Image page URLs are <img.html> or <img.indexname.html>
-  my $page_post_url = ($opt->{'index'} eq $DEFAULT_INDEX) ?
-                       $HTML : ".$opt->{'index'}$HTML";
+  my $page_post_url = ($opt->{index} eq $DEFAULT_INDEX) ?
+                       $HTML : ".$opt->{index}";
 
   #########################
   # Table of thumbnails
