@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.44;
+  my $VERSION=  2.45;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -97,6 +97,7 @@ my %DEFAULTS	= (
 	'name_sort'	=> 0,		# Sort by name, ignore caption order
 	'reverse_sort'	=> 0,		# Reverse sorting
 	'charset'	=> "iso-8859-1",# Charset for default theme
+	'image_loop'	=> 1,		# Do image pages loop around?
 
 	# eperl stuff
 	'enter_eperl'	=> '<:',	# Start code region in theme
@@ -123,7 +124,7 @@ my $IMAGE_TYPES	=
 	"SGI|SHTML|STEGANO|SUN|TEXT|TGA|TIF|TIFF|TIFF24|TILE|TIM|TTF|TXT|UIL|".
 	"UYVY|VDA|VICAR|VID|VIFF|VST|X|XBM|XC|XPM|XV|XWD|YUV";
 
-$IMAGE_TYPES.="|AVI" if $FFMPEG;	# ffmpeg can handle AVIs
+$IMAGE_TYPES.="|AVI|MOV|MOOV" if $FFMPEG;	# ffmpeg can handle AVI, MOV
 
 #########################
 # Windows blows
@@ -234,7 +235,7 @@ sub usage {
   print "\t-caption_edit     Add comment tags so that caption_edit.cgi will work"; default("caption_edit");
   print "\t-fix_urls         Encode unsafe chars as %xx in URLs"; default("fix_urls");
   print "\t-known_images     Only include known image types"; default("known_images");
-  print "\t-body             Specify <body> tags for default output\n";
+  print "\t-body             Specify <body> tags for default output (not themes)\n";
   print "\t-all              Do not hide directories starting with '.'\n";
   print "\t-depth            Depth to descend directories (default infinite)\n";
   print "\t-hashes           Show hash marks while generating thumbnails"; default("hashes");
@@ -243,6 +244,7 @@ sub usage {
   print "\t-name_sort        Sort by name, not caption order"; default("name_sort");
   print "\t-reverse_sort     Sort in reverse"; default("reverse_sort");
   print "\t-charset <str>    Charset for non-theme output"; default("charset");
+  print "\t-image_loop       Do first and last image pages loop around?"; default("image_loop");
   print "\t-index <file>     Select the default 'index.html' to use"; default("index");
   print "\t                    Specifying '-index index' will force album to\n";
   print "\t                    actually add 'index.html' to the end of links,\n";
@@ -467,6 +469,10 @@ sub parse_args {
 
   # We'll add the .html flag
   $opt{'index'} =~ s/\Q$HTML\E$//;
+
+  # -theme_url needs -theme
+  usage("-theme_url requires -theme option (it does not replace it)")
+    if $opt{theme_url} && !$opt{theme};
 
   usage("-CROP must be top, bottom, left or right")
     if ($opt{CROP} && $opt{CROP} !~ /^(top|bottom|left|right)$/);
@@ -780,10 +786,14 @@ sub read_captions {
 # (But let the local captions file override it, if someone really wants
 # to add that confusion)
 sub get_dir_caption {
-  my ($opt,$caps,$path,$dir) = @_;
-  return $caps->{$dir}{name} if $caps->{$dir} && $caps->{$dir}{name};
+  my ($opt,$caps_H,$path,$dir) = @_;
+
+  # Local captions file:
+  return clean_name($dir,$caps_H) if $caps_H->{$dir} && $caps_H->{$dir}{name};
+
+  # Directories captions file
   my $cap = read_captions($opt,"$path/$dir");
-  return ($cap->{$dir} && $cap->{$dir}{name}) || $dir;
+  return ($cap->{$dir} && $cap->{$dir}{name}) || clean_name($dir,$caps_H);
 }
 
 # Sort according to order found in optional captions file
@@ -1137,14 +1147,16 @@ sub Image_Tag { return (\$_[0] =~ /\.(mpe?g|mov|avi|pdf|ps)\$/i ? "embed" : "img
 # In the image page we use the real URL (back one dir)
 # Otherwise we use the url to the image page (or just the image)
 sub Image_URL { Image_Page() ? \$IMAGE_IMAGE_URLS[\$IMAGE_CNT] : \$IMAGE_URLS[\$IMAGE_CNT]; }
-sub Image_Page_URL { \$IMAGE_PAGE_URLS[\$IMAGE_CNT]; }
+sub Image_Page_URL { \$IMAGE_PAGE_URLS[\$IMAGE_CNT] || Back(); }
 # We can chop down extra long image names on the album page if needed
 sub Image_Name {
   my \$n = \$IMAGE_NAMES[\$IMAGE_CNT];
+  return "Back" unless \$n;
+  return \$n if Image_Page();
   my \$shorten = $opt->{name_length} && length(\$n)>($opt->{name_length}+3);
   my \$s = !\$shorten ? \$n :
     substr(\$n,0,$opt->{name_length}/2) . "..." . substr(\$n,-$opt->{name_length}/2,$opt->{name_length}/2);
-  return \$s if !$opt->{caption_edit} || Image_Page();
+  return \$s if !$opt->{caption_edit};
   \$n = quote(\$n);
   my \$name = quote("NAME\$IMAGE_CNT:".\$PICS[\$IMAGE_CNT]);
   \$s =~ s/\\n//mg;
@@ -1169,8 +1181,8 @@ sub pImage_Caption {
 }
 
 # For image pages
-sub Image_Prev { \$THIS_IMAGE ? \$THIS_IMAGE-1 : \$#IMAGE_NAMES; }
-sub Image_Next { \$THIS_IMAGE==\$#IMAGE_NAMES ? 0 : \$THIS_IMAGE+1; }
+sub Image_Prev { \$THIS_IMAGE ? \$THIS_IMAGE-1 : $opt->{image_loop} ? \$#IMAGE_NAMES : \$#IMAGE_NAMES+1; }
+sub Image_Next { \$THIS_IMAGE!=\$#IMAGE_NAMES ? \$THIS_IMAGE+1 : $opt->{image_loop} ? 0 : \$#IMAGE_NAMES+1; }
 sub Set_Image_Prev { \$IMAGE_CNT = Image_Prev(); }
 sub Set_Image_Next { \$IMAGE_CNT = Image_Next(); }
 sub Set_Image_This { \$IMAGE_CNT = \$THIS_IMAGE; }
@@ -1185,9 +1197,14 @@ sub Meta {
     my \$next = \$PICS[Image_Next()];
     my \$prev_med = \$IMAGE_MEDIUMS[Image_Prev()] || Image_URL();
     my \$next_med = \$IMAGE_MEDIUMS[Image_Next()] || Image_URL();
+    my \$prev_url = \$IMAGE_PAGE_URLS[Image_Prev()];
+    my \$next_url = \$IMAGE_PAGE_URLS[Image_Next()];
     print <<PREV_NEXT;
 <meta name='Prev_Image' content='\$prev' />
 <meta name='Next_Image' content='\$next' />
+<link rel='prev' href=\$prev_url />
+<link rel='next' href=\$next_url />
+<link rel='up' href='..' />
 <script type='text/javascript'>
 <!--
 if (document.images) {
@@ -1610,8 +1627,10 @@ sub do_album {
   # Read captions file
   #########################
   my $caps_H = read_captions($opt,$dir);
+
   # The captions file can rename this directory too, actually
-  $dir_names[-1] = $caps_H->{$dir_names[-1]}{name} if ($caps_H->{$dir_names[-1]});
+# Done below, because we don't want to fully clean_name if it's a caption
+#  $dir_names[-1] = $caps_H->{$dir_names[-1]}{name} if ($caps_H->{$dir_names[-1]});
 
   #########################
   # Sort the pictures, possibly by caption order
@@ -1626,7 +1645,8 @@ sub do_album {
   $d{'album_filename'} = "$dir/$opt->{'index'}$HTML";
 
   $d{'album_path'} = join("/",@dir_names);
-  @{$d{'parent_albums'}} = map(clean_name($_,undef,1), @dir_names);
+  #@{$d{'parent_albums'}} = map(clean_name($_,undef,1), @dir_names);
+  @{$d{'parent_albums'}} = map(clean_name($_,$caps_H,1), @dir_names);
   $d{'dir'} = $dir;
   if ($opt->{theme}) {
     $d{theme_path} = diff_path(abs_path($dir),$opt->{theme});
@@ -1639,8 +1659,7 @@ sub do_album {
   #########################
   if (@new_dirs) {
     foreach my $new_dir ( sort { caption_order($opt,$caps_H,$dir,$a,$b); } @new_dirs ) {
-      my $new_dir_name = get_dir_caption($opt,$caps_H,$dir,$new_dir);
-      push(@{$d{'child_album_names'}}, clean_name($new_dir_name,$caps_H));
+      push(@{$d{'child_album_names'}}, get_dir_caption($opt,$caps_H,$dir,$new_dir));
       my $url = ($opt->{'index'} eq $DEFAULT_INDEX) ?
                 "$new_dir/" : "$new_dir/$opt->{'index'}$HTML";
       push(@{$d{'child_album_urls'}},quote($url,$opt));
