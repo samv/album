@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  2.50;
+  my $VERSION=  2.51;
 # Description:	Makes a photo album
 use strict;
 use IO::File;
@@ -263,6 +263,7 @@ sub usage {
   print "  -fix_urls          Encode unsafe chars as %xx in URLs"; default("fix_urls");
   print "  -known_images      Only include known image types"; default("known_images");
   print "  -body              Specify <body> tags for default output (not themes)\n";
+  print "  -top               URL for 'Back' link on top page"; default("top");
   print "  -all               Do not hide directories starting with '.'\n";
   print "  -depth             Depth to descend directories (default infinite)\n";
   print "  -add <dir>         Add a new directory to the album it's been placed in\n";
@@ -448,13 +449,16 @@ sub parse_args {
         usage("Option [$option] can't be -no, it needs an argument") if ($no);
         my $val = shift(@theme_args);
         $val = shift(@ARGV) unless defined $val;
-        if ($option eq "index" && $val eq $DEFAULT_INDEX) {
+        if ($option eq "index" && ($val eq $DEFAULT_INDEX || $val.$HTML eq $DEFAULT_INDEX)) {
           undef $DEFAULT_INDEX;
         } else {
           $opt{$option} = $val;
         }
       } elsif ($option eq "theme") {
-        $opt{'notheme'} = 1;
+        $opt{notheme} = 1;
+        undef $opt{theme};
+        undef $opt{'album.th'};
+        undef $opt{'image.th'};
       } else {
         $opt{$option} = $no ? 0 : 1;
         # Need to override image themes
@@ -467,7 +471,7 @@ sub parse_args {
     $dir=$arg;
 
     # Did we specify a theme last time?
-    unless ($opt{'notheme'} || $opt{theme}) {
+    unless (@ARGV || $opt{'notheme'} || $opt{theme}) {
       my $theme = previous_build_theme(\%opt,$dir);
       @theme_args = get_themes(\%opt,$theme) if ($theme);
     }
@@ -776,12 +780,12 @@ sub diff_path {
   $to = abs_path($to);
   
   my $back = "";
-  while ($to !~ /^\Q$from\E/) {
+  while ($to !~ /^\Q$from\E($|\/)/) {
     $back .= "../";
     $from =~ s|/[^/]+$||;
   } 
   $to =~ s|^\Q$from\E/?||;
-  
+
   $back.$to;
 }
 
@@ -823,11 +827,16 @@ sub get_dir_caption {
   my ($opt,$caps_H,$path,$dir) = @_;
 
   # Local captions file:
-  return clean_name($dir,$caps_H) if $caps_H->{$dir} && $caps_H->{$dir}{name};
+  return (clean_name($dir,$caps_H),$caps_H->{$dir}{cap})
+    if $caps_H->{$dir} && $caps_H->{$dir}{name};
 
-  # Directories captions file
-  my $cap = read_captions($opt,"$path/$dir");
-  return ($cap->{$dir} && $cap->{$dir}{name}) || clean_name($dir,$caps_H);
+  # Directories captions file:
+  my $dir_caps_H = read_captions($opt,"$path/$dir");
+  return (clean_name($dir,$dir_caps_H),$dir_caps_H->{$dir}{cap})
+    if $dir_caps_H->{$dir} && $dir_caps_H->{$dir}{name};
+
+  # Just clean $dir then.
+  return (clean_name($dir,$caps_H),"");
 }
 
 # Sort according to order found in optional captions file
@@ -875,17 +884,18 @@ sub caption_order {
 sub get_exif {
   my ($pic,$exif) = @_;
 
-  return unless $pic =~ /\.jpe?g$/i;
+  return "" unless $pic =~ /\.jpe?g$/i;
 
   my $qpic = file_quote($pic);
   my $jhead = open_pipe("$JHEAD $qpic");
-  return undef $JHEAD unless $jhead;
+  undef $JHEAD unless $jhead;
+  return "" unless $jhead;
   while(<$jhead>) {
     print STDERR "get_exif(): $_" if ($MAIN::DEBUG);
     if (/command not found/) {	# Kind of kludgy
       undef $JHEAD;
       $jhead->close;
-      return;
+      return "";
     }
     if (/(.+?)\s*:\s*(\S.*)/) {
       my ($key,$val) = ($1,$2);
@@ -905,10 +915,11 @@ sub get_exif {
 sub add_exif {
   my ($opt,$dir,$caps_H,@pics) = @_;
 
-  return unless my $exif = $opt->{exif} || !$JHEAD;
+  return unless $opt->{exif} || !$JHEAD;
 
   foreach my $pic ( @pics ) {
-    $caps_H->{$pic}{cap} .= get_exif("$dir/$pic",$exif);
+    $caps_H->{$pic}{cap} .= get_exif("$dir/$pic",$opt->{exif});
+    $caps_H->{$pic}{name} = $caps_H->{$pic}{name} || $pic;
   }
 }
 
@@ -1110,6 +1121,7 @@ sub convert_data_to_eperl {
 # line $start_line "$0"
 # Album name
 my \$ALBUM_NAME = \$PARENT_ALBUMS[-1];
+\$ALBUM_NAME =~ s/<[^>]+>//g;	# Strip HTML
 sub pAlbum_Name { print \$ALBUM_NAME; }
 my \$IMAGE_PAGE = 0;
 sub Image_Page { \$IMAGE_PAGE; }
@@ -1185,6 +1197,8 @@ sub pChild_Album {
   \$name =~ s/<br>//g if \$nobr;
   print "<a href=\$CHILD_ALBUM_URLS[\$CHILD_ALBUM_CNT]>\$name</a>";
 }
+sub Child_Album_Caption { \$CHILD_ALBUM_CAPTIONS[\$CHILD_ALBUM_CNT]; }
+sub pChild_Album_Caption { print \$CHILD_ALBUM_CAPTIONS[\$CHILD_ALBUM_CNT]; }
 sub Child_Album_URL { \$CHILD_ALBUM_URLS[\$CHILD_ALBUM_CNT]; }
 sub Child_Album_Name { \$CHILD_ALBUM_NAMES[\$CHILD_ALBUM_CNT]; }
 sub Child_Album_Cnt { \$CHILD_ALBUM_CNT+1; }
@@ -1746,7 +1760,9 @@ sub do_album {
   #########################
   if (@new_dirs) {
     foreach my $new_dir ( sort { caption_order($opt,$caps_H,$dir,$a,$b); } @new_dirs ) {
-      push(@{$d{'child_album_names'}}, get_dir_caption($opt,$caps_H,$dir,$new_dir));
+      my ($dir_name,$dir_cap) = get_dir_caption($opt,$caps_H,$dir,$new_dir);
+      push(@{$d{'child_album_names'}}, $dir_name);
+      push(@{$d{'child_album_captions'}}, $dir_cap);
       my $url = ($opt->{index} eq $DEFAULT_INDEX) ?
                 "$new_dir/" : "$new_dir/$opt->{index}";
       push(@{$d{'child_album_urls'}},quote($url,$opt));
@@ -1984,8 +2000,24 @@ sub get_size {
   print STDERR "\n\n[$PROGNAME] Can't get [$img] size from 'convert -verbose' output\n";
   print STDERR "\tTry option:  -known_images to ignore garbage files\n"
     unless ($img =~ /\.$IMAGE_TYPES$/i);
+  # Gentoo has this goofy thing, see:
+  print STDERR "\n\tGentoo users: make sure to run as root:\n% USE=\"avi gif jpeg mpeg png quicktime tiff\" emerge imagemagick\n"
+    if -f "/etc/gentoo-release";
   print STDERR "\tWindows users may have an easier time with CygWin installed!\n" if $CRAPPY_OS;
   die("\n");
+}
+
+# See if they should have used -animated_gifs
+# (If we get new.0 instead of new and don't have animated_gifs turned on)
+sub check_anim_gifs {
+  my ($opt,$img,$new) = @_;
+  return if -f $new;
+  return unless -f "$new.0";
+  return if $opt->{animated_gifs};
+  return if $opt->{WARNING_animated_gifs}++;
+  system("mv \Q$new.0\E \Q$new\E");	# Try to fix.
+  $opt->{animated_gifs}=1;
+  print STDERR "\n[$PROGNAME] Error: Animated gif was found that wasn't scaled properly.\n\tTry using option -animated_gifs in the future.\n\n";
 }
 
 sub scale {
@@ -2006,6 +2038,7 @@ sub scale {
   while(<$size>) {
     print STDERR "scale(): $_" if ($MAIN::DEBUG);
     if(/=>(\d+)x(\d+)/) {
+      check_anim_gifs($opt,$img,$new);
       $size->close;
       return ($1,$2);
     }
@@ -2014,12 +2047,15 @@ sub scale {
 
   # Sometimes convert doesn't give us the new size information
   #print STDERR "[$PROGNAME] Error scaling $img\n";
+  check_anim_gifs($opt,$img,$new);
   get_size($opt,$new);
 }
 
 sub crop {
   my ($img,$x,$y,$off_x,$off_y,$new) = @_;
 
+  return print STDERR "[$PROGNAME] Error cropping $img (image not found)\n"
+    unless -f $img;
   my $qimg = file_quote($img);
   my $qnew = file_quote($new);
   my $cmd = "$CONVERT $qimg -crop ${x}x${y}+${off_x}+${off_y} $qnew";
