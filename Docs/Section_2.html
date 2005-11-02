@@ -69,7 +69,7 @@
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
     A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
 
-    T&nbsp;w&nbsp;o&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;R&nbsp;u&nbsp;n&nbsp;n&nbsp;i&nbsp;n&nbsp;g&nbsp; &nbsp;a&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp; &nbsp;/&nbsp; &nbsp;B&nbsp;a&nbsp;s&nbsp;i&nbsp;c&nbsp; &nbsp;O&nbsp;p&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp;s&nbsp;
+    T&nbsp;w&nbsp;o&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;M&nbsp;I&nbsp;N&nbsp;I&nbsp; &nbsp;H&nbsp;O&nbsp;W&nbsp;-&nbsp;T&nbsp;O&nbsp;
 <br>
 
   </font>
@@ -126,352 +126,168 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href=#Basic_execution><li>Basic execution</a>
- <a href=#Options><li>Options</a>
- <a href=#Themes><li>Themes</a>
- <a href=#Sub-albums><li>Sub-albums</a>
- <a href=#Avoiding_Thumbnail_Regeneration><li>Avoiding Thumbnail Regeneration</a>
- <a href=#Cleaning_Out_The_Thumbnails><li>Cleaning Out The Thumbnails</a>
- <a href=#Medium_size_images><li>Medium size images</a>
- <a href=#Captions><li>Captions</a>
- <a href=#EXIF_Captions><li>EXIF Captions</a>
- <a href=#Headers_and_Footers><li>Headers and Footers</a>
- <a href=#Hiding_Files_Directories><li>Hiding Files/Directories</a>
- <a href=#Cropping_Images><li>Cropping Images</a>
- <a href=#Video><li>Video</a>
- <a href=#Burning_CDs_(using_file:__)><li>Burning CDs (using file://)</a>
- <a href=#Indexing_your_entire_album><li>Indexing your entire album</a>
- <a href=#Updating_Albums_With_CGI><li>Updating Albums With CGI</a>
+<ol><a href='#Simple_album'><li>Simple album</a>
+ <a href='#Add_captions'><li>Add captions</a>
+ <a href='#Hiding_Photos'><li>Hiding Photos</a>
+ <a href='#Using_A_Theme'><li>Using A Theme</a>
+ <a href='#Medium_images'><li>Medium images</a>
+ <a href='#Adding_some_EXIF_captions'><li>Adding some EXIF captions</a>
+ <a href='#Adding_more_albums'><li>Adding more albums</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name=Basic_execution>1:</a>   Basic execution</b>
+<b><a name='Simple_album'>1:</a>   Simple album</b>
 
-Create a directory with nothing but images in it.  The album script and
-other tools should not go here.  Then run album specifying that directory:
+Presuming you've already installed album properly, we can do some
+simple cases.  If you have any errors or problems here, see the
+installation docs.
 
-<code>% album /example/path/to/images/</code>
+You need a web directory to put themes and your photo album.
+We'll use /home/httpd/test in this documentation.  This needs
+to be viewable by a webserver.  In this example we'll use the URL:
+  http://myserver/test/
 
-Or, if you're in the /example/path/to directory:
+Adjust your commands/URLs appropriately
 
-<code>% album images/</code>
+First create a directory and put some images in it.  We'll call this:
+  /home/httpd/test/Photos
 
-When it's done, you'll have a photo album inside that directory starting
-with images/index.html.
+And we'll add some images called 'IMG_001.jpg' through 'IMG_004.jpg'
 
-If that path is in your web server, then you can view it with your
-browser.  If you can't find it, talk to your sysadmin.
+Now for the simple case, just run album:
 
-<b><a name=Options>2:</a>   Options</b>
-There are three types of options.  Boolean options, string/num options
-and array options.  Boolean options can be turned off by prepending -no_:
+<code>% album /home/httpd/test/Photos</code>
 
-<code>% album -no_image_pages</code>
+Now you can view the album in a web browser at something like:
+  http://myserver/test/Photos
 
-String and number values are specified after a string option:
+<b><a name='Add_captions'>2:</a>   Add captions</b>
 
-<code>% album -type gif
-% album -columns 5</code>
+Create a file /home/httpd/test/Photos/captions.txt with the following
+contents (use the 'tab' key where you see "  [tab]  ")
 
-Array options can be specified two ways, with one argument at a time:
+-- captions.txt ---------
+IMG_001.jpg  [tab]  First image name
+IMG_002.jpg  [tab]  Second image
+IMG_003.jpg  [tab]  Another image  [tab]   with a caption!
+IMG_004.jpg  [tab]  Last image     [tab]   with another caption.
+-------------------------
 
-<code>% album -exif hi -exif there</code>
+And run album again:
 
-Or multiple arguments using the '--' form:
+<code>% album /home/httpd/test/Photos</code>
 
-<code>% album --exif hi there --</code>
+And you'll see the captions change.
 
-<b><a name=Themes>3:</a>   Themes</b>
+Now create a file with text in: /home/httpd/test/Photos/header.txt
 
-Themes are an essential part of what makes album compelling.
-You can customize the look of your photo album by downloading a
-theme from MarginalHacks or even writing your own theme to match
-your website.
+And run album again.  You'll see that text at the top of the page.
 
-To use a theme, download the theme .tar or .zip and unpack it.
+<b><a name='Hiding_Photos'>3:</a>   Hiding Photos</b>
 
-Place the theme somewhere under the top of your web directory, but
-don't put it inside your photo album directory.
+There are a few ways to hide photos/files/directories, but we'll use
+the captions file.  Try commenting out an image with '#' in captions.txt:
 
-Then call album with the -theme option:
+-- captions.txt ---------
+IMG_001.jpg  [tab]  First image name
+#IMG_002.jpg  [tab]  Second image
+IMG_003.jpg  [tab]  Another image  [tab]   with a caption!
+IMG_004.jpg  [tab]  Last image     [tab]   with another caption.
+-------------------------
 
-<code>% album -theme /example/web/path/Themes/Dominatrix6 images/</code>
+Run album again, and you'll see that IMG_002.jpg is now missing.
+If we had done this before running album the first time, we wouldn't
+have ever generated the medium or thumbnail images.  If you like,
+you can remove them now with -clean:
 
-You can shorten this with the -theme_path option.  If you had a config file:
+<code>% album -clean /home/httpd/test/Photos</code>
 
-<tt># My config file
-theme_path /example/web/path/Themes/</tt>
+<b><a name='Using_A_Theme'>4:</a>   Using A Theme</b>
 
-Then you could just type:
+If themes were installed properly and are in your theme_path then
+you should be able to use a theme with your album:
 
-<code>% album -theme Dominatrix6 images/</code>
+<code>% album -theme Blue /home/httpd/test/Photos</code>
 
-You can also create your own themes pretty easily, this is covered
-in separate documentation.
+The photo album should now be using the Blue theme.  If it has
+a bunch of broken images, then your theme probably hasn't been
+installed into a web-accessible directory, see the Installation docs.
 
-<b><a name=Sub-albums>4:</a>   Sub-albums</b>
+Album saves the options you specify, so the next time you run album:
 
-Make directories inside your first directory and put images in that.
-Run album again, and it will run through all the child directories
-and create sub-albums of the first album.
+<code>% album /home/httpd/test/Photos</code>
 
-If you make changes to just a sub-album, you can run album on that
-and it will keep track of all the parent links.
+You'll still be using the Blue theme.  To turn off a theme, you can:
 
-If you don't want to traverse down the tree of directories, you
-can limit it with the depth option.  Example:
+<code>% album -no_theme /home/httpd/test/Photos</code>
 
-<code>% album images/ -depth 1</code>
+<b><a name='Medium_images'>5:</a>   Medium images</b>
 
-Will only generate photo albums for the images directory.
+Full resolution images are usually too big for a web album, so
+we'll use medium images on the image pages:
 
-If you have many sub-albums, and you want to add a new sub-album
-without regenerating all the previous sub-albums, then you can use -add:
+<code>% album -medium 33% /home/httpd/test/Photos</code>
 
-<code>% album -add images/new_album/</code>
+You can still access the full size images by clicking on the medium image, or:
 
-Which will add the new_album to the HTML for 'images/' and then
-generate the thumbs and HTML for everything inside 'images/new_album/'
+<code>% album -just_medium /home/httpd/test/Photos</code>
 
-<b><a name=Avoiding_Thumbnail_Regeneration>5:</a>   Avoiding Thumbnail Regeneration</b>
+Will keep the full size image from being linked in (presuming we'd
+run with the -medium option at some point)
 
-album tries to avoid unnecessary work.  It only creates thumbnails if
-they don't exist and haven't changed.  This speeds up successive runs
-of album.
+<b><a name='Adding_some_EXIF_captions'>6:</a>   Adding some EXIF captions</b>
 
-This can cause a problem if you change the size or cropping of your
-thumbnails, because album won't realize that the thumbnails have changed.
-You can use the force option to force album to regenerate thumbnails:
+Let's add aperture info to the captions of each image.
 
-<code>% album -force images/</code>
+<code>% album -exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
 
-But you shouldn't need to use -force every time.
+This will only add aperture information for any images that have specified
+the 'Aperture' exif tag (the part between the '%' signs).  We also put
+a &lt;br&gt; tag in there so the exif info is on a new line.
 
-<b><a name=Cleaning_Out_The_Thumbnails>6:</a>   Cleaning Out The Thumbnails</b>
+We can add more exif info:
 
-If you remove images from an album then you'll have leftover thumbs and HTML.
-You can remove them by running album once with the -clean option:
+<code>% album -exif "&lt;br&gt;focal: %FocalLength%" /home/httpd/test/Photos</code>
 
-<code>% album -clean images/</code>
+Because album saved our options before, we now get both EXIF tags for any
+images that specify Aperture and FocalLength.  Let's remove aperture:
 
-<b><a name=Medium_size_images>7:</a>   Medium size images</b>
+<code>% album -no_exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
 
-When you click on an album thumbnail you're taken to an 'image_page.'
-The image_page shows, by default, the full size image (as well as
-navigation buttons and captions and such).  When you click on the
-image on the image_page, you'll be taken to the URL for just the full
-size image.
+The '-no_exif' option has to match the previous exif string exactly or
+it will be ignored.  You can also edit the config file that album created:
+  /home/httpd/test/Photos/album.conf
+And remove it there.
 
-If you want a medium size image on the image_page, use the -medium
-option and specify a geometry for the medium size image.  You can
-specify any geometry that ImageMagick can use (see their man page
-for more info).  Some examples:
+<b><a name='Adding_more_albums'>7:</a>   Adding more albums</b>
 
-# An image that is half the full size
-<code>% album -medium 50%</code>
+Let's say we go on a trip to spain.  We take some photos and put them in:
+  /home/httpd/test/Photos/Spain/
 
-# An image that fits inside 640x480 (maximum size)
-<code>% album -medium 640x480</code>
+Now run album again on the top level:
 
-# An image that is shrunk to fit inside 640x480
-# (but won't be enlarged if it's smaller than 640x480)
-<code>% album -medium '640x480>'</code>
+<code>% album /home/httpd/test/Photos</code>
 
-You need the 'quotes' on the last example with most shells because
-of the '>' character.
+This will fixup Photos so it now links to spain and will run album
+on Spain/ as well, with the same settings/theme, etc..
 
-<b><a name=Captions>8:</a>   Captions</b>
+Now let's go on another trip, and we create:
+  /home/httpd/test/Photos/Italy/
 
-Images and thumbnails can have names and captions.  There are a number
-of ways to specify/change names and captions in your photo albums.
+We could run album on the top level:
 
-<img src='Pics/Caption.gif' alt='caption example' align='left'>The name is linked to the image or image_page,
-and the caption follows underneath.
+<code>% album /home/httpd/test/Photos</code>
 
-The default name is the filename cleaned up:
-  "Kodi_Cow.gif"  =>  "Kodi Cow"
+But that would rescan the Spain directory which hasn't changed.
+Album usually won't generate any HTML or thumbnails unless it needs to,
+but it can still waste time, especially as our albums get bigger.
+So we can tell it to just add the new directory:
 
-One way to specify a caption is in a .txt file
-with the same name as the image.  For this example,
-"Kodi_Cow.txt" could contain <tt>"Kodi takes down a cow!"</tt>
+<code>% album -add /home/httpd/test/Photos/Italy</code>
 
-You can rename your images and specify captions in bulk
-for an album directory with a <i>captions.txt</i> file.
-
-Each line of the file should be an image <b>or directory</b> filename,
-followed by <b>a tab</b>, followed by the new name.  You can also 
-specify (separated by tabs), an optional caption and then an optional 
-image ALT tag.  (To skip a field, use 'tab' 'space' 'tab')
-
-Example:
-
-<tt>001.gif	My first photo
-002.gif	Mom and Dad My parents in the grand canyon
-003.gif	Ani DiFranco	My fiancee	Yowsers!</tt>
-
-The images and directories will also be sorted in the order they are found
-in the caption file.  You can override this with -date_sort and -name_sort
-
-If your editor doesn't handle tabs very well, then you can separate the
-fields by double-colons, but <b>only</b> if the caption line doesn't contain any
-tabs at all:
-
-<tt>003.gif :: Ani DiFranco :: My fiancee :: Yowsers!</tt>
-
-If you only want captions on image pages (not on album pages) use:
-
-<code>% album -no_album_captions</code>
-
-If you want web access to create/edit your captions, look at the
-<a href='http://MarginalHacks.com/Hacks/album/tools/cgi/caption_edit'>caption_edit.cgi</a> CGI script (but be sure to limit access to the
-script or anyone can change your captions!)
-
-<b><a name=EXIF_Captions>9:</a>   EXIF Captions</b>
-
-You can also specify captions that are based off of EXIF information
-(Exchangeable Image File Format) which most digital cameras add to images.
-
-First you need 'jhead' installed.  You should be able to run jhead
-on a JPG file and see the comments and information.
-
-EXIF captions are added after the normal captions and are specified with -exif:
-
-<code>% album -exif "&lt;br&gt;File: %File name% taken with %Camera make%"</code>
-
-Any %tags% found will be replaced with EXIF information.  If any %tags%
-aren't found in the EXIF information, then that EXIF caption string is
-thrown out.  Because of this you can specify multiple -exif strings:
-
-<code>% album -exif "&lt;br&gt;File: %File name% " -exif "taken with %Camera make%"</code>
-
-This way if the 'Camera make' isn't found you can still get the 'File name'
-caption.
-
-Like any of the array style options you can use --exif as well:
-
-<code>% album --exif "&lt;br&gt;File: %File name% " "taken with %Camera make%" --</code>
-
-Note that, as above, you can include HTML in your EXIF tags:
-
-<code>% album -exif "&lt;br&gt;<font size='-1'>Aperture: %Aperture%</font>"</code>
-
-To see the possible EXIF tags (Resolution, Date/Time, Aperture, etc..)
-run a program like 'jhead' on an digital camera image.
-
-You can also specify EXIF captions only for album or image pages, see
-the -exif_album and -exif_image options.
-
-<b><a name=Headers_and_Footers>10:</a>  Headers and Footers</b>
-
-In each album directory you can have text files <tt>header.txt</tt> and <tt>footer.txt</tt>
-These will be copied verbatim into the header and footer of your album (if
-it's supported by the theme).
-
-<b><a name=Hiding_Files_Directories>11:</a>  Hiding Files/Directories</b>
-
-Any files that album does not recognize as image types are ignored.
-To display these files, use -no_known_images.  (-known_images is default)
-
-You can mark an image as a non-image by creating an empty file with
-the same name with <tt>.not_img</tt> added to the end.
-
-You can ignore a file completely by creating an empty file with
-the same name with <tt>.no_album</tt> on the end.
-
-You can avoid running album on a directory (but still include it in your
-list of directories) by creating a file <tt>&lt;dir&gt;/.no_album</tt>
-
-You can ignore directories completely by creating a file <tt>&lt;dir&gt;/.hide_album</tt>
-
-The Windows version of album doesn't use dots for <tt>no_album</tt> and
-<tt>hide_album</tt> because it's difficult to create <tt>.files</tt> in Windows.
-
-<b><a name=Cropping_Images>12:</a>  Cropping Images</b>
-
-If your images are of a large variety of aspect ratios (i.e., other than
-just landscape/portrait) or if your theme only allows one orientation,
-then you can have your thumbnails cropped so they all fit the same geometry:
-
-<code>% album -crop</code>
-
-The default cropping is to crop the image to center.  If you don't 
-like the centered-cropping method that the album uses to generate 
-thumbnails, you can give directives to album to specify where to crop 
-specific images.  Just change the filename of the image so it has a 
-cropping directive before the filetype.  You can direct album to crop 
-the image at the top, bottom, left or right.  As an example, let's 
-say you have a portrait "Kodi.gif" that you want cropped on top for 
-the thumbnail.  Rename the file to "Kodi.CROPtop.gif" and this will 
-be done for you (you might want to -clean out the old thumbnail).  
-The "CROP" string will be removed from the name that is printed in 
-the HTML.
-
-The default geometry is 133x133.  This way landscape images will
-create 133x100 thumbnails and portrait images will create 100x133
-thumbnails.  If you are using cropping and you still want your
-thumbnails to have that digital photo aspect ratio, then try 133x100:
-
-<code>% album -crop -geometry 133x100</code>
-
-Remember that if you change the -crop or -geometry settings on a
-previously generated album, you will need to specify -force once
-to regenerate all your thumbnails.
-
-<b><a name=Video>13:</a>  Video</b>
-
-album can generate snapshot thumbnails of many video formats if you
-install <a href='http://MarginalHacks.com/redir.cgi?http://ffmpeg.org/'>ffmpeg</a>
-
-If you are running linux on an x86, then you can just grab the <a href='/bin/ffmpeg'>binary</a>,
-otherwise get the whole package from <a href='http://MarginalHacks.com/redir.cgi?http://ffmpeg.org/'>ffmpeg.org</a> (it's an easy install).
-
-<b><a name=Burning_CDs_(using_file:__)>14:</a>  Burning CDs (using file://)</b>
-
-If you are using album to burn CDs or you want to access your albums with
-file://, then you don't want album to assume "index.html" as the default
-index page since the browser probably won't.  Simple add the option:
-
-  % album -index index.html ...
-
-You can also look at <a href='http://MarginalHacks.com/redir.cgi?http://www.squirrel.nl/people/jvromans/software/sw_shellrun.html'>shellrun</a> for windows users, you can have it
-automatically launch the album in a browser.  (Or see <a href='http://MarginalHacks.com/redir.cgi?http://duckware.com/winopen/'>winopen</a>)
-
-<b><a name=Indexing_your_entire_album>15:</a>  Indexing your entire album</b>
-To navigate an entire album on one page use the <a href='http://MarginalHacks.com/Hacks/album/tools/caption_index'>caption_index</a> tool.
-It uses the same options as album (though it ignores many
-of them) so you can just replace your call to "album" with "caption_index"
-
-The output is the HTML for a full album index.
-
-See an <a href='http://DavePics.com/Examples/Blue_Index.html'>example index</a>
-for one of my <a href='http://DavePics.com/Examples/Blue.html'>example photo albums</a>
-
-<b><a name=Updating_Albums_With_CGI>16:</a>  Updating Albums With CGI</b>
-
-First you need to be able to upload the photo to the album directory.
-I suggest using ftp for this.  You could also write a javascript that
-can upload files, if someone could show me how to do this I'd love to know.
-
-Then you need to be able to remotely run album.  To avoid abuse, I
-suggest setting up a CGI script that touches a file (or they can just
-ftp this file in), and then have a cron job that checks for that
-file every few minutes, and if it finds it it removes it and runs album.
-[unix only]  (You will probably need to set $PATH or use absolute paths
-in the script for convert)
-
-If you want immediate gratification, you can run album from a CGI script
-such as this <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/run_album'>one.</a>
-
-If your photos are not owned by the webserver user, then you
-need to run through a setud script which you run from a CGI [unix only].
-Put the setuid script in a secure place, change it's ownership to be the
-same as the photos, and then run "chmod ug+s" on it.  Here are example
-<a href='http://MarginalHacks.com/Hacks/album/tools/cgi/run_setuid_album'>setuid</a> and <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/setuid_album'>CGI</a> scripts.  Be sure to edit them.
-
-Also look at <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/caption_edit'>caption_edit.cgi</a> which allows you (or others) to edit
-captions/names/headers/footers through the web.
+This will fix the top index (in Photos) and generate the Italy album.
 
 
 </pre>
@@ -484,63 +300,83 @@ captions/names/headers/footers through the web.
 </html>
 <pre>
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
 </pre>

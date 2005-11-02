@@ -30,7 +30,7 @@ Most UNIX distros come with ImageMagick and perl, so just download
 the album script and themes (#1 and #3 above) and you're done.
 To test your install, run the script on a directory with images:
 
-% album /path/to/my/photos/
+<code>% album /path/to/my/photos/</code>
 
 ITEM: Debian UNIX
 
@@ -38,7 +38,7 @@ album is in debian stable, though right now it's a bit stale.
 I recommend getting the latest version from MarginalHacks.
 You can save the .deb package, and then, as root, run:
 
-% dpkg -i album.deb
+<code>% dpkg -i album.deb</code>
 
 ITEM: Macintosh OSX
 
@@ -47,7 +47,7 @@ install the album script and ImageMagick tools, and type in the path to album,
 any album options you want, and then the path to the directory with the
 photos in them (all separated by spaces), such as:
 
-% album -theme Blue /path/to/my/photos/
+<code>% album -theme Blue /path/to/my/photos/</code>
 
 ITEM: Win95, Win98, Win2000/Win2k, WinNT, WinXP
 (Windows 95, Windows 98, Windows 2000, Windows NT, Windows XP)

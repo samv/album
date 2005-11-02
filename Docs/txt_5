@@ -45,3 +45,7 @@ please make sure to first download the most <a href='http://MarginalHacks.com/bi
 first, then patch that and send me either a diff, a patch, or the
 full script.  If you comment off the changes you make that'd be great too.
 
+ITEM: Known Bugs
+
+v3.10:  Burning CDs doesn't quite work with theme absolute paths.
+

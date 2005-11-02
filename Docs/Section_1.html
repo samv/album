@@ -126,21 +126,21 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href=#Minimum_Requirements><li>Minimum Requirements</a>
- <a href=#Initial_Configuration><li>Initial Configuration</a>
- <a href=#Optional_Installation><li>Optional Installation</a>
- <a href=#UNIX><li>UNIX</a>
- <a href=#Debian_UNIX><li>Debian UNIX</a>
- <a href=#Macintosh_OSX><li>Macintosh OSX</a>
- <a href=#Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP><li>Win95, Win98, Win2000/Win2k, WinNT, WinXP</a>
- <a href=#How_do_I_edit_the_Windows_path><li>How do I edit the Windows path?</a>
- <a href=#Macintosh_OS9><li>Macintosh OS9</a>
+<ol><a href='#Minimum_Requirements'><li>Minimum Requirements</a>
+ <a href='#Initial_Configuration'><li>Initial Configuration</a>
+ <a href='#Optional_Installation'><li>Optional Installation</a>
+ <a href='#UNIX'><li>UNIX</a>
+ <a href='#Debian_UNIX'><li>Debian UNIX</a>
+ <a href='#Macintosh_OSX'><li>Macintosh OSX</a>
+ <a href='#Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP'><li>Win95, Win98, Win2000/Win2k, WinNT, WinXP</a>
+ <a href='#How_do_I_edit_the_Windows_path'><li>How do I edit the Windows path?</a>
+ <a href='#Macintosh_OS9'><li>Macintosh OS9</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name=Minimum_Requirements>1:</a>   Minimum Requirements</b>
+<b><a name='Minimum_Requirements'>1:</a>   Minimum Requirements</b>
 
 1) The <a href='http://MarginalHacks.com/Hacks/album/'>album</a> perl script
 2) <a href='http://MarginalHacks.com/redir.cgi?http://imagemagick.org/'>ImageMagick</a> tools (specifically 'convert')
@@ -149,14 +149,14 @@ Put the 'album' script and the ImageMagick tools somewhere in your PATH,
 or else call 'album' by it's full path (and specify the full path to
 convert either in the album script or in the album configuration files.
 
-<b><a name=Initial_Configuration>2:</a>   Initial Configuration</b>
+<b><a name='Initial_Configuration'>2:</a>   Initial Configuration</b>
 
 The first time you run album it will ask you a few questions to
 setup the configuration for you.  If you're on UNIX/OSX, then you
 can run the first time as root so that it sets up the global configuration
 and themes for everyone instead of just the current user.
 
-<b><a name=Optional_Installation>3:</a>   Optional Installation</b>
+<b><a name='Optional_Installation'>3:</a>   Optional Installation</b>
 
 3) <a href='http://MarginalHacks.com/Hacks/album/Themes.html'>Themes</a>
 4) <a href='http://MarginalHacks.com/redir.cgi?http://ffmpeg.sourceforge.net/'>ffmpeg</a> (for movie thumbnails)
@@ -164,32 +164,32 @@ and themes for everyone instead of just the current user.
 6) plugins
 7) Various <a href='http://MarginalHacks.com/Hacks/album/Download.html'>tools</a> available at MarginalHacks.com
 
-<b><a name=UNIX>4:</a>   UNIX</b>
+<b><a name='UNIX'>4:</a>   UNIX</b>
 
 Most UNIX distros come with ImageMagick and perl, so just download
 the album script and themes (#1 and #3 above) and you're done.
 To test your install, run the script on a directory with images:
 
-% album /path/to/my/photos/
+<code>% album /path/to/my/photos/</code>
 
-<b><a name=Debian_UNIX>5:</a>   Debian UNIX</b>
+<b><a name='Debian_UNIX'>5:</a>   Debian UNIX</b>
 
 album is in debian stable, though right now it's a bit stale.
 I recommend getting the latest version from MarginalHacks.
 You can save the .deb package, and then, as root, run:
 
-% dpkg -i album.deb
+<code>% dpkg -i album.deb</code>
 
-<b><a name=Macintosh_OSX>6:</a>   Macintosh OSX</b>
+<b><a name='Macintosh_OSX'>6:</a>   Macintosh OSX</b>
 
 It works fine on OSX, but you have to run it from a terminal window.  Just
 install the album script and ImageMagick tools, and type in the path to album,
 any album options you want, and then the path to the directory with the
 photos in them (all separated by spaces), such as:
 
-% album -theme Blue /path/to/my/photos/
+<code>% album -theme Blue /path/to/my/photos/</code>
 
-<b><a name=Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP>7:</a>   Win95, Win98, Win2000/Win2k, WinNT, WinXP</b>
+<b><a name='Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP'>7:</a>   Win95, Win98, Win2000/Win2k, WinNT, WinXP</b>
 (Windows 95, Windows 98, Windows 2000, Windows NT, Windows XP)
 
 There are two methods to run perl scripts on Windows, either using ActivePerl
@@ -225,7 +225,7 @@ own "convert.exe" in the c:\windows\system32 directory (an NTFS utility?).
 If you have this, then you either need to edit your path variable,
 or else just specify the full path to convert in your album script.
 
-<b><a name=How_do_I_edit_the_Windows_path>8:</a>   How do I edit the Windows path?</b>
+<b><a name='How_do_I_edit_the_Windows_path'>8:</a>   How do I edit the Windows path?</b>
 
 <b>Windows NT4 Users</b>
   Right Click on My Computer, select Properties.
@@ -252,7 +252,7 @@ or else just specify the full path to convert in your album script.
   Press OK.
 
 
-<b><a name=Macintosh_OS9>9:</a>   Macintosh OS9</b>
+<b><a name='Macintosh_OS9'>9:</a>   Macintosh OS9</b>
 
 I don't have any plans to port this to OS9 - I don't know what
 the state of shells and perl is for pre-OSX.  If you have it working
@@ -269,63 +269,83 @@ on OS9, let me know.
 </html>
 <pre>
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
 </pre>

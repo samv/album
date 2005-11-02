@@ -126,23 +126,23 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href=#Methods><li>Methods</a>
- <a href=#Editing_current_theme_HTML><li>Editing current theme HTML</a>
- <a href=#The_easy_way,_simmer_theme_from_graphics.><li>The easy way, simmer_theme from graphics.</a>
- <a href=#From_scratch,_Theme_API><li>From scratch, Theme API</a>
- <a href=#Submitting_Themes><li>Submitting Themes</a>
- <a href=#Converting_v2.0_Themes_to_v3.0_Themes><li>Converting v2.0 Themes to v3.0 Themes</a>
+<ol><a href='#Methods'><li>Methods</a>
+ <a href='#Editing_current_theme_HTML'><li>Editing current theme HTML</a>
+ <a href='#The_easy_way,_simmer_theme_from_graphics.'><li>The easy way, simmer_theme from graphics.</a>
+ <a href='#From_scratch,_Theme_API'><li>From scratch, Theme API</a>
+ <a href='#Submitting_Themes'><li>Submitting Themes</a>
+ <a href='#Converting_v2.0_Themes_to_v3.0_Themes'><li>Converting v2.0 Themes to v3.0 Themes</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name=Methods>1:</a>   Methods</b>
+<b><a name='Methods'>1:</a>   Methods</b>
 
 There are easy ways and complicated ways to create a custom theme,
 depending on what you want to be able to do.
 
-<b><a name=Editing_current_theme_HTML>2:</a>   Editing current theme HTML</b>
+<b><a name='Editing_current_theme_HTML'>2:</a>   Editing current theme HTML</b>
 
 If you just want to slightly change the theme to match the output
 of your site, it might make sense to edit a current theme.
@@ -153,7 +153,7 @@ size images).  The files are very similar to HTML except for
 some embedded <: ePerl :> code.  Even if you don't know perl or
 ePerl you can still edit the HTML to make simple changes.
 
-<b><a name=The_easy_way,_simmer_theme_from_graphics.>3:</a>   The easy way, simmer_theme from graphics.</b>
+<b><a name='The_easy_way,_simmer_theme_from_graphics.'>3:</a>   The easy way, simmer_theme from graphics.</b>
 
 Most themes have the same basic form, show a bunch of thumbnails
 for directories and then for images, with a graphic border, line and
@@ -241,11 +241,17 @@ Here's how the border pieces are laid out:
       LB     RB            BL  B  BR            BBBBBBB
       BL  B  BR
 
+Note that every row of images must be the same height, though the
+widths do <b>not</b> have to line up.  (i.e., height TL = height T = height TR)
+
 Once you've created these files, you can run the simmer_theme tool
 (an optional tool download at MarginalHacks.com) and your theme will
 then be ready to use!
 
-<b><a name=From_scratch,_Theme_API>4:</a>   From scratch, Theme API</b>
+If you need different borders for the image pages, then use the same
+filenames prefixed by 'I' - such as IBord_LT.gif, IBord_RT.gif,...
+
+<b><a name='From_scratch,_Theme_API'>4:</a>   From scratch, Theme API</b>
 
 Themes are directories that contain at the minimum an 'album.th' file.
 This is the album page theme template.  Often they also contain an 'image.th'
@@ -404,7 +410,7 @@ Border($str,$x,$y,@border)
                           Create the full bordered image.  See 'Borders' for
 
 
-<b><a name=Submitting_Themes>5:</a>   Submitting Themes</b>
+<b><a name='Submitting_Themes'>5:</a>   Submitting Themes</b>
 
 Have a custom theme?  I'd love to see it, even if it's totally site-specific.
 
@@ -413,7 +419,7 @@ it to me and/or a URL where I can see how it looks.  Be sure to set the CREDIT
 file properly and let me know if you are donating it to MarginalHacks for
 everyone to use or if you want it under a specific license.
 
-<b><a name=Converting_v2.0_Themes_to_v3.0_Themes>6:</a>   Converting v2.0 Themes to v3.0 Themes</b>
+<b><a name='Converting_v2.0_Themes_to_v3.0_Themes'>6:</a>   Converting v2.0 Themes to v3.0 Themes</b>
 
 album v2.0 had a theme interface which has been rewritten.  Most 2.0 themes
 (especially those that don't use many of the global variables) will still
@@ -513,63 +519,83 @@ Credit()                      Credit()
 </html>
 <pre>
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
 </pre>

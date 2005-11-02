@@ -7,18 +7,237 @@ of album.  They can be as simple as a new way to create EXIF captions,
 to something as complex as creating the album based on a database of
 images instead of using the filesystem hierarchy.
 
-ITEM: How do I use them?
+ITEM: Installing Plugins and plugin support
 
-You don't yet.  Plugin support code is being finished up now and when
-it's done we'll have some info here.
+There are a number of plugins available with the standard installation of
+album.  If you are upgrading album with plugins from an earlier version
+of album that did not have plugins (pre v3.10), you may need to once do:
 
-ITEM: Where do they go?
+<code>% album -configure</code>
 
-The default locations for plugins are:
+You will not need to do this with future upgrades of album.
 
-  /etc/album/plugins
-  /usr/share/album/plugins
-  $HOME/.album/plugins
+This will install the current plugins into one of the default
+plugin directories - album will look for plugins in a number of
+locations, the default locations are:
+<tt>
+  /etc/album/plugins/
+  /usr/share/album/plugins/
+  $HOME/.album/plugins/
+</tt>
+In reality, these are 'plugins' directories found in the set of
+locations specified by '--data_path' - hence the defaults are:
+<tt>
+  /etc/album/
+  /usr/share/album/
+  $HOME/.album/
+</tt>
+You can specify a new location with --data_path and then add a 'plugins'
+directory to that location, or use the --plugin_path option.
 
-You can specify additional paths to search for plugins with --plugin_path
+Plugins usually end with the ".alp" prefix, but you do not need
+to specify this prefix when using plugins.  For example, if you
+have a plugin installed at:
+
+<tt>/etc/album/plugins/utils/mv.alp</tt>
+
+Then you would specify the plugin as:  <tt>utils/mv</tt>
+
+ITEM: Loading/Unloading Plugins
+
+To list all the currently installed plugins:
+
+<code>% album -list_plugins</code>
+
+To show information about a specific plugin (using 'utils/mv' as an example):
+
+<code>% album -plugin_info utils/mv</code>
+
+Plugins will be saved in the configuration for a given album, so
+they don't need to be respecified every time (excluding one-time
+plugins such as 'utils/mv')
+
+You can use -no_plugin and -clear_plugin to turn off plugins that have
+been saved in an album configuration.  As with <a href="Section_3.html#Options">normal album options,</a>
+-no_plugin will turn off a specific plugin, and -clear_plugin will
+turn off all plugins.  Any saved plugin options for that plugin will be
+erased as well.
+
+ITEM: Plugin Options
+
+A few plugins may be able to take command-line options, to view usage
+for these plugins:
+
+<code>% album -plugin_usage utils/mv</code>
+
+But when specifying plugin options, you need to tell album which plugin
+the option belongs to.  Instead of specifying as a normal album option:
+
+<code>% album -some_option</code>
+
+You prefix the option with the plugin name followed by a colon:
+
+<code>% album -some_plugin:some_option</code>
+
+For example, you can specify the generated 'index' created by
+the 'utils/capindex' plugin.
+
+<code>% album -plugin utils/capindex  -utils/capindex:index blah.html</code>
+
+That's a bit unwieldy.  You can shorten the name of the plugin as
+long as it doesn't conflict with another plugin you've loaded (by
+the same name):
+
+<code>% album -plugin utils/capindex  -capindex:index</code>
+
+Obviously the other types of options (strings, numbers and arrays) are
+possible and use the same convention.  They are saved in album configuration
+the same as normal album options.
+
+One caveat:  As mentioned, once we use a plugin on an album it is saved
+in the configuration.  If you want to add options to an album that is
+already configured to use a plugin, you either need to mention the plugin
+again, or else use the full name when specifying the options (otherwise
+we won't know what the shortened option belongs to).
+
+For example, consider an imaginary plugin:
+
+<code>% album -plugin some/example/thumbGen Photos/Spain</code>
+
+After that, let's say we want to use the thumbGen boolean option "fast".
+This will <b>not</b> work:
+
+<code>% album -thumbGen:fast Photos/Spain</code>
+
+But either of these will work:
+
+<code>% album -plugin some/example/thumbGen -thumbGen:fast blah.html Photos/Spain</code>
+<code>% album -some/example/thumbGen:fast Photos/Spain</code>
+
+ITEM: Writing Plugins
+
+Plugins are small perl modules that register "hooks" into the album code.
+
+There are hooks for most of the album functionality, and the plugin hook
+code can often either replace or supplement the album code.  More hooks
+may be added to future versions of album as needed.
+
+You can see a list of all the hooks that album allows:
+
+<code>% album -list_hooks</code>
+
+And you can get specific information about a hook:
+
+<code>% album -hook_info &lt;hook_name&gt;</code>
+
+In our plugin we register the hook by calling the hook() function.
+To call functions in the album code, we use the <code>album</code> namespace.
+To register some code for the <code>clean_name</code> hook our plugin can call:
+
+<code>album::hook($opt,'clean_name',\&my_clean);</code>
+
+Then whenever album does a <code>clean_name</code> it will also call the plugin
+subroutine called <code>my_clean</code> (which we need to provide).
+
+To write <code>my_clean</code> let's look at the clean_name hook info:
+<tt>
+  Args: ($opt, 'clean_name',  $name, $iscaption)
+  Description: Clean a filename for printing.
+    The name is either the filename or comes from the caption file.
+  Returns: Clean name
+</tt>
+The args that the <code>my_clean</code> subroutine get are specified on the first line.
+Let's say we want to convert all names to uppercase.  We could use:
+<tt>
+sub my_clean {
+  my ($opt, $hookname, $name, $iscaption) = @_;
+  return uc($name);
+}
+</tt>
+Here's an explanation of the arguments:
+
+<b>$opt</b>        This is the handle to all of album's options.
+            We didn't use it here.  Sometimes you'll need it if you
+            call any of albums internal functions.  This is also true
+            if a <b>$data</b> argument is supplied.
+<b>$hookname</b>   In this case it will be 'clean_name'.  This allows us
+            to register the same subroutine to handle different hooks.
+<b>$name</b>       This is the name we are going to clean.
+<b>$iscaption</b>  This tells us whether the name came from a caption file.
+            To understand any of the options after the <b>$hookname</b> you
+            may need to look at the corresponding code in album.
+
+In this case we only needed to use the supplied <b>$name</b>, we called
+the perl uppercase routine and returned that.  The code is done, but now
+we need to create the plugin framework.
+
+Some hooks allow you to replace the album code.  For example, you
+could write plugin code that can generate thumbnails for pdf files
+(using 'convert' is one way to do this).  We can register code for
+the 'thumbnail' hook, and just return 'undef' if we aren't looking
+at a pdf file, but when we see a pdf file, we create a thumbnail
+and then return that.  When album gets back a thumbnail, then it
+will use that and skip it's own thumbnail code.
+
+
+Now let's finish writing our uppercase plugin.  A plugin must do the following:
+
+<b>1)</b> Supply a 'start_plugin' routine.  This is where you will likely
+   register hooks and specify any command-line options for the plugin.
+
+<b>2)</b> The 'start_plugin' routine <b>must</b> return the plugin info
+   hash, which needs the following keys defined:
+   <i>author</i>      => The author name
+   <i>href</i>        => A URL (or mailto, of course) for the author
+   <i>version</i>     => Version number for this plugin
+   <i>description</i> => Text description of the plugin
+
+<b>3)</b> End the plugin code by returning '1' (similar to a perl module).
+
+Here is our example <code>clean_name</code> plugin code in a complete plugin:
+
+<hr>
+sub start_plugin {
+  my ($opt) = @_;
+
+  album::hook($opt,'clean_name',\&my_clean);
+
+  return {
+    author => 'David Ljung Madison',
+    href => 'http://MarginalHacks.com/',
+    version => '1.0',
+    description => "Conver image names to uppercase",
+  };
+}
+
+sub my_clean {
+  return uc($name);
+}
+
+1;
+<hr>
+
+Finally, we need to save this somewhere.  Plugins are organized in the
+plugin directory hierarchy, we could save this in a plugin directory as:
+
+  <tt>captions/formatting/NAME.alp</tt>
+
+In fact, if you look in <tt>examples/formatting/NAME.alp</tt> you'll find that
+there's a plugin already there that does essentially the same thing.
+
+If you want your plugin to accept command-line options, use 'add_option.'
+This <b>must</b> be done in the start_plugin code.  Some examples:
+
+<tt>
+  album::add_option(1,"fast",album::OPTION_BOOL, usage=>"Do it fast");
+  album::add_option(1,"name", album::OPTION_STR, usage=>"Your name");
+  album::add_option(1,"colors",album::OPTION_ARR, usage=>"Color list");
+</tt>
+
+For more info, see the 'add_option' code in album and see all of the uses
+of it (at the top of album and in plugins that use 'add_option')
+
+The best way to figure out how to write plugins is to look at other
+plugins, possibly copying one that is similar to yours and working
+off of that.  Plugin development tools may be created in the future.
 

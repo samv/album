@@ -104,9 +104,15 @@ Here's how the border pieces are laid out:
       LB     RB            BL  B  BR            BBBBBBB
       BL  B  BR
 
+Note that every row of images must be the same height, though the
+widths do <b>not</b> have to line up.  (i.e., height TL = height T = height TR)
+
 Once you've created these files, you can run the simmer_theme tool
 (an optional tool download at MarginalHacks.com) and your theme will
 then be ready to use!
+
+If you need different borders for the image pages, then use the same
+filenames prefixed by 'I' - such as IBord_LT.gif, IBord_RT.gif,...
 
 ITEM: From scratch, Theme API
 

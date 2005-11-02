@@ -69,7 +69,7 @@
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
     A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
 
-    F&nbsp;o&nbsp;u&nbsp;r&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;C&nbsp;o&nbsp;m&nbsp;m&nbsp;o&nbsp;n&nbsp; &nbsp;P&nbsp;r&nbsp;o&nbsp;b&nbsp;l&nbsp;e&nbsp;m&nbsp;s&nbsp; &nbsp;/&nbsp; &nbsp;S&nbsp;o&nbsp;l&nbsp;u&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp;s&nbsp;
+    F&nbsp;o&nbsp;u&nbsp;r&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;C&nbsp;o&nbsp;n&nbsp;f&nbsp;i&nbsp;g&nbsp;u&nbsp;r&nbsp;a&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp; &nbsp;F&nbsp;i&nbsp;l&nbsp;e&nbsp;s&nbsp;
 <br>
 
   </font>
@@ -126,133 +126,174 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href=#I'm_getting_errors><li>I'm getting errors!</a>
- <a href=#I_get:_"album:_No_such_file_or_directory"><li>I get: <i>"album: No such file or directory"</i>?</a>
- <a href=#My_thumbnails_are_too_big><li>My thumbnails are too big</a>
- <a href=#I_don't_want_to_have_to_regenerate_all_my_albums_when_I_add_photos><li>I don't want to have to regenerate all my albums when I add photos</a>
- <a href=#My_index_pages_are_too_large><li>My index pages are too large!</a>
- <a href=#ERROR:_no_delegate_for_this_image_format_(._album)><li><b>ERROR:</b> no delegate for this image format (./album)</a>
- <a href=#ERROR:_no_delegate_for_this_image_format_(some_non_image_file)><li><b>ERROR:</b> no delegate for this image format (some_non_image_file)</a>
- <a href=#ERROR:_no_delegate_for_this_image_format_(some.jpg)><li><b>ERROR:</b> no delegate for this image format (some.jpg)</a>
- <a href=#ERROR:_identify:_JPEG_library_is_not_available_(some.jpg)><li><b>ERROR:</b> identify: JPEG library is not available (some.jpg)</a>
- <a href=#ERROR:_Can't_get_[some_image]_size_from_-verbose_output.><li><b>ERROR:</b> Can't get [some_image] size from -verbose output.</a>
+<ol><a href='#Configuration_Files'><li>Configuration Files</a>
+ <a href='#Location_Of_Configuration_Files'><li>Location Of Configuration Files</a>
+ <a href='#Saving_Options'><li>Saving Options</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name=I'm_getting_errors>1:</a>   I'm getting errors!</b>
+<b><a name='Configuration_Files'>1:</a>   Configuration Files</b>
 
-Well, that's not enough information.  First run album with "-d" to see what's
-happening, and if you can't figure out the problem from that, check this page
-to see if your error is mentioned here.  If not, then you can <a href='http://MarginalHacks.com/Contact/'>send me</a>
-the following information:
-1) The error (all of the output from "album -d")
-2) Your operating system
-3) The version of ImageMagick (first line from "convert -h")
+Album behavior can be controlled through command-line options, such as:
 
-<b><a name=I_get:_"album:_No_such_file_or_directory">2:</a>   I get: <i>"album: No such file or directory"</i>?</b>
+<code>% album -no_known_images</code>
 
-1) Try specifying the full path to album, such as:
+<code>% album -geometry 133x100</code>
 
-<code>% ./album</code>
+<code>% album -exif "File: %File name% " -exif "taken with %Camera make%"</code>
 
-Or
+But these options can also be specified in a configuration file:
 
-<code>% /usr/local/bin/album</code>
+<tt># Example configuration file      # comments are ignored
+known_images       0            # known_images=0 is same as no_known_images
+geometry           133x100
+exif               "File: %File name% "
+exif               "taken with %Camera make%"</tt>
 
-2) Make sure perl is installed in /usr/bin/perl
+The configuration file format is one option per line optionally followed
+by whitespace and the option value.  Boolean options can be set without
+the option value or can be cleared/set with 0 and 1.
 
-3) If you save the perl scripts as text from IE, it may screwup the
-   line breaks, instead use save as source.
+<b><a name='Location_Of_Configuration_Files'>2:</a>   Location Of Configuration Files</b>
 
-<b><a name=My_thumbnails_are_too_big>3:</a>   My thumbnails are too big</b>
+album looks for configuration files in a few locations, in order:
 
-Some cameras store thumbnails in the profile info of the images,
-and this gets saved by convert when it creates new images.  One
-solution is to try adding:
+/etc/album/conf              System-wide settings
+/etc/album.conf              System-wide settings
+$BASENAME/album.conf         In the 'album' install directory
+$HOME/.albumrc               User specific settings
+$HOME/.album.conf            User specific settings
+$DOT/album.conf              User specific (I keep my dot files elsewhere)
+$USERPROFILE/album.conf      For Windows (C:\Documents and Settings\TheUser)
 
-<code>% album --scale_opts +profile \\\* -- &lt;rest of album arguments here...&gt;</code>
+album also looks for album.conf files inside the photo album directories.
+Sub-albums can also have album.conf which will alter the settings 
+from parent directories (this allows you to, for example, have a 
+different theme for part of your photo album).  Any album.conf files 
+in your photo album directories will configure the album and any sub-albums
+unless overridden by any album.conf settings found in a sub-album.
 
-Some versions of ImageMagick will complain with this.  You can also try:
+As an example, consider a conf for a photo album at 'images/album.conf':
 
-<code>% album --scale_opts -profile /dev/null -- ....</code>
+<tt>theme       Dominatrix6
+columns     3</tt>
 
-On Windows with ActivePerl you'll need to specify a trash file instead of /dev/null
+And another conf inside 'images/europe/album.conf':
 
-You can also do this to your medium images with --med_scale_opts.
+<tt>theme       Blue
+crop</tt>
 
-If that doesn't make your thumbnails small enough, you can lower the
-quality with something like:
+album will use the Dominatrix6 theme for the images/ album and all of
+it's sub-albums except for the images/europe/ album which will use
+the Blue theme.  All of the images/ album and sub-albums will have
+3 columns since that wasn't changed in the images/europe/ album, however
+all of the thumbnails in images/europe/ and all of it's sub-albums
+will be cropped due to the 'crop' configuration setting.
 
-<code>% album --scale_opts -quality 5 -- ....</code>
+<b><a name='Saving_Options'>3:</a>   Saving Options</b>
 
-You can combine the --scale_opts as well:
+Whenever you run an album, the command-line options are saved in
+an album.conf inside the photo album directory.  If an album.conf
+already exists it will be modified not overwritten, so it is safe
+to edit this file in a text editor.
 
-<code>% album --scale_opts +profile \\\* -quality 5 -- ....</code>
+This makes it easy to make subsequent calls to album.  If you
+first generate an album with:
 
-<b><a name=I_don't_want_to_have_to_regenerate_all_my_albums_when_I_add_photos>4:</a>   I don't want to have to regenerate all my albums when I add photos</b>
+<code>% album -crop -no_known_images -theme Dominatrix6 -sort date images/</code>
 
-Great, neither do I.
+Then the next time you call album you can just:
 
-First of all, unless you specify -force, album won't generate new medium
-or thumbnail images, it will only generate new HTML.  But this can take
-time, and can also be avoided.
+<code>% album images/</code>
 
-If you handle albums like me, then new photos go into a new directory
-which is placed in an album with other subalbums (that are already
-generated).  To update the new directory (with the proper parent album
-links and theme) and add it to the top directory, you can do:
+This works for sub-albums as well:
 
-  % album -add photos/new_vacation_pictures
+<code>% album images/africa/</code>
 
-<b><a name=My_index_pages_are_too_large>5:</a>   My index pages are too large!</b>
+Will also find all of the saved options.
 
-I get many requests to break up the index pages after reaching a certain
-threshold of images.
+Some 'one-time only' options are not saved for obvious reasons, such
+as -add, -clean, -force, -depth, etc..
 
-The problem is that this is hard to manage - unless the index pages are
-treated just like sub-albums, then you now have three major components
-on a page, more indexes, more albums, and thumbnails.  And not only is
-that cumbersome, but it would require updating all the themes.
+Running album multiple times on the same directories can
+get confusing if you don't understand how options are saved.
+Here are some examples.
 
-Hopefully the next major release of album will do this, but until then
-there is another, easier solution - just break the images up into
-subdirectories before running album.
+Premises:
+1) Command-line options are processed before conf options found
+   in the album directory.
+   
+2) Album should run the same the next time you call it if you
+   don't specify any options.
 
-I have a tool that will move new images into subdirectories for you and
-then runs album:
-  <a href='http://MarginalHacks.com/Hacks/album/tools/in_album'>in_album</a>
+   For example, consider running album twice on a directory:
 
-<b><a name=ERROR:_no_delegate_for_this_image_format_(._album)>6:</a>   <b>ERROR:</b> no delegate for this image format (./album)</b>
+   <code>% album -exif "comment 1" photos/spain</code>
+   <code>% album photos/spain</code>
 
-You have the album script in your photo directory and it can't make
-a thumbnail of itself!  Either:
-1) Move album out of the photo directory (suggested)
-2) Run album with -known_images
+   The second time you run album you'll still get the "comment 1"
+   exif comment in your photos directory.
 
-<b><a name=ERROR:_no_delegate_for_this_image_format_(some_non_image_file)>7:</a>   <b>ERROR:</b> no delegate for this image format (some_non_image_file)</b>
+3) Album shouldn't end up with multiple copies of the same array
+   options if you keep calling it with the same command-line
 
-Don't put non-images in your photo directory, or else run with -known_images
+   For example:
 
-<b><a name=ERROR:_no_delegate_for_this_image_format_(some.jpg)>8:</a>   <b>ERROR:</b> no delegate for this image format (some.jpg)</b>
-<b><a name=ERROR:_identify:_JPEG_library_is_not_available_(some.jpg)>9:</a>   <b>ERROR:</b> identify: JPEG library is not available (some.jpg)</b>
+   <code>% album -exif "comment 1" photos/spain</code>
+   <code>% album -exif "comment 1" photos/spain</code>
+   
+   The second time you run album you will NOT end up with multiple
+   copies of the "comment 1" exif comment.
 
-Your ImageMagick installation isn't complete and doesn't know how
-to handle the given image type.
+   <b>However, please note that if you re-specify the same options
+   each time, album may run slower because it thinks it needs to
+   regenerate your html!</b>
 
-<b><a name=ERROR:_Can't_get_[some_image]_size_from_-verbose_output.>10:</a>  <b>ERROR:</b> Can't get [some_image] size from -verbose output.</b>
+As an example, if you run:
 
-ImageMagick doesn't know the size of the image specified.  Either:
-1) Your ImageMagick installation isn't complete and can't handle the image type.
-2) You are running album on a directory with non-images in it without
-   using the -known_images option.
+<code>% album -medium 640x640 photos/spain</code>
+  (then later...)
+<code>% album -medium 640x640 photos/spain</code>
 
-If you're a <a href='http://MarginalHacks.com/redir.cgi?http://Gentoo.org/'>gentoo linux</a> user and you see this error, then run this command
-as root (thanks Alex Pientka):
+Then the second time will unnecessarily regenerate all your
+medium images.  This is <b>much</b> slower.
 
-  USE="avi gif jpeg mpeg png quicktime tiff" emerge imagemagick
+It's better to specify command-line options only the first time
+and let them get saved, such as:
 
+<code>% album -medium 640x640 photos/spain</code>
+  (then later...)
+<code>% album photos/spain</code>
+
+
+Unfortunately these constraints mean that any new array options will
+be put at the beginning of your list of -exif options.
+
+For example:
+
+<code>% album -exif "comment 1" photos/spain</code>
+<code>% album -exif "comment 2" photos/spain</code>
+
+The comments will actually be ordered "comment 2" then "comment 1"
+
+To specify exact ordering, you may need to re-specify all options.
+
+Either specify "comment 1" to put it back on top:
+
+<code>% album -exif "comment 1" photos/spain</code>
+
+Or just specify all the options in the order you want:
+
+<code>% album -exif "comment 1" -exif "comment 2" photos/spain</code>
+
+Sometimes it may be easier to merely edit the album.conf file directly
+to make any changes.
+
+Finally, this only allows us to accumulate options.
+We can delete options using -no and -clear, see the section on <a href='Section_3.html#Options'>Options</a>,
+these settings (or clearings) will also be saved from run to run.
 
 
 </pre>
@@ -265,63 +306,83 @@ as root (thanks Alex Pientka):
 </html>
 <pre>
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
 
-     ^
-     |
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
+
+     &uarr;
 </pre>

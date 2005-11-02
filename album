@@ -2,8 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.07';
-# Rewrite branched off from: 2.53
+  my $VERSION=  '3.10';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -37,17 +36,27 @@ $SIG{PIPE} = 'IGNORE';
 ##################################################
 my $PROGFILE = ($PROGNAME =~ /^([^\.-]{3,})[\.-]/) ? $1 : $PROGNAME;
 my @CONFS = (
+	"/etc/$PROGFILE/conf",
 	"/etc/$PROGFILE/$PROGFILE.conf",
 	"/etc/$PROGFILE.conf",
 	);
 push(@CONFS, "$BASENAME/$PROGFILE.conf") if $BASENAME ne '.';
 push(@CONFS, "$ENV{HOME}/.${PROGFILE}rc") if $ENV{HOME};
 push(@CONFS, "$ENV{HOME}/.$PROGFILE.conf") if $ENV{HOME};
+push(@CONFS, "$ENV{HOME}/.$PROGFILE/conf") if $ENV{HOME};
 # I like to keep all my dot files in one directory besides my $HOME
 map { push(@CONFS, "$_/${PROGFILE}.conf") } split(':',$ENV{CONF}) if $ENV{CONF};
 
 # Windows: "C:\Documents and Settings\TheUser"
 push(@CONFS, "$ENV{USERPROFILE}/$PROGFILE.conf") if $ENV{USERPROFILE};
+
+my @DATA_PATH = (
+	"/etc/$PROGFILE",
+	"/usr/share/$PROGFILE",
+	);
+push(@DATA_PATH, "$ENV{HOME}/.$PROGFILE") if $ENV{HOME};
+
+my @PLUGIN_PATH = ( '@DATA_PATH/plugins' );
 
 ##################################################
 # OPTIONS
@@ -61,129 +70,152 @@ push(@CONFS, "$ENV{USERPROFILE}/$PROGFILE.conf") if $ENV{USERPROFILE};
 #   hash{usage} = ["Can also be","an array of lines"]
 #   hash{one_time} = Set for options that shouldn't be saved in album.conf
 #   type is one of:
-my $OPTION_SEP = 1;	# Separator
-my $OPTION_BOOL = 2;
-my $OPTION_NUM = 3;
-my $OPTION_STR = 4;
-my $OPTION_ARR = 5;	# Array of strings
+sub OPTION_SEP() { 1; }	# Separator
+sub OPTION_BOOL() { 2; }
+sub OPTION_NUM() { 3; }
+sub OPTION_STR() { 4; }
+sub OPTION_ARR() { 5; }	# Array of strings
 
 add_option(1,'h',\&usage, usage=>"Show usage");
 add_option(1,'more',\&usage, usage=>"To show more options.");
 add_option(2,'More',\&usage, usage=>"To show even more options.");
-add_option(2,'q',$OPTION_BOOL, one_time=>1, usage=>"Be quiet");
-add_option(2,'d',$OPTION_BOOL, one_time=>1, usage=>"Set debug mode");
+add_option(2,'q',OPTION_BOOL, one_time=>1, usage=>"Be quiet");
+add_option(2,'d',OPTION_BOOL, one_time=>1, usage=>"Set debug mode");
+add_option(3,'D',OPTION_BOOL, one_time=>1, usage=>"Heavy debug mode");
 add_option(99,'pod',\&gen_pod, usage=>"Generate pod text");
 add_option(1,'conf', \&read_conf, one_time=>1, args=>'<file>', usage=>"Read a .conf file");
-add_option(3,'save_conf',$OPTION_BOOL, default=>1, usage=>"Save $PROGFILE.conf files in photo album");
-add_option(3,'configure',$OPTION_BOOL, usage=>"Setup initial $PROGNAME site configuration");
+add_option(2,'virgin_check',OPTION_BOOL, one_time=>1, default=>1, usage=>"Do the virgin check to see if you've run album before");
+add_option(3,'save_conf',OPTION_BOOL, default=>1, usage=>"Save $PROGFILE.conf files in photo album");
+add_option(3,'configure',OPTION_BOOL, usage=>"Setup initial $PROGNAME site configuration");
 add_option(1,'version',\&version, usage=>"Display program version info");
 
 # Album Options:
-add_option(1,'Album Options:',$OPTION_SEP);
-add_option(3,'image_pages',$OPTION_BOOL, default=>1, usage=>"Create a page for each image");
-add_option(2,'dir_thumbs',$OPTION_BOOL, default=>1, usage=>"Directories have thumbnail (if supported by theme)");
-add_option(1,'medium', $OPTION_STR, args=>'<geom>', usage=>"Generate medium size images");
-add_option(2,'just_medium',$OPTION_BOOL, usage=>"Don't link to full-size images");
-add_option(1,'embed',$OPTION_BOOL, default=>1, usage=>"Use image pages for non-picture image pages");
-add_option(3,'columns',$OPTION_NUM, default=>4, usage=>"Number of image columns");
-add_option(1,'clean',$OPTION_BOOL, one_time=>1, usage=>"Remove unused thumbnails");
-add_option(3,'captions',$OPTION_STR, default=>'captions.txt', usage=>"Specify captions filename");
-add_option(2,'album_captions',$OPTION_BOOL, default=>1, usage=>"Also show captions on album page");
-add_option(1,'caption_edit',$OPTION_BOOL, usage=>"Add comment tags so that caption_edit.cgi will work");
-add_option(1,'exif', $OPTION_ARR, args=>'<fmt>', usage=>["Append exif info to captions.  Use %key% in fmt string",
+add_option(1,'Album Options:',OPTION_SEP);
+add_option(3,'image_pages',OPTION_BOOL, default=>1, usage=>"Create a page for each image");
+add_option(2,'dir_thumbs',OPTION_BOOL, default=>1, usage=>"Directories have thumbnail (if supported by theme)");
+add_option(1,'medium', OPTION_STR, args=>'<geom>', usage=>"Generate medium size images");
+add_option(2,'just_medium',OPTION_BOOL, usage=>"Don't link to full-size images");
+add_option(1,'embed',OPTION_BOOL, default=>1, usage=>"Use image pages for non-picture image pages");
+add_option(3,'columns',OPTION_NUM, default=>4, usage=>"Number of image columns");
+add_option(1,'clean',OPTION_BOOL, one_time=>1, usage=>"Remove unused thumbnails");
+add_option(3,'captions',OPTION_STR, default=>'captions.txt', usage=>"Specify captions filename");
+add_option(3,'image_headers',OPTION_BOOL, default=>0, usage=>"Show header.txt on image pages (default theme only)");
+add_option(2,'album_captions',OPTION_BOOL, default=>1, usage=>"Also show captions on album page");
+add_option(1,'caption_edit',OPTION_BOOL, usage=>"Add comment tags so that caption_edit.cgi will work");
+add_option(1,'exif', OPTION_ARR, args=>'<fmt>', usage=>["Append exif info to captions.  Use %key% in fmt string",
            "Example:  -exif \"<br>Camera: %Camera model%\"",
            "If any %keys% are not found by jhead, nothing is appended."]);
-add_option(3,'exif_album', $OPTION_ARR, args=>'<fmt>', usage=>"-exif for just album pages");
-add_option(3,'exif_image', $OPTION_ARR, args=>'<fmt>', usage=>"-exif for just image pages");
-add_option(2,'file_sizes',$OPTION_BOOL, usage=>"Show image file sizes");
+add_option(3,'exif_album', OPTION_ARR, args=>'<fmt>', usage=>"-exif for just album pages");
+add_option(3,'exif_image', OPTION_ARR, args=>'<fmt>', usage=>"-exif for just image pages");
+add_option(2,'file_sizes',OPTION_BOOL, usage=>"Show image file sizes");
 	## For backwards compat with themes?
-	add_option(999,'image_sizes',$OPTION_BOOL, usage=>"DEPRECATED OPTION");
-add_option(2,'fix_urls',$OPTION_BOOL, default=>1, usage=>"Encode unsafe chars as %xx in URLs");
-add_option(2,'known_images',$OPTION_BOOL, default=>1, usage=>"Only include known image types");
-add_option(2,'top',$OPTION_STR, default=>'../', usage=>"URL for 'Back' link on top page");
-add_option(2,'all',$OPTION_BOOL, usage=>"Do not hide files/directories starting with '.'");
-add_option(1,'add', $OPTION_ARR, args=>'<dir>', one_time=>1, usage=>"Add a new directory to the album it's been placed in");
-add_option(2,'depth',$OPTION_NUM, default=>-1, one_time=>1, usage=>"Depth to descend directories (default infinite)");
-add_option(2,'hashes',$OPTION_BOOL, default=>1, one_time=>1, usage=>"Show hash marks while generating thumbnails");
-add_option(2,'name_length',$OPTION_NUM, default=>40, usage=>"Limit length of image/dir names");
-add_option(2,'date_sort',$OPTION_BOOL, usage=>"Sort images/dirs by date instead of captions/name");
-add_option(2,'name_sort',$OPTION_BOOL, usage=>"Sort by name, not caption order");
-add_option(2,'reverse_sort',$OPTION_BOOL, usage=>"Sort in reverse");
-add_option(3,'body',$OPTION_STR, usage=>"Specify <body> tags for non-theme output");
-add_option(3,'charset', $OPTION_STR, args=>'<str>', default=>'iso-8859-1', usage=>"Charset for non-theme output");
-add_option(2,'image_loop',$OPTION_BOOL, default=>1, usage=>"Do first and last image pages loop around?");
-add_option(1,'index', $OPTION_STR, args=>'<file>', usage=>["Select the default 'index.html' to use.",
+	add_option(999,'image_sizes',OPTION_BOOL, usage=>"DEPRECATED OPTION");
+add_option(2,'fix_urls',OPTION_BOOL, default=>1, usage=>"Encode unsafe chars as %xx in URLs");
+add_option(2,'known_images',OPTION_BOOL, default=>1, usage=>"Only include known image types");
+add_option(2,'top',OPTION_STR, default=>'../', usage=>"URL for 'Back' link on top page");
+add_option(2,'all',OPTION_BOOL, usage=>"Do not hide files/directories starting with '.'");
+add_option(1,'add', OPTION_ARR, args=>'<dir>', one_time=>1, usage=>"Add a new directory to the album it's been placed in");
+add_option(2,'depth',OPTION_NUM, default=>-1, one_time=>1, usage=>"Depth to descend directories (default infinite)");
+add_option(2,'hashes',OPTION_BOOL, default=>1, one_time=>1, usage=>"Show hash marks while generating thumbnails");
+add_option(2,'name_length',OPTION_NUM, default=>40, usage=>"Limit length of image/dir names");
+add_option(2,'sort',OPTION_STR, default=>'captions', usage=>"Sort type, captions, name or date");
+	## Deprecated!
+	add_option(99,'date_sort', \&deprecated_option, args=>'sort', usage=>"DEPRECATED: Sort images/dirs by date instead of captions/name");
+	add_option(99,'name_sort', \&deprecated_option, args=>'sort', usage=>"DEPRECATED: Sort by name, not caption order");
+add_option(2,'reverse_sort',OPTION_BOOL, usage=>"Sort in reverse");
+add_option(3,'body',OPTION_STR, default=>'<body>', usage=>"Specify <body> tags for non-theme output");
+add_option(3,'charset', OPTION_STR, args=>'<str>', default=>'iso-8859-1', usage=>"Charset for non-theme output");
+add_option(2,'image_loop',OPTION_BOOL, default=>1, usage=>"Do first and last image pages loop around?");
+add_option(1,'burn', OPTION_BOOL, usage=>["Setup an album to burn to CD",
+           "Implies '-index index.html' and '-no_theme_url'"]);
+add_option(2,'index', OPTION_STR, args=>'<file>', usage=>["Select the default 'index.html' to use.",
            "For file://, try '-index index.html' to add 'index.html' to index links."]);
-add_option(2,'default_index', $OPTION_STR, args=>'<file>', default=>'index.html', usage=>"The file the webserver accesses when no file is specified.");
-add_option(3,'html', $OPTION_STR, args=>'<post>', default=>'.html', usage=>"Default postfix for HTML files");
+add_option(2,'default_index', OPTION_STR, args=>'<file>', default=>'index.html', usage=>["The file the webserver accesses when",
+           "when no file is specified."]);
+add_option(3,'html', OPTION_STR, args=>'<post>', default=>'.html', usage=>"Default postfix for HTML files");
 
 # Thumbnail Options:
-add_option(1,'Thumbnail Options:',$OPTION_SEP);
-add_option(1,'geometry', \&parse_geometry, args=>'<X>x<Y>', default=>'133x133', usage=>"Size of thumbnail");
-  add_option(99,'x',$OPTION_NUM, default=>133, usage=>"x Size of thumbnail");
-  add_option(99,'y',$OPTION_NUM, default=>133, usage=>"y Size of thumbnail");
-add_option(1,'type',$OPTION_STR, default=>'jpg', usage=>"Thumbnail type (gif, jpg, tiff,...)");
-add_option(1,'medium_type',$OPTION_STR, usage=>"Medium type (default is same type as full image)");
-add_option(1,'crop',$OPTION_BOOL, default=>0, usage=>["Crop the image to fit thumbnail size",
+add_option(1,'Thumbnail Options:',OPTION_SEP);
+add_option(1,'geometry', \&parse_geometry, singleval=>1, args=>'<X>x<Y>', default=>'133x133', usage=>"Size of thumbnail");
+  add_option(99,'x',OPTION_NUM, default=>133, usage=>"x Size of thumbnail");
+  add_option(99,'y',OPTION_NUM, default=>133, usage=>"y Size of thumbnail");
+add_option(1,'type',OPTION_STR, default=>'jpg', usage=>"Thumbnail type (gif, jpg, tiff,...)");
+add_option(1,'medium_type',OPTION_STR, usage=>"Medium type (default is same type as full image)");
+add_option(1,'crop',OPTION_BOOL, default=>0, usage=>["Crop the image to fit thumbnail size",
            "otherwise aspect will be maintained"]);
-add_option(3,'CROP',$OPTION_STR, usage=>"Force cropping to be top, bottom, left or right");
-add_option(1,'dir',$OPTION_STR, default=>'tn', usage=>"Thumbnail directory");
-add_option(2,'force',$OPTION_BOOL, one_time=>1, usage=>["Force overwrite of existing thumbnails",
+add_option(3,'CROP',OPTION_STR, usage=>"Force cropping to be top, bottom, left or right");
+add_option(1,'dir',OPTION_STR, default=>'tn', usage=>"Thumbnail directory");
+add_option(2,'force',OPTION_BOOL, one_time=>1, usage=>["Force overwrite of existing thumbnails and HTML",
            "otherwise they are only written when changed"]);
-add_option(2,'sample',$OPTION_BOOL, usage=>"convert -sample for thumbnails (faster, low quality)");
-add_option(2,'sharpen', $OPTION_STR, args=>'<radius>x<sigma>', usage=>"Sharpen after scaling");
-add_option(1,'animated_gifs',$OPTION_BOOL, usage=>"Take first frame of animated gifs (only some systems)");
-add_option(2,'scale_opts',$OPTION_ARR, usage=>"Options for convert (use '--' for mult)");
-add_option(3,'medium_scale_opts',$OPTION_ARR, usage=>"List of medium convert options");
-add_option(3,'thumb_scale_opts',$OPTION_ARR, usage=>"List of thumbnail convert options");
+add_option(2,'force_html',OPTION_BOOL, one_time=>1, usage=>"Force rewrite of HTML");
+add_option(2,'sample',OPTION_BOOL, usage=>"convert -sample for thumbnails (faster, low quality)");
+add_option(2,'sharpen', OPTION_STR, args=>'<radius>x<sigma>', usage=>"Sharpen after scaling");
+add_option(1,'animated_gifs',OPTION_BOOL, usage=>"Take first frame of animated gifs (only some systems)");
+add_option(2,'scale_opts',OPTION_ARR, usage=>"Options for convert (use '--' for mult)");
+add_option(3,'medium_scale_opts',OPTION_ARR, usage=>"List of medium convert options");
+add_option(3,'thumb_scale_opts',OPTION_ARR, usage=>"List of thumbnail convert options");
 
 # Plugin Options:
-add_option(9001,'Plugin Options:',$OPTION_SEP);
-add_option(9001,'plugin', $OPTION_ARR, usage=>"Activate a plugin.");
-add_option(9002,'plugin_path', $OPTION_ARR, one_time=>1, default=>["/etc/$PROGNAME/plugins"], usage=>"Add a path to search for plugins.");
-add_option(9003,'plugin_post', $OPTION_STR, default=>'.alb', usage=>"Default postfix for plugins.");
+add_option(1,'Plugin and Theme Options:',OPTION_SEP);
+add_option(1,'data_path', OPTION_ARR, default=>\@DATA_PATH, usage=>["Path for themes, plugins, language files, etc...",""]);
+add_option(1,'plugin', \&get_plugin, args=>'<plugin>', usage=>"Load a plugin.");
+add_option(1,'plugin_usage', \&usage, args=>'<plugin>', usage=>"Show usage for a plugin.");
+add_option(3,'plugin_info', \&list_plugins, args=>'<plugin>', one_time=>1, usage=>"Print info for a specific plugins.");
+add_option(10,'plugin_path', OPTION_ARR, default=>['@DATA_PATH/plugins'], usage=>"Add a path to search for plugins.\n\t");
+add_option(10,'plugin_post', OPTION_STR, default=>'.alp', usage=>"Default postfix for plugins.");
+add_option(3,'list_plugins', \&list_plugins, one_time=>1, usage=>"Print info for all known plugins.");
+add_option(4,'list_hooks', \&list_hooks, one_time=>1, usage=>"Show all known plugin hooks (for developers).");
+add_option(4,'hook_info', \&list_hooks, args=>'<hook>', one_time=>1, usage=>"Show all known plugin hooks (for developers).");
 
 # Theme Options:
-add_option(1,'Theme Options:',$OPTION_SEP);
-add_option(1,'theme', $OPTION_STR, args=>'<dir>', usage=>"Specify a theme directory");
-add_option(2,'theme_url', $OPTION_STR, args=>'<url>', usage=>"In case you want to refer to the theme by absolute URL");
-add_option(2,'theme_path', $OPTION_ARR, args=>'<dir>', default=>[], usage=>"Directories that contain themes");
+#add_option(1,'Theme Options:',OPTION_SEP);
+add_option(1,'theme', OPTION_STR, args=>'<dir>', usage=>"Specify a theme directory");
+add_option(2,'theme_url', OPTION_STR, args=>'<url>', usage=>"In case you want to refer to the theme by absolute URL");
+add_option(10,'theme_path', OPTION_ARR, args=>'<dir>', default=>[], usage=>"Directories that contain themes");
 
 # Paths:
-add_option($WINDOWS?1:10,'Paths:',$OPTION_SEP);
-add_option(10,'convert',$OPTION_STR, default=>'convert', usage=>"Path to convert (ImageMagick)");
-add_option(10,'identify',$OPTION_STR, default=>'identify', usage=>"Path to identify (ImageMagick)");
-add_option(10,'jhead',$OPTION_STR, default=>'jhead', usage=>"Path to jhead (extracts exif info)");
-add_option(10,'ffmpeg',$OPTION_STR, default=>'ffmpeg', usage=>"Path to ffmpeg (extracting movie frames)");
-add_option(10,'conf_file',$OPTION_STR, default=>'album.conf', usage=>"Conf filename for album configurations");
-add_option(10,'dev_null',$OPTION_STR, default=>default_dev_null(), usage=>"Throwaway temp file");
+add_option($WINDOWS?1:10,'Paths:',OPTION_SEP);
+add_option(10,'convert',OPTION_STR, default=>'convert', usage=>"Path to convert (ImageMagick)");
+add_option(10,'identify',OPTION_STR, default=>'identify', usage=>"Path to identify (ImageMagick)");
+add_option(10,'jhead',OPTION_STR, default=>'jhead', usage=>"Path to jhead (extracts exif info)");
+add_option(10,'ffmpeg',OPTION_STR, default=>'ffmpeg', usage=>"Path to ffmpeg (extracting movie frames)");
+add_option(10,'conf_file',OPTION_STR, default=>'album.conf', usage=>"Conf filename for album configurations");
+add_option(10,'conf_version',OPTION_NUM, usage=>"Configuration file version");
+add_option(10,'dev_null',OPTION_STR, default=>default_dev_null(), usage=>"Throwaway temp file");
 
 # Windows crap:
 #  "Windows.  It may be slow, but at least it's hard to use"
-add_option($WINDOWS?1:10,'windows',$OPTION_STR, default=>$WINDOWS, usage=>"Are we (unfortunately) running windows?");
-add_option($WINDOWS?1:10,'cygwin',$OPTION_STR, default=>$CYGWIN, usage=>"Are we using the Cygwin environment?");
+add_option($WINDOWS?1:10,'windows',OPTION_STR, default=>$WINDOWS, usage=>"Are we (unfortunately) running windows?");
+add_option($WINDOWS?1:10,'cygwin',OPTION_STR, default=>$CYGWIN, usage=>"Are we using the Cygwin environment?");
+add_option($WINDOWS?1:99,'slash',OPTION_STR, default=>$WINDOWS ? '\\' : '/', usage=>"The slash used between path components");
 # Win98: Needs TCAP:  ftp://ftp.simtel.net/pub/simtelnet/msdos/sysutl/tcap31.zip
-add_option($TCAP?1:10,'use_tcap',$OPTION_BOOL, default=>$TCAP, usage=>"Use tcap? (win98)");
-add_option($TCAP?1:10,'tcap',$OPTION_STR, default=>'tcap', usage=>"Path to tcap (win98)");
-add_option($TCAP?1:10,'tcap_out',$OPTION_STR, default=>'atrash.tmp', usage=>"tcap output file (win98)");
-add_option($TCAP?1:10,'cmdproxy',$OPTION_STR, default=>'cmdproxy', usage=>"Path to cmdproxy (tcap helper for long lines)");
+add_option($TCAP?1:10,'use_tcap',OPTION_BOOL, default=>$TCAP, usage=>"Use tcap? (win98)");
+add_option($TCAP?1:10,'tcap',OPTION_STR, default=>'tcap', usage=>"Path to tcap (win98)");
+add_option($TCAP?1:10,'tcap_out',OPTION_STR, default=>'atrash.tmp', usage=>"tcap output file (win98)");
+add_option($TCAP?1:10,'cmdproxy',OPTION_STR, default=>'cmdproxy', usage=>"Path to cmdproxy (tcap helper for long lines)");
 
 # Default directory page
-add_option(10,'header',$OPTION_STR, default=>'header.txt', usage=>"Path to header file");
-add_option(10,'footer',$OPTION_STR, default=>'footer.txt', usage=>"Path to footer file");
-add_option(10,'no_album',$OPTION_STR, default=>'.no_album', usage=>"Ignore dir/files if file with this postfix exists");
-add_option(10,'hide_album',$OPTION_STR, default=>'.hide_album', usage=>"Ignore and don't display these files");
-add_option(10,'not_img',$OPTION_STR, default=>'.not_img', usage=>"Don't treat these files as images");
+add_option(10,'header',OPTION_STR, default=>'header.txt', usage=>"Path to header file");
+add_option(10,'footer',OPTION_STR, default=>'footer.txt', usage=>"Path to footer file");
+              # We can't set -no_album as an option because it gets misread
+              # as a -no_<option>, but that's okay with me...
+              # This wouldn't be difficult to fix in parse_arg,
+              # though it would be less readable.
+add_option(10,'no_album',OPTION_STR, default=>'.no_album', usage=>"Ignore dir/files if file with this postfix exists");
+add_option(10,'hide_album',OPTION_STR, default=>'.hide_album', usage=>"Ignore and don't display these files");
+add_option(10,'not_img',OPTION_STR, default=>'.not_img', usage=>"Don't treat these files as images");
 
 # Generally not used as options stuff..
 # <meta name='Album_Path' content='...'>
-add_option(99,'path',$OPTION_STR, usage=>"Path of album so far");
+add_option(99,'path',OPTION_STR, usage=>"Path of album so far");
 # Hacky kludge stuff for internal/my purposes
-add_option(99,'transform_url',$OPTION_STR, usage=>"Transform image URL");
-add_option(99,'enter_eperl',$OPTION_STR, default=>'<:', usage=>"Enter code region in theme");
-add_option(99,'leave_eperl',$OPTION_STR, default=>':>', usage=>"Leave code region in theme");
-add_option(99,'num_hashes',$OPTION_NUM, default=>20, one_time=>1, usage=>"How many hashes to print");
-add_option(99,'hash_width',$OPTION_NUM, default=>78, usage=>"Width of screen (for hashes)");
+add_option(99,'transform_url',OPTION_STR, usage=>"Transform image URL");
+add_option(99,'enter_eperl',OPTION_STR, default=>'<:', usage=>"Enter code region in theme");
+add_option(99,'leave_eperl',OPTION_STR, default=>':>', usage=>"Leave code region in theme");
+add_option(99,'num_hashes',OPTION_NUM, default=>25, one_time=>1, usage=>"How many hashes to print");
+add_option(99,'hash_width',OPTION_NUM, default=>78, usage=>"Width of screen (for hashes)");
+
+#add_option(99,'zod',sub { print "CALLED ZOD!\n" }, usage=>"Tmp arg testing");
 
 # As of "ImageMagick 4.2.9 99/09/01"
 # May not be the same as your version of convert, but damn it's alot!
@@ -205,7 +237,7 @@ my $IMAGE_TYPES	=
 # Options from command line and config files
 # (and also themes and a few from index.html as well)
 #
-# $opt->{$option}	Array or string or number depending on @OPTIONS above.
+# $opt->{$option}	Array or string or number depending on OPTIONS above.
 #
 # Also:
 # $opt->{image.th}	The image.th file
@@ -273,33 +305,75 @@ my $IMAGE_TYPES	=
 #
 # Internal $data/$opt fields
 # --------------------------
-# There are also some _fields in $data that are internal (not for theme use)
+# There are also some internal _fields in $opt/$data (not for theme use)
+# These are mostly just for album development - my own personal notes.
 #
-# $opt->{_theme}{..}		Contains entire text of the image.th/album.th
-# $opt->{_theme_line}{..}	The starting line
-# $opt->{_captions}{$dir}	Captions cache for a path
-# 				(in opt to survive multiple do_album calls)
 # @{$opt->{_albums}}		List of albums to run on
-# $opt->{_album}{$alb}		Hash of any album settings (such as 'add')
-# $data->{paths}{_date_sort_cache}	Date sort values
-# $data->{eperl}		The ePerl support text
+# $opt->{_album}{$alb}		Hash of any per-album settings (-add,..)
+#
+# Saved/cached data:
+#   $opt->{_theme}{..}		Contains entire text of the image.th/album.th
+#   $opt->{_theme_line}{..}	The starting line
+#   $opt->{_theme_full}		Full theme path
+#   $opt->{_captions}{$dir}	Captions cache for a path
+#   $opt->{_read_conf}{$conf}	Avoid reading conf files multiple times
+# 				(in opt to survive multiple do_album calls)
+#   $opt->{_depth_diff}		Beginning depth of starting album
+#   $data->{paths}{_date_sort_cache}	Date sort values
+#   $data->{eperl}		The ePerl support text
+#
+# Plugins:
+#   @{$opt->{_plugins}{loaded}}	List of all the plugins already loaded
+#   $opt->{_plugin}{$plugin}	Plugin info hash
+#   @{$opt->{_plugin_hooks}{$name}}	List of hooks for a name [sub,plugin]
+#   $opt->{_curr_plugin}	For the plugin of the hook we are calling
+#   $opt->{_curr_hook}	The hook we are calling
+#
+# Args/confs:
+#   $opt->{_set}{$opt}		Options that were set by any method (so theme doesn't clobber)
+#   $opt->{_argv}{vals}{$opt}	Saved vals for argv options
+#   $opt->{_argv}{no}{$opt}	Saved 'no' vals for (array) options (-no_plugin bob, ..)
+#   $opt->{_argv}{clear}{$opt}	Options that have been cleared
+#   @{$opt->{_argv}{order}}	Ordering of argv short options (for saving)
+#   $opt->{_argv}{deferred}{..	Like {vals} - track conf options deferred by argv
+#
+# Option stack:  (we push and pop all the options with each album we enter)
+#   $opt->{_saved_opt}		Duplication of $opt for parent album
 
 ##################################################
 # Bootstrap/Simple utilities
 ##################################################
-sub attempt_require { eval "require $_[0]"; $@ ? 0 : 1; }
+sub attempt_require {
+  my $save = $SIG{__DIE__};
+  $SIG{__DIE__} = 'ignore';
+  eval "require $_[0]";
+  my $ret = $@ ? 0 : 1;
+  $SIG{__DIE__} = $save;
+  $ret;
+}
 
 my %OPTIONS;
-my @OPTIONS;
 my %DEFAULTS;
+my $GLOBAL_OPT;
 sub add_option {
   my ($lvl,$option,$type,%hash) = @_;
+  my $plugin = $GLOBAL_OPT->{_curr_plugin};
   $hash{lvl}=$lvl;
   $hash{type}=$type;
-  push(@OPTIONS,$option);
-  $hash{default}=0 unless $hash{default} || $type!=$OPTION_BOOL;
-  $OPTIONS{$option} = \%hash;
-  $DEFAULTS{$option} = $hash{default};
+  $hash{default}=0 unless $hash{default} || $type!=OPTION_BOOL;
+  $hash{plugin}=$plugin;
+  $hash{option}=$option;
+  if ($plugin) {
+    $OPTIONS{plugin}{$plugin}{$option} = \%hash;
+    push(@{$OPTIONS{plugin_order}{$plugin}}, $option);
+    $DEFAULTS{"$plugin:$option"} = $hash{default};
+    # We've probably already called get_defaults() already
+    $GLOBAL_OPT->{"$plugin:$option"} = $hash{default};
+  } else {
+    $OPTIONS{album}{$option} = \%hash;
+    push(@{$OPTIONS{album_order}}, $option);
+    $DEFAULTS{$option} = $hash{default};
+  }
 }
 
 #########################
@@ -365,7 +439,7 @@ sub add_option {
   }
   $SIG{INT} = \&all_done; $SIG{TERM} = \&all_done;
   $SIG{HUP} = \&all_done; $SIG{QUIT} = \&all_done;
-  $SIG{EXIT} = \&all_done; $SIG{__DIE__} = \&all_done;
+	$SIG{EXIT} = \&all_done; $SIG{__DIE__} = \&all_done;
 
   # 6) Can't handle /dev/null
   sub default_dev_null() {
@@ -382,7 +456,12 @@ my $GEN_STRING	= "album $HOME";
 my $OLD_GEN_RE	= "Generated by <a href=.+>$PROGNAME</a> and <a href=.+>thumb</a>";
 
 sub get_defaults {
-  my $opt = \%DEFAULTS;
+  my %opt = %DEFAULTS;	# Copy defaults
+  my $opt = \%opt;
+  $GLOBAL_OPT = $opt;	# Global for add_option plugins.  Shh! Don't tell anyone...
+
+	$opt->{PROGNAME} = $PROGNAME;	# For plugins, mostly
+	$opt->{BASENAME} = $BASENAME;
 
   # Windows defaults are slightly different (no .files)
   if ($opt->{windows}) {
@@ -412,6 +491,8 @@ sub usage {
 
   version();
 
+  my $plugin = get_plugin($opt,$option,$val);
+
   # If it was called from -h, -more or -More
   my $show=1;
   if (ref $opt eq 'HASH') {
@@ -440,29 +521,32 @@ USAGE
 
   # Calculate width of -arg string
   my $maxw = 0;
-  map { $maxw=max($maxw,length($_)); } @OPTIONS;
+  map { $maxw=max($maxw,length($_)); } all_options($opt,$plugin);
   $maxw-=1;
   $maxw=min($maxw,17);
 
+  print "Plugin Options [$plugin]:\n" if $plugin;
+
   # Show usage for each option
   my $dashdash=0;
-  foreach my $option ( @OPTIONS ) {
-    my $type = $OPTIONS{$option}{type};
-    my $default = $OPTIONS{$option}{default};
-    next unless $OPTIONS{$option}{lvl}<=$show;
-    if ($type==$OPTION_SEP) {
+  foreach my $option ( all_options($opt,$plugin) ) {
+    my $optinfo = get_option($opt,$option,$plugin);
+    my $type = $optinfo->{type};
+    my $default = $optinfo->{default};
+    next unless $optinfo->{lvl}<=$show;
+    if ($type==OPTION_SEP) {
       print STDERR $option ? "\n$option\n" : "\n";
       next;
     }
-    my $def = $type==$OPTION_BOOL ? ($default ? " [ON]" : " [OFF]") :
+    my $def = $type==OPTION_BOOL ? ($default ? " [ON]" : " [OFF]") :
               !defined($default) ? "" :
-              $type==$OPTION_ARR ? " [@$default]" :
-              ($type==$OPTION_STR && !$default) ? "" : " [$default]";
+              $type==OPTION_ARR ? " [@$default]" :
+              ($type==OPTION_STR && !$default) ? "" : " [$default]";
     my $opt = $option;
-    $opt .= " $OPTIONS{$option}{args}" if $OPTIONS{$option}{args};
-    $opt = "-$opt" if $type==$OPTION_ARR;
-    $dashdash++ if $type==$OPTION_ARR;
-    my $usage = $OPTIONS{$option}{usage};
+    $opt .= " $optinfo->{args}" if $optinfo->{args};
+    $opt = "-$opt" if $type==OPTION_ARR;
+    $dashdash++ if $type==OPTION_ARR;
+    my $usage = $optinfo->{usage};
     my $usage_str = ref $usage eq 'ARRAY' ? join("\n      ",@$usage) : $usage;
     printf STDERR "  -%-${maxw}s $usage_str$def\n", $opt;
   }
@@ -502,12 +586,24 @@ Or multiple arguments using the '--' form:
 
 % album --exif hi there --
 
+You can remove specific array options with -no_<option>:
+
+% album -no_exif hi
+
+Or clear all the array options with -clear_<option>:
+
+% album -clear_exif
+
 START_POD
 
-  my @options = grep($OPTIONS{$_}{lvl}<=10, @OPTIONS);
-  my @bool_opts = grep($OPTIONS{$_}{type}==$OPTION_BOOL, @options);
-  my @str_opts = grep($OPTIONS{$_}{type}==$OPTION_STR, @options);
-  my @arr_opts = grep($OPTIONS{$_}{type}==$OPTION_ARR, @options);
+  my (@bool_opts, @str_opts, @arr_opts);
+  foreach my $option ( all_options($opt) ) {
+    my $optinfo = get_option($opt,$option);
+    next unless $optinfo->{lvl}<=10;
+    push(@bool_opts, $option) if $optinfo->{type}==OPTION_BOOL;
+    push(@str_opts, $option) if $optinfo->{type}==OPTION_STR;
+    push(@arr_opts, $option) if $optinfo->{type}==OPTION_ARR;
+  }
 
   print "Boolean options:\n\n";
   print '% album -'.join(', -',@bool_opts),"\n\n";
@@ -526,11 +622,12 @@ ${eq}over 4
 
 START_OPTS
 
-  foreach my $option ( @options ) {
-    next if $OPTIONS{$option}{lvl} > 10;
-    my $type = $OPTIONS{$option}{type};
-    my $default = $OPTIONS{$option}{default};
-    if ($type==$OPTION_SEP) {
+  foreach my $option ( all_options($opt) ) {
+    my $optinfo = get_option($opt,$option);
+    next unless $optinfo->{lvl}<=10;
+    my $type = $optinfo->{type};
+    my $default = $optinfo->{default};
+    if ($type==OPTION_SEP) {
       print <<POD_SEP if $option;
 ${eq}back
 
@@ -541,21 +638,21 @@ ${eq}over 4
 POD_SEP
       next;
     }
-    my $def = $type==$OPTION_BOOL ? ($default ? " [Default ON]" : " [Default OFF]") :
+    my $def = $type==OPTION_BOOL ? ($default ? " [Default ON]" : " [Default OFF]") :
               !defined($default) ? "" :
-              $type==$OPTION_ARR ? " [Default @$default]" :
-              ($type==$OPTION_STR && !$default) ? "" : " [Default $default]";
+              $type==OPTION_ARR ? " [Default @$default]" :
+              ($type==OPTION_STR && !$default) ? "" : " [Default $default]";
     my $opt = $option;
-    $opt = "-$opt" if $type==$OPTION_ARR;
-    my $args = $OPTIONS{$option}{args};
-    $args = "string" if $type==$OPTION_STR && !$args;
-    $args = "strings" if $type==$OPTION_ARR && !$args;
+    $opt = "-$opt" if $type==OPTION_ARR;
+    my $args = $optinfo->{args};
+    $args = "string" if $type==OPTION_STR && !$args;
+    $args = "strings" if $type==OPTION_ARR && !$args;
     unless ($args =~ s/^<([^<>]*)>$/$1/) {
       $args =~ s/</E<lt>/g;
       $args =~ s/(?<!E<lt)>/E<gt>/g;
     }
     $args = $args ? ($args =~ /^<.*>$/ ? "=I$args" : "=I<$args>") : "";
-    my $usage = $OPTIONS{$option}{usage};
+    my $usage = $optinfo->{usage};
     my $usage_str = ref $usage eq 'ARRAY' ? join("\n",@$usage) : $usage;
     printf "=item B<-$opt>I<$args>\n\n$usage_str$def\n\n";
   }
@@ -564,6 +661,7 @@ POD_SEP
 
   exit 0;
 }
+
 #########################
 # Version/Copyright Info
 #########################
@@ -571,7 +669,7 @@ sub version {
   my ($opt,$option,$val) = @_;
   
   unless ($opt->{q} || $MAIN::SHOWED_VERSION++) {
-    print STDERR "\nThis is $PROGNAME v$VERSION";
+    print STDERR "\nThis is $PROGNAME v$VERSION on $^O";
     print STDERR "  ** BETA version.  DO NOT DISTRIBUTE. **"
       if $VERSION =~ /b/;
     print STDERR "\n\n";
@@ -584,7 +682,7 @@ sub version {
 }
 
 sub copyright {
-  print <<COPYRIGHT;
+  print STDERR <<COPYRIGHT;
 
 Copyright:   (c) 2000-2004 David Ljung Madison
 Docs:        $ALBUM_URL
@@ -598,6 +696,64 @@ COPYRIGHT
 #########################
 # Parse command line
 #########################
+# Lookup an option val (check in current plugin options first)
+sub option {
+  my ($opt,$option) = @_;
+
+  # Plugin?
+  my $plugin = $opt->{_curr_plugin};
+  my $plugin_option = "$plugin:$option";
+  my $optinfo = get_option($opt,$option,$plugin);
+  return $opt->{$plugin_option} if $plugin && $optinfo;
+
+  $opt->{$option};
+}
+
+sub deprecated_option {
+  my ($opt, $option, $val) = @_;
+  return unless !$MAIN::DEPRECATED_OPTION{$option}++;
+
+  my $err = "Deprecated option ignored: [-$option].";
+
+  my $optinfo = get_option($opt,$option);
+  print STDERR "WARNING: Deprecated option ignored: [-$option]\n";
+  print STDERR "         See [-$optinfo->{args}] option instead\n" if $optinfo->{args};
+}
+
+# Get option info hash for an option (for an optional plugin)
+sub get_option {
+  my ($opt,$option,$plugin) = @_;
+
+  if ($plugin) {
+    # Make sure we've loaded the plugin and get the full plugin name
+    $plugin = get_plugin($opt,$option,$plugin);
+    return 0 unless $plugin;
+    return $OPTIONS{plugin}{$plugin}{$option};
+  }
+
+  return $OPTIONS{album}{$option} if $OPTIONS{album}{$option};
+
+  # Might be a -plugin:option
+  return 0 unless $option =~ /([^:]+):(.+)/;
+  get_option($opt,$2,$1);
+}
+
+# Expand the full option string (expand plugin name if needed)
+# Call as:  full_option($opt,$optinfo) or full_option($opt,$option)
+sub full_option {
+  my ($opt,$option) = @_;
+  my $optinfo = (ref $option eq 'HASH') ? $option : get_option($opt,$option);
+  my ($option_str,$plugin) = ($optinfo->{option}, $optinfo->{plugin});
+  $plugin ? "$plugin:$option_str" : $option_str;
+}
+
+# Give me a list of all the options by added order (optionally for a plugin)
+sub all_options {
+  my ($opt, $plugin) = @_;
+  return @{$OPTIONS{album_order}} unless $plugin;
+  $OPTIONS{plugin_order}{$plugin} ?  @{$OPTIONS{plugin_order}{$plugin}} : ();
+}
+
 sub parse_geometry {
   my ($opt,$option,$val) = @_;
 
@@ -606,71 +762,193 @@ sub parse_geometry {
   ($opt->{x},$opt->{y}) = ($1,$2);
 }
 
-# Parse a single argument with optional value (and 'no_' flag)
+# Parse a single argument with optional value
+# (and deal with --option and -no_option and -clear_option)
 sub parse_arg {
-  my ($opt,$option,$val, $from) = @_;
+  my ($opt,$Option,$val, $from) = @_;
 
-  print STDERR "[ARG] $option $val (<-$ARGV[0]) - $from\n" if $opt->{d};
+  # Is it a -no_option or -clear_option or a --option?
+  my $clear = ($Option =~ s/^clear[_-]?//) ? 1 : 0;
+  my $dashdash = ($Option =~ s/^-//) ? 1 : 0;
+  my $no = ($Option =~ s/^no[_-]?//) ? 1 : 0;
+  usage("Unnecessary '--' in options") if $dashdash && !$Option;
 
-  # Should 'no_' be undef?
-  $val = 0 if ($option =~ s/^no[_-]?//);	# Handle 'no_' options
-  my $dashdash = ($option =~ s/^-//) ? 1 : 0;
-  usage("Unnecessary '--' in options") if $dashdash && !$option;
+  return if $no && $clear;	# That's just silly.
 
-  usage("Unknown ".($from||"command-line option").":\n\t  -$option") unless $OPTIONS{$option};
-  my $type = $OPTIONS{$option}{type};
+  # Get option info
+  my $optinfo = get_option($opt,$Option);
+  usage("Unknown ".($from||"command-line option").":\n\t  -$Option")
+    unless $optinfo;
+  my $option = full_option($opt,$optinfo);
+  my $type = $optinfo->{type};
+
+  print STDERR "[CONF] $option ($val, $no) '$from'\n" if $from && $opt->{d};
+  print STDERR "[ARGV] $option ($val, $no, $ARGV[0])\n" if !$from && $opt->{d};
 
   # Theme options don't override any options that are previously set.
   return if $from =~ /theme option/ && $opt->{_set}{$option};
 
-  my $prev_val = $opt->{$option};	#duplicate($opt->{$option});
+  my @vals;	# In case it's a multi-val with dashdash
 
-  if ($type==$OPTION_SEP) {
+  if ($type==OPTION_SEP) {
     usage("Unknown option: $option");
 
-  } elsif ($type==$OPTION_BOOL) {
+  } elsif ($type==OPTION_BOOL) {
     # Booleans are either on or off
-    my $set = 1;
-    $set = ($val ? 1 : 0) if defined $val;
-    $set = 0 if $val =~ /^(off|no)$/i;
-    #$set = ($set ? 0 : 1) if $no;
-    $opt->{$option} = $set;
+    $val = 1 unless defined $val;
+    $val = 0 if $val =~ /^(off|no)$/i;
+    $val = ($no||$clear) ? ($val ? 0 : 1) : ($val ? 1 : 0);
+    undef $no;  # We only keep $no for array options, here we just change $val
+    $opt->{$option} = $val;
+
+  } elsif ($clear) {
+    # Keep track of which options were cleared
+    $opt->{_argv}{clear}{$option} = 1;
+
+    # And clear..
+    undef $opt->{$option};
+      # Should this return to default??
+      # Mostly no (we need to be able to override default!)
+
+    # As well as _argv (if for some reason they've specified this
+    # option already on the command-line and changed their mind..)
+    undef $opt->{_argv}{vals}{$option};
+    @{$opt->{_argv}{order}} = grep($_ ne $Option, @{$opt->{_argv}{order}});
 
   } elsif (ref $type eq 'CODE') {
     # Handle actions (code ref type)
-    unless (defined $val || !$OPTIONS{$option}{args}) {
-      # We need an arg - but $from implies we don't have any args to get..
-      usage("Missing argument for $from option: $option") if $from;
-      $val = shift @ARGV 
-    }
-    &$type($opt,$option,$val);
+    my $code = $type;
 
-  } elsif ($type==$OPTION_ARR) {
-    my @val;
+    if ($optinfo->{args}) {
+      # We need an arg
+      usage("Missing argument for $from option: $option")
+        unless defined $val || !$from;
+      $val = shift @ARGV unless defined $val;
+    } else {
+      # We only keep $no when args are used, here we just change $val
+      $val = $no ? 0 : 1;
+      undef $no;
+    }
+
+    # No?
+    if ($val && !$no) {
+      my $save_curr_plugin = $opt->{_curr_plugin};
+      $opt->{_curr_plugin} = $optinfo->{plugin};
+
+      # Call the routine
+      $code->($opt,$option,$val);
+
+      $opt->{_curr_plugin} = $save_curr_plugin;
+
+      # Kind of kludgy, don't save deprecated options
+      next if $code eq \&deprecated_option;
+    }
+
+  } elsif ($type==OPTION_ARR) {
     $val = shift @ARGV unless $dashdash || $from || defined $val;
-    push(@val, $val) if defined $val;
+    push(@vals, $val) if defined $val;
     # If $from isn't defined, then we're parsing @ARGV, collect args to --
     if (!$from && $dashdash) {
-      push(@val, shift(@ARGV)) while (@ARGV && $ARGV[0] ne "--");
+      push(@vals, shift(@ARGV)) while (@ARGV && $ARGV[0] ne "--");
       usage("Missing -- at end of $option") unless shift(@ARGV);
     }
+
+    usage("Missing value for option $Option") unless @vals;
+
     # Do we care about 'no_'?
-    push(@{$opt->{$option}}, @val) if @val;
+    push(@{$opt->{$option}}, @vals) unless $no;
 
   } else {
     # Strings or numbers
-    $val = shift @ARGV unless $from || defined $val;
-    usage("-$option needs an argument") unless defined $val;
-    usage("Bad -$option number [$val]") if $val=~/\D/ && $type==$OPTION_NUM;
-    $opt->{$option} = $val;
+#usage("-no_$option doesn't make sense") if $no;
+    if ($no) {
+      delete $opt->{$option};
+    } else {
+      $val = shift @ARGV unless $from || defined $val;
+      usage("-$option needs an argument") unless $from || defined $val;
+      usage("Bad -$option number [$val]") if $val=~/[^\d\.]/ && $type==OPTION_NUM;
+      $opt->{$option} = $val;
+    }
   }
 
-  # Keep track of which args were on the command-line ('SAVE' hash)
-  # Always save array options when spec'd in ARGV, too hard to figure
-  # out if they've changed.
-  $opt->{SAVE}{$option} = 1 unless $from
-    || ($type!=$OPTION_ARR && defined($prev_val) && $val eq $prev_val);
+  unless ($from || $clear) {
+    # Keep track of which args were on the command-line to override conf opts
+    push(@{$opt->{_argv}{order}}, $option) unless $no;
+
+    # And keep track of the values for save_conf
+    if (multival_option($opt,$option)) {
+      push(@vals, $val) unless @vals;
+      my $what = $no ? 'no' : 'vals';
+      push(@{$opt->{_argv}{$what}{$option}}, @vals);
+    } else {
+      # We don't want to do it this way anymore for -no.., because we want
+      # to allow for -no_string (such as -no_theme) without forcing
+      # the string option to be '0'  Boolean options will set $val to 0.
+      #$opt->{_argv}{vals}{$option} = defined $val ? $val : 0;
+      $opt->{_argv}{vals}{$option} = $val;
+      $opt->{_argv}{no}{$option} = 1 if $no;
+      $opt->{_changed}{$option} = 1;
+    }
+  }
+
+  # Keep track of *all* set options (override theme opts)
   $opt->{_set}{$option} = 1;
+}
+
+# Did an option 'change' on the ARGV?  (Used by plugins and others)
+sub option_changed {
+  my ($opt,$option) = @_;
+  my $full_option = full_option($opt,$option);
+
+  # We use {_changed} for non multival,
+  return $opt->{_changed}{$full_option}
+    unless multival_option($opt,$full_option);
+
+  # but {_argv} for multival (too complex..)
+  defined $opt->{_argv}{vals}{$full_option} ? 1 : 0;
+}
+
+# Which args can be called multiple times in a meaningful way?
+# Either array type, or code types with args.
+# (Assume that plain code types don't need to be called mult times)
+sub multival_option {
+  my ($opt,$option) = @_;
+  my $optinfo = get_option($opt,$option);
+  return 0 if $optinfo->{singleval};	# Allow for 'singleval' hint.
+  my $type = $optinfo->{type};
+  return 1 if $type==OPTION_ARR;
+  return 1 if ref($type) eq 'CODE' && $optinfo->{args};
+  0;
+}
+
+# Is this an option/val that needs to be ignored because it will override
+# what we saw in argv?  (argv takes precedence over the top album.conf)
+sub defer_to_argv {
+  my ($opt,$option,$val, $what) = @_;
+
+  $what = $what || '_argv';
+
+  # Any cleared options are always "deferred"
+  return 1 if $opt->{$what}{clear}{$option};
+
+  # Was this option even in argv?
+  if (defined $opt->{$what}{vals}{$option}) {
+    # non-multival options (boolean,num,str,CODE<no argv>) are always deferred
+    return 1 unless multival_option($opt,$option);
+
+    # multival options are NOT deferred unless the value is in the argv array
+    return 1 if contains($val, @{$opt->{$what}{vals}{$option}});
+  }
+
+  # Or was it a -no_option in argv?
+  if (defined $opt->{$what}{no}{$option}) {
+    # non-multival options (boolean,num,str,CODE<no argv>) are always deferred
+    return -1 unless multival_option($opt,$option);
+
+    # multival options are NOT deferred unless the value is in the argv array
+    return -1 if contains($val, @{$opt->{$what}{no}{$option}});
+  }
+  0;
 }
 
 # Add to the list of albums
@@ -684,11 +962,13 @@ sub add_album_dir {
 
   # Get previous album options saved in meta tags
 # DEPRECATED - this is all saved in album.conf now..
-  return if $opt->{notheme};
-  return if $opt->{theme};	# Already defined
+# We could remove this ugliness, but we'd lose backwards compat.
+# Long before we do that, we should make sure that these get saved like {_argv}
+# Otherwise, we could still have a theme in an old album without an album.conf
 
-# We could remove this ugliness, but we'd lose backwards compat.  And long
-# before we do that, we should make sure that these get saved by {SAVE}..
+  # But we can skip it if the theme is spec'd
+  return if defer_to_argv($opt,'theme','ignored');
+
   my $file = index_page($opt,1,$dir);
   my $theme;
   (open(FILE,"<$file")) || return;
@@ -696,7 +976,7 @@ sub add_album_dir {
     # Did we find any meta args?
     if (/meta\s+name='Album_(.+)'\s+content='(.+)'/i) {
       my ($option,$val) = ($1,$2);
-      $option = lc($option) unless $OPTIONS{$option};
+      $option = lc($option) unless get_option($opt,$option);
       # This is for backwards compat - future opts get saved in conf files
 # ToConsider: Is this dangerous?  If someone can edit the HTML, they
 # can edit the album params.  Is this a big issue?  If someone else is
@@ -745,8 +1025,47 @@ sub parse_args {
 #########################
 # Configuration files
 #########################
+# Read a config line
+# Returns:  (option,val,whitespace,comment)
+sub read_conf_line {
+  my ($line) = @_;
+
+  chomp($line);
+
+  # Comments after '#' (that aren't quoted '\#') are ignored
+  my $comment;
+  $comment = $1 if $line =~ s/(\s*(?<!\\)#.*)//;
+
+  return 0 unless $line =~ /\S/;
+
+  # "option  val"
+  return -1 unless $line =~ /^(\S+)((\s+)(\S.*?))?\s*$/;
+  my ($option,$sp,$val) = ($1,$3,$4);
+
+  # Values can be quoted
+  $val = $1 if $val =~ /^"(.*)"$/ || $val =~ /^'(.*)'$/;
+  $val =~ s/\\#/#/g;	# Unquote any '#'
+
+  ($option,$val,$sp,$comment);
+}
+
+sub save_conf_line {
+  my ($option,$val,$whitespace,$comment) = @_;
+
+  $whitespace = $whitespace || "\t";
+
+  # Quote value if it has whitespace
+  $val = "'$val'" if $val =~ /\s/;
+
+  # Convert '#' to '\#'
+  $val =~ s/#/\\#/g;
+
+  return "$option$whitespace$val\n" unless $comment;
+  "$option$whitespace$val\t$comment\n";
+}
+
 sub read_conf {
-  my ($opt,$option,$conf,$check_argv) = @_;
+  my ($opt,$option,$conf,$defer_to_argv) = @_;
 
   return if $opt->{_read_conf}{$conf};
 
@@ -757,21 +1076,43 @@ sub read_conf {
   }
 
   my $conf_str = $conf;
-  $conf_str =~ s|^\Q$opt->{topdir}\E/?||;
+  $conf_str =~ s|^\Q$opt->{topdir}\E/?|| if $opt->{topdir};
+  $conf_str =~ s|^$ENV{HOME}|~| if $ENV{HOME};
   print STDERR "Read conf: $conf_str\n" unless $opt->{q};
   $opt->{_read_conf}{$conf} = 1;	# We read a conf file
 
   while (<$fh>) {
-    s/#.*//;	# Ignore comments
-    next unless /\S/;	# And white-space
-    unless (/^(\S+)(\s+(\S.*?))?\s*$/) {
+    my ($option,$val) = read_conf_line($_);
+    if ($option==-1) {
       print STDERR "[$PROGNAME] Can't understand conf: [$conf_str, line $.]\n  $_";
       next;
     }
-    my ($option,$val) = ($1,$3);
-    $val = $1 if $val =~ /^"(.*)"$/ || $val =~ /^'(.*)'$/;
-    parse_arg($opt,$option,$val, "conf option [$conf_str]")
-      unless $check_argv && $opt->{SAVE}{$option};
+    next unless $option;
+
+    # Don't parse if it's an option for a plugin that had -no_plugin
+    next if no_plugin_option($opt,$option,$val);
+
+    # Get the dealio on the option (load plugins as needed)
+    my $optinfo = get_option($opt,$option);
+
+    usage("Unknown album conf option:\n\t  -$option") unless $optinfo;
+    my $full_option = full_option($opt,$optinfo);
+
+    # We don't parse if it's an argv option and $defer_to_argv
+    if ($defer_to_argv && defer_to_argv($opt,$full_option,$val)) {
+      next if multival_option($opt,$full_option);
+      # Did the option change?  Keep track in {_changed}.
+      # We only do this for non-multival options (because otherwise
+      # we'd need to keep track of the list of multivals, which would suck).
+      # This is good enough to avoid the common problem of users re-specifying
+      # options that haven't changed, such as -medium, which would have a
+      # huge performance penalty.
+      $opt->{_changed}{$full_option} =
+        ($opt->{_argv}{vals}{$full_option} eq $val) ? 0 : 1;
+      next;
+    }
+
+    parse_arg($opt,$option,$val, "conf option [$conf_str]");
   }
   close $fh;
   1;
@@ -785,61 +1126,105 @@ sub read_confs {
 
 # Save any command-line specified options to the config file
 sub save_conf {
-  my ($opt,$data,$conf,$save) = @_;
+  my ($opt,$conf, $what) = @_;
 
-  # If we specify $save then we want to save no matter what.
-  my $changed = 0;
-  $changed = 1 if $save;
+  # If we specify $what then we want to save no matter what.
+  my $changed = $what ? 1 : 0;
 
-  $save = $save || $opt->{SAVE};
+  $what = $what || '_argv';
+  my $order = $opt->{$what}{order};	# Either {_argv}{order} or {_virgin}{order}
+  my $save = $opt->{$what}{vals};	# Either {_argv}{vals} or {_virgin}{vals}
+  my $no = $opt->{$what}{no};		# Either {_argv}{no} or (unused)
 
-  my @new;
-  my %arr;
+  my @new;	# The new conf lines
+  my $new_comment = "\t# command-line saved option";
+  my %saw;
   if (open(CONF,"<$conf")) {
     while (<CONF>) {
-      my ($line,$comment) = /(.*?)(\s*#.*)/ ? ($1,$2) : ($_);
+      my ($short_option,$conf_val,$sp,$comment) = read_conf_line($_);
 
       # Not an option line
-      unless ($line =~ /^(\S+)((\s+)(\S.*))?$/) {
+      unless ($short_option) {
         push(@new,$_);
         next;
       }
 
-      # Not a command-line option
-      my ($option,$sp,$conf_val) = ($1,$3,$4);
-      $conf_val = $1 if $conf_val =~ /^"(.*)"$/ || $conf_val =~ /^'(.*)'$/;
-      unless ($save->{$option} && !$OPTIONS{$option}{one_time}) {
+      # We skip any options for plugins that were turned off.
+      if (no_plugin_option($opt,$short_option,$conf_val)) {
+        $changed++;
+        next;
+      }
+
+      # Get the dealio on the option (the plugins should be loaded, though)
+      my $optinfo = get_option($opt,$short_option);
+      fatal($opt,"Internal error!! [$short_option, 1]\nsave_conf() doesn't recognize an option that read_conf did??") unless $optinfo;
+      my $option = full_option($opt,$optinfo);
+
+      $saw{$option}++;
+
+      my $defer = defer_to_argv($opt,$option,$conf_val, $what);
+
+      unless (defined $save->{$option} || defined $no->{$option} || $defer) {
         push(@new,$_);
         next;
       }
 
       # This is an option we specified on the command line
 
-      # Make a copy of array options
-      my $array_op = ref $opt->{$option} eq 'ARRAY' ? 1 : 0;
-      delete $save->{$option} unless $array_op;
-      @{$arr{$option}} = @{$opt->{$option}}
-        unless !$array_op || $arr{$option};
-      my $array_empty = ($array_op && !@{$arr{$option}}) ? 1 : 0;
+      # Non-array options are simpler, deal with them first.
+      unless (multival_option($opt,$option)) {
+        # Has the option changed?
+        if ($conf_val ne $save->{$option}) {
+          push(@new, "$short_option\t$save->{$option}$comment\n");
+          $changed++;
 
-      my $opt_val = $array_op ? shift(@{$arr{$option}}) : $opt->{$option};
+        # Was it a -no_option?
+        } elsif (defined $no->{$option}) {
+          $changed++;
 
-      $changed++ if $conf_val ne $opt_val;
-      $opt_val = "'$opt_val'" if $opt_val =~ /\s/;
-      $sp = "\t" unless $sp;
-      push(@new,"$option$sp$opt_val$comment\n") unless $array_empty;
+        } else {
+          push(@new,$_);
+        }
+        next;
+      }
+
+      if ($saw{$option}==1) {
+        # It's the first sighting of an array option.  Do saved options first.
+        # (since they got processed before the conf file...
+        #  a little counter-intuitive, but this is an ordering problem)
+        foreach my $val ( @{$save->{$option}} ) {
+          push(@new, save_conf_line($short_option,$val,"\t",$new_comment));
+          $changed++;
+        }
+      }
+
+      # Then the conf value, unless it was deferred.
+      $changed++ if $defer;
+      push(@new,$_) unless $defer;
     }
     close CONF;
+  } else {
+    # Creating a new conf file..  (if there are changes)
+    push(@new, "#\n# Configuration file automatically created by $PROGNAME\n#\n");
+    $new_comment = "";
   }
 
-  foreach my $option ( keys %{$save} ) {
-    next if $OPTIONS{$option}{one_time};
-    my @val = ref $opt->{$option} eq 'ARRAY' ? (@{$opt->{$option}}) : ($opt->{$option});
-    @val = @{$arr{$option}} if $arr{$option};
-    $changed+= $#val+1;
+  # Finally, take care of any options that we didn't already see.
+  foreach my $short_option ( @{$order} ) {
+    # Get the dealio...  yeah, yeah.
+    my $optinfo = get_option($opt,$short_option);
+    fatal($opt,"Internal error!! [$short_option, 2]\nsave_conf() doesn't recognize an option that parse_arg did??") unless $optinfo;
+    my $option = full_option($opt,$optinfo);
+
+    # Not if we saw it already or it's a one-timer.
+    next if $saw{$option};
+    next if $optinfo->{one_time};
+
+    # Get the value and print it out.
+    my @val = ref $save->{$option} eq 'ARRAY' ? (@{$save->{$option}}) : ($save->{$option});
     map {
-      $_ = "'$_'" if /\s/;
-      push(@new,"$option\t$_\t# command-line saved option\n");
+      push(@new, save_conf_line($short_option,$_,"\t",$new_comment));
+      $changed++;
     } @val;
   }
 
@@ -849,7 +1234,6 @@ sub save_conf {
     unless (open(CONF,">$conf"));
   print CONF @new;
   close CONF;
-  my $conf_str = $data ? "$data->{paths}{album_path}/$opt->{conf_file}" : $conf;
   print "Saved command line options in [$conf]\n" unless $opt->{q};
 }
 
@@ -857,10 +1241,12 @@ sub save_conf {
 sub push_opts {
   my ($opt) = @_;
   $opt->{_saved_opt} = duplicate($opt);
+  1;
 }
 
 sub pop_opts {
   my ($opt) = @_;
+  # Arguably I should 'pop' the add_option calls from plugins that get popped
   %$opt = %{$opt->{_saved_opt}};
 }
 
@@ -871,11 +1257,16 @@ sub duplicate {
 
   my $ref = ref $thing;
 
+  if ($ref eq 'CODE') {
+    # We see CODE refs for plugin hooks - just return the code ref.
+    return $thing;
+  }
+
   if ($ref eq 'HASH') {
     my %copy;
     foreach my $key ( keys %$thing ) {
-      # Don't need to make new copies of: SAVE and _captions or _set
-      if (grep($key eq $_, qw(SAVE _captions _set))) {
+      # Don't need to make new copies of: _SAVE and _captions or _set
+      if (contains($key, qw(_argv _captions _set))) {
         $copy{$key} = $thing->{$key};	# Just copy the reference
         next;
       }
@@ -908,7 +1299,7 @@ sub album_confs {
   my ($opt,$data) = @_;
 
   my $dir = $data->{paths}{dir};
-  my $scrub = 0;
+  my $pushed = 0;
 
   # If we just got started and this is a subalbum, read all higher confs
   if ($data->{start}) {
@@ -916,25 +1307,23 @@ sub album_confs {
     for (my $i=0; $i<$#parents; $i++) {
       my $conf = "$opt->{topdir}/".join('/',@parents[0..$i])."/$opt->{conf_file}";
       next unless -r $conf;
+      $pushed = push_opts($opt) unless $pushed;
       read_conf($opt,undef,$conf,1);
-      $scrub = 1;
     }
   }
 
   # Do we have a local conf?
   my ($pushed,$conf) = (0,"$dir/$opt->{conf_file}");
   if (-r $conf) {
-    push_opts($opt) unless $data->{start};
-    $pushed = 1 unless $data->{start};
+    $pushed = push_opts($opt) unless $pushed;
     read_conf($opt,undef,$conf,$data->{start});
-    $scrub = 1;
   }
 
   # Options sanity checks and the like.
-  scrub_opts($opt) if $scrub;
+  scrub_opts($opt) if $pushed;
 
   # Should we save any command line options?
-  save_conf($opt,$data,$conf) if $data->{start} && $opt->{save_conf};
+  save_conf($opt,$conf) if $data->{start} && $opt->{save_conf};
   $pushed;
 }
 
@@ -943,6 +1332,8 @@ sub album_confs {
 #########################
 sub scrub_opts {
   my ($opt,$first) = @_;
+
+  $opt->{d}=1 if $opt->{D};
 
   # We only scrub these once, they pretty much shouldn't be changed
   # in any per-album configurations, and that would probably screw
@@ -996,27 +1387,25 @@ sub scrub_opts {
   usage("Need to specify -medium <geom> with -just_medium option")
     if $opt->{just_medium} && !$opt->{medium};
 
-  # If the medium scaling is <width>x<height>, add ">" on the end so
-  # convert will only shrink the images, never grow them
-  $opt->{medium}.='>' if $opt->{medium} =~ /^\d+x\d+$/ && !$opt->{windows};
-
   # -clean and hashes is ugly
   $opt->{hashes}=0 if $opt->{clean} || $opt->{d} || $opt->{q};
 
   # -caption_edit needs themes
+# Maybe this should be in get_themes?  Bah..
   usage("Can't use -caption_edit without a theme")
     if $opt->{caption_edit} && !$opt->{theme};
 
-  # -theme_url needs -theme
-  # Don't check here, it might be a conf arg or it might be set by the album
-#  usage("-theme_url requires -theme option (it does not replace it)")
-#    if $opt->{theme_url} && !$opt->{theme};
-  # How about this instead?
-  hash_warn($opt,"WARNING: -theme_url still requires -theme option, it doesn't replace it")
-    if $opt->{theme_url} && !$opt->{theme} && !$MAIN::WARNED_THEME_URL++;
+  # -burn doesn't use -theme_url
+  usage("Can't specify -theme_url with -burn")
+    if $opt->{burn} && option_changed($opt,'theme_url');
 
+  # Check -crop option (though somewhat deprecated)
   usage("-CROP must be top, bottom, left or right")
     if ($opt->{CROP} && $opt->{CROP} !~ /^(top|bottom|left|right)$/);
+
+  # Allowed sort types
+  usage("Unknown sort option: $opt->{sort}")
+    unless grep($opt->{sort} eq $_, qw(captions name date));
 }
 
 ##################################################
@@ -1028,6 +1417,10 @@ sub get_themes {
   my ($opt) = @_;
 
   my $theme = $opt->{theme};
+
+  # -theme_url needs -theme
+  hash_warn($opt,"WARNING: -theme_url still requires -theme option, it doesn't replace it")
+    if option_changed($opt,'theme_url') && !$theme && !$MAIN::WARNED_THEME_URL++;
 
   # -no_theme
   unless ($theme) {
@@ -1048,11 +1441,12 @@ sub get_themes {
       ($dir,$found_path) = ($newdir,$newfound_path)
     }
   }
-  $dir = port_abs_path($opt,$dir) if -d $dir;
 
   # If it's a directory, look for "image.th" and "album.th"
   return hash_warn($opt,"Couldn't find -theme directory [$dir] (ignoring)\n\t(Try specifying -theme_path with -theme)")
     unless -d $dir;
+
+  $dir = port_abs_path($opt,$dir);
 
   # Already got this theme
   return if $opt->{_theme_full} eq $dir;
@@ -1118,15 +1512,18 @@ sub get_theme {
 # Is this their first time?
 ##################################################
 ##################################################
+
 sub virgin_check {
   my ($opt) = @_;
+
+  return unless $opt->{virgin_check};
 
   # Eventually we'll keep version numbers in the conf files, not today.
   return if $opt->{_read_conf} && keys %{$opt->{_read_conf}} && !$opt->{configure};
 
   # Options that we want to save
-  my %save;
-  $opt->{configure_save} = \%save;
+  $opt->{_virgin}{vals} = {};
+  $opt->{_virgin}{order} = [];
 
   # First install.  Hopefully they've got a tty
   print STDERR "I see this is your first time running $PROGNAME v$VERSION.\n\n"
@@ -1143,7 +1540,7 @@ sub virgin_check {
 
   print STDERR "I'll save your installation in:\n  $conf\n\n";
   print STDERR "You can edit this file later to suit your needs.\n\n";
-  print STDERR "Run $PROGNAME as root if you want to do a system-wide configuration.\n\n"
+  print STDERR "** Run $PROGNAME as root if you want to do a system-wide configuration. **\n\n"
     if $< && -d '/etc';
 
   print STDERR "Are you ready?\n";
@@ -1151,7 +1548,38 @@ sub virgin_check {
 
   print STDERR "--------------------------------------------------\n\n";
 
-  # THEME PATH
+  # DATA PATH (install plugins)
+  # We don't need to do anything if the plugins are already in data_path
+  # (use search_path_exec to handle windows slash and '~')
+  my ($path,$found) = search_path_exec($opt,'plugins', @DATA_PATH);
+  if ($found) {
+    print STDERR "- Plugins already installed correctly\n\n";
+  } else {
+    my $plugins = install_find_current_data($opt,"plugins");
+    if ($plugins) {
+      print STDERR "\nI see that you haven't installed plugins yet.  Would you like to do that now?\n";
+      if (install_get_yn($opt,'y')) {
+        my $data = install_get_menu_path($opt,"data path for installing plugins",
+          "I'm going to install your plugins, pick a data path to install into:",@DATA_PATH);
+        if ($data) {
+          unless (install_move($opt,$plugins,$data)) {
+            print STDERR "\nCouldn't install plugins!\n";
+            print STDERR "Please login as a user with the appropriate privileges and copy:\n";
+            print STDERR "  $plugins -> $data\n\n";
+            install_hit_enter($opt);
+          }
+        } else {
+          print STDERR "\nCancelled install.\n";
+          print STDERR "Move the plugin directory into your data path to install later\n\n";
+          install_hit_enter($opt);
+        }
+      }
+    }
+  }
+
+  print STDERR "--------------------------------------------------\n\n";
+
+  # THEME PATH (not necessarily @DATA_PATH because it needs to be URL accessible)
   my $themes;
   unless ($opt->{notheme}) {
     $themes = install_theme_path($opt);
@@ -1170,11 +1598,12 @@ sub virgin_check {
         if (install_get_yn($opt,'y')) {
           print STDERR "\n";
           # Try to find where the themes were installed
-          my $curr = install_find_current_themes($opt);
+          my $curr = install_find_current_data($opt,"Themes");
           if ($curr && !install_move($opt,$curr,$themes)) {
             print STDERR "\nCouldn't install themes!\n";
             print STDERR "Please login as a user with the appropriate privileges and copy:\n";
             print STDERR "  $curr -> $themes\n\n";
+            install_hit_enter($opt);
           }
         }
       }
@@ -1190,7 +1619,7 @@ sub virgin_check {
 You can also specify a default -theme_url path.  This is useful if the
 mapping between your file path and URLs are not clear, for example if:
 
-1) You have virtual domains.
+1) You have virtual domains (in some cases).
 2) You're using mod_rewrite on the themes path.
 3) You use a symbolic link to point to the actual themes directory.$num3
 
@@ -1198,6 +1627,10 @@ In general if you don't know what these mean, then you probably don't
 need to specify -theme_url.  Usually the filesystem and URL match after
 you remove the web root directory.  Otherwise, this should be the URL
 that you can put in your browser to see a listing of the theme directories.
+
+If you run album on a local machine and then upload your album to your
+web server, then you will need to upload the themes as well, this is
+where you would specify the URL to the directory with the themes in it.
 
 CONFIG_THEME_URL
 
@@ -1213,7 +1646,8 @@ THEME_URL
       print STDERR "\nThe -theme_url value should not contain any spaces\n\n"
         unless $opt->{theme_url};
     }
-    $opt->{configure_save}{theme_url} = 1 if $opt->{theme_url};
+    $opt->{_virgin}{vals}{theme_url} = $opt->{theme_url};
+    push(@{$opt->{_virgin}{order}}, 'theme_url');
   }
 
   # CONVERT/IDENTIFY
@@ -1225,9 +1659,14 @@ THEME_URL
   # DONE!
   print STDERR "\nEnd of configuration\n\n";
 
+  # Track the configuration file version
+  $opt->{_virgin}{vals}{conf_version} = $VERSION;
+  $opt->{_virgin}{vals}{conf_version} =~ s/[^\d\.]//g;	# Just the numbers
+  push(@{$opt->{_virgin}{order}}, 'conf_version');
+
   # Save it.
-  save_conf($opt,undef,$conf,\%save);
-  undef $opt->{configure_save};
+  save_conf($opt,$conf, '_virgin');
+  undef $opt->{_virgin};
 
   exit if $opt->{configure};
   # Otherwise we can continue to run album.
@@ -1268,26 +1707,33 @@ sub install_find_exec {
     $try = $try || $what;
     # Actually, if it's windows we should have found it via scrub_opts
     my @path = get_path($opt);
-    my $slash = $opt->{windows} ? '\\' : '/';
-    my $found = search_path_exec($opt,$slash,$what,@path);
+    my $found = search_path_exec($opt,$what,@path);
     return print STDERR "Found $what in path:  $found\n" if -x $found;
   }
 
   while (1) {
-    my $ques = "\nCan't find $what executable.\n";
-    $ques .= $optional ?
-      "This is optional but is useful to $PROGNAME.\n" :
-      "I need to know where this is for $PROGNAME to run properly.\n";
-    $try = install_get_answer($opt,"path to $what",undef,$ques);
+    print STDERR "\nCan't find $what executable.\n";
 
+    if ($optional) {
+      print STDERR "This is optional but is useful to $PROGNAME.\n";
+      print STDERR "Do you want to enter a path to $what?\n";
+      return unless install_get_yn($opt, 'n');
+    } else {
+      print STDERR "I need to know where this is for $PROGNAME to run properly.\n";
+    }
+
+    $try = install_get_path($opt,"path to $what");
+
+    return if $optional && !$try;
     last if -x $try;
     print STDERR "\nExecutable not found: [$try]\nTry again?\n";
     return unless install_get_yn($opt,'y');
   }
 
   # We need to save this
-  $opt->{configure_save}{$what} = 1;
   $opt->{$what} = $try;
+  $opt->{_virgin}{vals}{$what} = $opt->{$what};
+  push(@{$opt->{_virgin}{order}}, $what);
 }
 
 sub install_theme_path {
@@ -1313,15 +1759,22 @@ sub install_theme_path {
     $themes = '/home/httpd' unless -x $themes;
     $themes = '/home/http' unless -x $themes;
     $themes = "$ENV{HOME}/public_html" unless -x $themes;
+    $themes = '/usr/share/album/themes' unless -x $themes;
+    foreach my $dp ( @DATA_PATH ) {
+      $themes = "$dp/themes" unless -x $themes;
+      $themes = "$dp/Themes" unless -x $themes;
+      last if -x $themes;
+    }
     $themes = '' unless -x $themes;
-    $themes .= "/Themes" if $themes;
+    $themes .= "/Themes" if $themes && $themes !~ m|/themes$|i && -x "$themes/Themes";
+    $themes .= "/themes" if $themes && $themes !~ m|/themes$|i && -x "$themes/themes";
   }
 
-  my $example = $themes ? $themes : '/var/www/html/Themes';
+  my $example = $themes || '/var/www/html/Themes';
 
-  print STDERR "- You need to specify the option: 'theme_path'\n";
+  print STDERR "- You should specify the option: 'theme_path'\n";
   print STDERR "- You can override this value on the command-line: -theme_path\n\n";
-  my $themes = install_get_answer($opt,'theme_path',$themes,<<THEME_PATH);
+  my $themes = install_get_path($opt,'theme_path',$themes,<<THEME_PATH);
 $PROGNAME supports themes for web page layout, they were probably included
 with the package you installed, or can be downloaded from:
   $ALBUM_URL
@@ -1330,59 +1783,100 @@ You need to put them in a directory *inside* your web path.
 If you can't find the themes from your web browser, then any
 images or css you use will not be displayed.
 
-A good location is a directory inside the web root, something like:
+This is the path to the themes on the machine that you run album on, not
+a URL.  A good location is a directory inside the web root, something like:
   $example
+
+Just hit return if you don't want themes.
 THEME_PATH
 
   return unless $themes;
   push(@{$opt->{theme_path}}, $themes);
-  $opt->{configure_save}{theme_path} = 1;	# Make sure to save it
+  push(@{$opt->{_virgin}{vals}{theme_path}}, $themes);
+  push(@{$opt->{_virgin}{order}}, 'theme_path');
   $themes;
 }
 
-# Find where the themes were downloaded
-sub install_find_current_themes {
-  my ($opt) = @_;
-  my ($curr,$where) = ("/usr/share/$PROGFILE/themes","\n  Default is the dpkg install of $PROGNAME.");
-  ($curr,$where) = ('./Themes',"\n  Found local ./Themes directory.") unless -x $curr;
+# Find where the themes/plugins were downloaded
+sub install_find_current_data {
+  my ($opt,$What) = @_;
+  my $what = lc($What);
+  my ($curr,$where) = ("/usr/share/$PROGFILE/$what","\n  ** Default is the dpkg install of $PROGNAME **");
+  ($curr,$where) = ("./$What","\n  ** Found local ./$What directory **") unless -x $curr;
   ($curr,$where) = (undef,undef) unless -x $curr;
 
 
   # Is it still zipped up?
-  my $targz = "${PROGFILE}_themes.tar.gz";
-  if (-f $targz && !-d 'Themes') {
-    print STDERR "\nI found a gzipped themes tar: $targz\n\nWould you like me to try to unzip it?\n";
+  my $targz = "${PROGFILE}_$what.tar.gz";
+  my $tar   = "${PROGFILE}_$what.tar";
+  if (-f $targz && !-d $What) {
+    print STDERR "\nI found a gzipped $What tar: $targz\n\nWould you like me to try to unzip it?\n";
     if (install_get_yn($opt,'y')) {
       system("tar xzf $targz");
       if ($?) {
         # Try gunzip/tar
-        system("gunzip $targz");
-        system("tar xzf $targz") unless $?;
+        #system("gunzip $targz");
+        #system("tar xf $tar") unless $?;
+        system("tar", "xzf", $targz);
       }
-      return 'Themes' unless $? || !-d 'Themes';
-      print STDERR "\nError untarring: $!\n";
+      return $What unless $? || !-d $What;
+      print STDERR $? ? "\nError untarring: $!\n\n" :
+        "\nError: Untarring didn't create expected directory [$What]\n\n";
     }
   }
 
-  my $zip = "${PROGFILE}_themes.zip";
-  if (-f $zip && !-d 'Themes') {
-    print STDERR "\nI found a zipped themes archive: $zip\n\nWould you like me to try to unzip it?\n";
+  my $zip = "${PROGFILE}_$what.zip";
+  if (-f $zip && !-d $What) {
+    print STDERR "\nI found a zipped $What archive: $zip\n\nWould you like me to try to unzip it?\n";
     if (install_get_yn($opt,'y')) {
-      system("unzip $targz");
-      return 'Themes' unless $? || !-d 'Themes';
-      print STDERR "\nError untarring: $!\n";
+      system("unzip $zip");
+      return $What unless $? || !-d $What;
+      print STDERR $? ? "\nError unzipping: $!\n\n" :
+        "\nError: Unzipping didn't create expected directory [$What]\n\n";
     }
   }
 
   while (1) {
-    my $dir = install_get_answer($opt,'downloaded theme location',$curr,<<CURRENT);
-I need to find where you downloaded the Themes.  $where
+    my $dir = install_get_path($opt,"downloaded $what location",$curr || "cancel",<<CURRENT);
+I need to find where you downloaded the $What.  $where
 CURRENT
     return $dir if -d $dir;
-    print STDERR "\nDirectory not found: [$dir]\nTry again?\n";
+    print STDERR "\nDirectory not found: [$dir]\nTry again?\n" unless $dir eq "cancel";
+    print STDERR "\nTry to find plugins to install them?\n" if $dir eq "cancel";
     return undef unless install_get_yn($opt,'y');
     print STDERR "\n";
   }
+}
+
+sub install_get_menu {
+  my ($opt,$question,$desc,@menu) = @_;
+
+  my $items = $#menu+1;
+
+  my $cnt = 0;
+  while (1) {
+    unless ($cnt++ % 5) {
+      # Show menu at beginning and every 5 mistakes
+      print STDERR "\n";
+      print STDERR "$desc\n" if $desc;
+      for (my $i=0; $i<$items; $i++) {
+        printf STDERR "%2d] $menu[$i]\n",$i+1;
+      }
+      print STDERR "\n";
+    }
+
+    # Get answer
+    my $ans = install_get_answer($opt,$question." [1-$items, 0 to cancel]", "");
+    return undef if $ans eq "0";
+    return $menu[$ans-1] if $ans>=1 && $ans<=$items;
+  }
+}
+
+sub install_get_menu_path {
+  my ($opt,$question,$desc,@menu) = @_;
+  my $path = install_get_menu($opt,$question,$desc,@menu);
+  $path =~ s|^~/|$ENV{HOME}/| if $ENV{HOME};
+  $path;
 }
 
 sub install_get_yn {
@@ -1398,16 +1892,29 @@ sub install_get_yn {
 sub install_get_answer {
   my ($opt,$question,$default,$desc) = @_;
 
-  print STDERR "$desc\n";
+  print STDERR "$desc\n" if $desc;
   my $ret;
-  while (!$ret) {
+  while (!defined $ret) {
     print STDERR "Enter $question";
     print STDERR " [default: $default]" if $default;
     print STDERR "> ";
     my $line = scalar <STDIN>;  chomp($line);
-    $ret = $line || $default;
+    $ret = $line eq "" ? $default : $line;
   }
   $ret;
+}
+
+sub install_get_path {
+  my ($opt,$question,$default,$desc) = @_;
+  my $path = install_get_answer($opt,$question,$default,$desc);
+  $path =~ s|^~/|$ENV{HOME}/| if $ENV{HOME};
+  $path;
+}
+
+sub install_hit_enter {
+  my ($opt) = @_;
+  print STDERR "Press enter/return to continue ";
+  scalar <>;
 }
 
 ##################################################
@@ -1417,9 +1924,11 @@ sub install_get_answer {
 ##################################################
 sub max { $_[0]>$_[1] ? $_[0] : $_[1]; }
 sub min { $_[0]<$_[1] ? $_[0] : $_[1]; }
+sub contains { my $w = shift(@_); grep($w eq $_, @_) ? 1 : 0; }
 
 #########################
 # Stupid privoxy bug.
+# See mozilla/bugzilla #98118
 #########################
 sub concat {
   my $rep = 'op';  $rep .= 'en(';
@@ -1452,6 +1961,14 @@ sub int_abs_path {
 
 sub port_abs_path {
   my ($opt,$dir) = @_;
+
+  my $val = do_hook($opt,undef, 'port_abs_path', $dir);
+  # Description: Calculates absolute path for a directory.
+  # Description: Useful if you can't use 'Cwd::abs_path' or chdir().
+  # Returns: Path.
+  return $val if defined $val;
+
+# Do we care about handling '~' here??
   -d $dir || usage("Couldn't find directory [$dir]");
   return $CWD ? Cwd::abs_path($dir) : int_abs_path($dir);
 }
@@ -1467,10 +1984,18 @@ sub diff_path {
   # Remove file component
   $from =~ s|/[^/]+$|| unless -d $from;
 
+  if ($WINDOWS && !$CYGWIN) {
+    my $fdrive = ($from =~ s|^(\w):||) ? $1 : undef;
+    my $tdrive = ($to =~ s|^(\w):||) ? $1 : undef;
+    # If one is missing a drive spec, assume it's the same drive..
+    # But if they both have drive spec and one's diff, use full path
+    return "${tdrive}:$to" if $tdrive && $fdrive && $tdrive ne $fdrive;
+  }
+
   my $back = "";
   while ($to !~ /^\Q$from\E/) {
     $back .= "../";
-    $from =~ s|/[^/]+$||;
+    $from =~ s|/[^/]+/?$||;
   } 
   $to =~ s|^\Q$from\E/?||;
   
@@ -1490,29 +2015,49 @@ sub get_path {
   grep(!m|windows[/\\]system32|, @path);
 }
 
+# Expand '@DATA_PATH' in a given path
+sub expand_path {
+  my ($opt, $path) = @_;
+  return $path unless $path =~ /(.*)\@DATA_PATH(.*)/;
+  my ($pre,$post) = ($1,$2);
+  my @dirs;
+  foreach my $dp ( @DATA_PATH ) {
+    push(@dirs, $pre.$dp.$post);
+  }
+  @dirs;
+}
+
 # Returns path and result.
 #   result=2 if found in @dir
-#   result=1 if found elsewhere (absolute path)
+#   result=1 if found elsewhere (absolute or relative path)
 #   result=0 if not found
 sub search_path_test {
   my ($opt,$test,$slash,$path,@dir) = @_;
 
   # Absolute path
-  return ($path, &$test($path) ? 1 : 0)
+  return ($path, $test->($path) ? 1 : 0)
     if $path =~ /^\// || ($opt->{windows} && $path =~ m|^([a-z]:)?[/\\]|i);
 
   # Kludge for '~'
   return search_path_test($opt,$test,$slash,"$ENV{HOME}/$1",@dir)
-    if $path =~ m|^~/(.*)|;
+    if $path =~ m|^~/(.*)| && $ENV{HOME};
 
   # Check @dir
   foreach my $dir ( @dir ) {
     $dir =~ s/$slash$//;
     $dir =~ s|^~/|$ENV{HOME}/|;
-    return ("$dir$slash$path",2) if &$test("$dir$slash$path");
+
+    # Expand '@DATA_PATH' in path
+    foreach my $d ( expand_path($opt, $dir) ) {
+      return ("$d$slash$path",2) if $test->("$d$slash$path");
+    }
   }
 
-  ($path, &$test($path) ? 1 : 0);
+# This is trouble - we might run album from a different path next time
+#  # Check relative path
+#  return ($path,1) if $test->($path);
+
+  ($path, 0);
 }
 
 sub search_path {
@@ -1522,19 +2067,19 @@ sub search_path {
 }
 
 sub search_path_exec {
-  my ($opt,$slash,$path,@dir) = @_;
-  my ($p,$r) = search_path_test($opt, sub {-x $_[0]}, $slash, $path, @dir);
+  my ($opt,$path,@dir) = @_;
+  my ($p,$r) = search_path_test($opt, sub {-x $_[0]}, $opt->{slash}, $path, @dir);
   wantarray ? ($p,$r) : $p;
 }
 
 sub search_path_win {
   my ($opt,$path,@dir) = @_;
-  my $try = search_path_exec($opt,'\\', $path, @dir);
+  my $try = search_path_exec($opt, $path, @dir);
   return $try if -x $try;
 # To be complete we could check everything in $ENV{PATHEXT}..
-  $try = search_path_exec($opt,'\\', $path.'.exe', @dir);
+  $try = search_path_exec($opt, $path.'.exe', @dir);
   return $try if -x $try;
-  $try = search_path_exec($opt,'\\', $path.'.com', @dir);
+  $try = search_path_exec($opt, $path.'.com', @dir);
   return $try if -x $try;
   undef;
 }
@@ -1542,12 +2087,13 @@ sub search_path_win {
 #########################
 # What's the file for an index page?
 # $file=1 means return full path (include even default index)
+# Also handles -burn (use "index_page($opt)" instead of "$opt->{index}")
 #########################
 sub index_page {
   my ($opt, $file, $dir) = @_;
   $dir .= '/' if $dir;
   my $index = $opt->{index};
-  return $dir unless $index || $file;
+  return $dir unless $index || $file || $opt->{burn};
   $index = $index || $opt->{default_index};
   $dir.$index;
 }
@@ -1560,6 +2106,12 @@ my $_hashes_start;
 sub start_hashes {
   my ($opt,$str) = @_;
   return if $opt->{q};
+
+  my $val = do_hook($opt,undef, 'start_hashes', $str);
+  # Description: Start a progress meter with label 'str'
+  # Returns: 1 if you don't want normal hashes printed
+  return $val if defined $val;
+
   return print STDERR "$str\n" unless $opt->{hashes};
   my $w = $opt->{hash_width} - $opt->{num_hashes} - 3;
   $_hashes_start = $str ? sprintf("%-${w}s",$str) : "";
@@ -1568,6 +2120,12 @@ sub start_hashes {
 }
 sub show_hashes {
   my ($opt,$done,$outof) = @_;
+
+  my $val = do_hook($opt,undef, 'show_hashes', $done, $outof);
+  # Description: Update the progress meter
+  # Returns: 1 if you don't want normal hashes printed
+  return $val if defined $val;
+
   return unless $opt->{hashes} && !$opt->{q};
   return unless $outof;
   my $needed = int($opt->{num_hashes}*($done/$outof));
@@ -1576,6 +2134,13 @@ sub show_hashes {
 }
 sub stop_hashes {
   my ($opt) = @_;
+
+  my $val = do_hook($opt,undef, 'show_hashes');
+  # Description: Finish the progress meter
+  # Description: (You should hook all or none of the *_hashes hooks.)
+  # Returns: 1 if you don't want normal hashes printed
+  return $val if defined $val;
+
   return unless $opt->{hashes} && !$opt->{q};
   show_hashes($opt,1,1);
   undef $_hashes_start;
@@ -1590,6 +2155,12 @@ sub hash_msg {
 }
 sub hash_warn {
   my ($opt,@msgs) = @_;
+
+  my $val = do_hook($opt,undef, 'hash_warn', @msgs);
+  # Description: Show a warning/error message over a progress meter
+  # Returns: 1 if you don't want the normal hash_warn code to be used.
+  return $val if defined $val;
+
   print STDERR "\n" if $_hashes_start;
   foreach my $msg (@msgs) { print STDERR "[$PROGNAME] $msg\n"; }
   return unless $opt->{hashes} && ($_hashes_done || $_hashes_start);
@@ -1603,41 +2174,110 @@ sub hash_warn {
 # PLUGIN CODE
 ##################################################
 ##################################################
-sub collect_plugins {
-  my ($opt) = @_;
-  my @path = @{$opt->{plugin_path}};
-  my @use;
-  foreach my $plugin ( @{$opt->{plugin}} ) {
-    my ($path,$r) = search_path($opt,$plugin,@path);
-    ($path,$r) = search_path($opt,"$plugin$opt->{plugin_post}",@path) unless $r;
-    unless ($r) {
-      print STDERR "[$PROGNAME] WARNING: Couldn't find 'plugin' [$plugin]\n";
-      next;
-    }
-    push(@use,$plugin) if use_plugin($opt,$path);
+# Get a plugin.  Full path or short path, with or without extension
+# Examples:  caption/paypal/oneprice.alp
+#            caption/paypal/oneprice
+#            oneprice.alp
+#            oneprice
+sub find_plugin {
+  my ($opt, $plugin, $list) = @_;
+  return unless $list;
+
+  # Exact match?
+  return $plugin if contains($plugin,@$list);
+
+  # Try to find it by name
+  my @matches = grep(/\b$plugin$/, @$list);
+  return @matches if @matches;
+
+  # And actually, we'll allow basic regex matching as a last resort
+  grep(/\b$plugin/, @$list);
+}
+
+# Is this a plugin option that we need to ignore?
+sub no_plugin_option {
+  my ($opt,$option,$val) = @_;
+
+  # It's either -plugin or a plugin option:
+  my $plugin;
+  if ($option eq "plugin") {
+    $plugin = $val;
+  } elsif ($option =~ /([^:]+):(.+)/) {
+    $plugin = $1;
+  } else {
+    return 0;
   }
-  $opt->{plugin} = \@use;
+
+  return 1 if $opt->{_argv}{clear}{plugin};
+
+  # Does this match a -no_plugin?  If so, don't load.
+  # Allow plugin-regex matching
+  $plugin =~ s/$opt->{plugin_post}$//;
+  return grep($plugin =~ /\b$_/, @{$opt->{_argv}{no}{plugin}}) ? 1 : 0;
+}
+
+sub get_plugin {
+  my ($opt,$option,$plugin) = @_;
+
+  return 0 unless $plugin;
+
+  # Remove postfix
+  $plugin =~ s/$opt->{plugin_post}$//;
+
+  # Do we already know about this plugin?  (Already loaded?)
+  my @matches = find_plugin($opt,$plugin,$opt->{_plugins}{loaded});
+  print STDERR "[$PROGNAME] WARNING: Multiple plugins match [$plugin]\n"
+    if $#matches>1;
+  return $matches[0] if $#matches==0;
+
+  # Search the path
+  my @path = @{$opt->{plugin_path}};
+  my ($path,$r) = search_path_test($opt, sub {-r $_[0] && !-d $_[0]}, '/',"$plugin$opt->{plugin_post}",@path);
+     ($path,$r) = search_path_test($opt, sub {-r $_[0] && !-d $_[0]}, '/', $plugin,@path) unless $r;
+  if ($r) {
+    if (use_plugin($opt,$path,$plugin)) {
+      push(@{$opt->{_plugins}{loaded}}, $plugin);
+      return $plugin;
+    }
+    print STDERR "[$PROGNAME] WARNING: Couldn't load plugin [$plugin]\n";
+    return 0;
+  }
+
+  # Kludgy allowance (mostly for my testing) - remove '^plugins/'
+  return get_plugin($opt,$option,$plugin) if $plugin =~ s|^plugins/||;
+
+# Perhaps we should search 'all_plugins' without loading them?
+# Otherwise, we currently require the full plugin path the first time.
+  # but if we don't require the full path, we can have namespace collisions..
+# Maybe a 'find_plugins' that would return an array of plugins without use_plugin?
+  print STDERR "[$PROGNAME] WARNING: Couldn't find 'plugin' [$plugin]\n";
+  return 0;
 }
 
 sub all_plugins {
-  my ($opt) = @_;
-  my @p;
-  foreach my $path ( @{$opt->{plugin_path}} ) {
-    opendir(DIR,$path) || next;
-    my @p = grep(/\Q$opt->{plugin_post}\E$/, readdir(DIR));
-    map( use_plugin($opt,"$path/$_"), @p);
+  my ($opt,$path,$cat) = @_;
+
+  # Expand @DATA_PATH in path
+  foreach my $epath ( expand_path($opt, $path) ) {
+    my $dir = $cat ? "$epath/$cat" : $epath;
+
+    opendir(DIR,"$dir") || return;
+    my @dir = readdir(DIR);
     closedir(DIR);
+    my @p = grep(/\Q$opt->{plugin_post}\E$/, @dir);
+    my @d = grep(-d "$dir/$_" && !/^\.{1,2}$/, @dir);
+    map( use_plugin($opt,"$dir/$_",$cat?"$cat/$_":$_,1), @p);
+    map( all_plugins($opt,$epath,$cat?"$cat/$_":$_), @d);
   }
-  @p;
 }
 
 sub use_plugin {
-  my ($opt,$plugin) = @_;
+  my ($opt,$path,$plugin,$quiet) = @_;
 
   # Add '.' to @INC if it doesn't have it and plugin path is relative
-  push(@INC,'.') unless $plugin =~ m|^/| || grep($_ eq '.', @INC);
+  push(@INC,'.') unless $path =~ m|^/| || contains('.', @INC);
 
-  print STDERR "[$PROGNAME] Using plugin: $plugin\n" unless $opt->{q};
+  print STDERR "[$PROGNAME] Using plugin: $plugin\n" unless $opt->{q} || $quiet;
   # Args to the require (this isn't kludgy, is it??  :)
   @_ = ($opt);		# Actually this is what @_ already was...
 
@@ -1645,78 +2285,195 @@ sub use_plugin {
 ## properly namespace the plugin or catch errors.  :(
 #  {
 #    package Album_Plugin;
-#    my $req = require "$plugin";
+#    my $req = require "$path";
 #  }
 
   # So here's the eval version.
-  my (undef,$package) = split_path($opt,$plugin);
+  my (undef,$package) = split_path($opt,$path);
   my $package = ($package =~ /^([a-z_]+)/i) ? $1 : "Album_Plugin";
+  my $save_curr_plugin = $opt->{_curr_plugin};
+  $opt->{_curr_plugin} = $plugin;
   eval <<END_EVAL;
     package $package;
-    require "$plugin";
-    \$opt->{_plugin}{\$plugin} = start_plugin(\$opt);
+    require "$path";
+    \$opt->{_plugin}{\$plugin} = start_plugin(\$opt,\$plugin,\$path);
     #\$sym = \\\%${package}::;
 END_EVAL
+  $opt->{_curr_plugin} = $save_curr_plugin;
 
   if ($@) {
     print STDERR "[$PROGNAME] Warning: Problem with plugin [$plugin] - not using:\n$@\n";
     delete $opt->{_plugin}{$plugin}; return 0;
   }
 
-  unless (ref $opt->{_plugin}{$plugin} eq 'HASH' && $opt->{_plugin}{$plugin}{category}) {
-    print STDERR "[$PROGNAME] Warning: Plugin did not return info hash.\n\tNot using: $plugin\n$@\n";
+  unless (ref $opt->{_plugin}{$plugin} eq 'HASH' && $opt->{_plugin}{$plugin}{description}) {
+    print STDERR "[$PROGNAME] Warning: Plugin did not return correct info hash.\n\tNot using: $plugin\n$@\n";
     delete $opt->{_plugin}{$plugin}; return 0;
   }
 
   1;
 }
 
-sub plugin_info {
-  my ($opt) = @_;
-  foreach my $plugin ( keys %{$opt->{_plugin}} ) {
+sub list_plugins {
+  my ($opt, $option, $plugin) = @_;
+
+  # One plugin info
+  my @plugins;
+  if ($option eq 'plugin_info') {
+    @plugins = get_plugin($opt,$option,$plugin);
+    usage("No plugin found: $plugin") unless $plugins[0]
+  } else {
+    map(all_plugins($opt, $_), @{$opt->{plugin_path}});
+    @plugins = keys %{$opt->{_plugin}};
+    usage("No plugins found.  Install plugins in the data_path first")
+      unless @plugins;
+  }
+
+  # All plugin info
+  foreach my $plugin ( @plugins ) {
     my $info = $opt->{_plugin}{$plugin};
-    print "$plugin:  [$info->{category}]\n";
-    print "<a href='$info->{href}'>" if $info->{href};
-    print "$info->{author}";
-    print "</a>" if $info->{href};
+
+    print "-"x length($plugin),"\n";
+    print "$plugin";
+    print " v$info->{version}" if $info->{version};
+    print ":\n";
+    print "-"x length($plugin),"\n";
+
+    print "Author:  $info->{author}";
+    print " <$info->{href}>" if $info->{href};
     print "\n\n";
+
     print "$opt->{_plugin}{$plugin}{description}\n";
     print "\n";
   }
+  exit;
 }
 
 # Register a hook for a given hook name
 sub hook {
   my ($opt,$name,$sub) = @_;
-  push(@{$opt->{_plugin_hooks}{$name}}, $sub);
+  push(@{$opt->{_plugin_hooks}{$name}}, [$sub,$opt->{_curr_plugin}]);
+}
+
+# Call some hooks
+# $one: Do hooks until a single value found, return that
+# $reinject: Do hooks, use the value from previous hook as next arg
+#   (Actually, $reinject-1 will choose which arg to reinject)
+# Don't use this to define a specific hook, use one of the do_hook* subs below.
+sub do_hooks_loop {
+  my ($opt,$data,$one,$reinject,$name,@args) = @_;
+  my $save_curr_hook = $opt->{_curr_hook};
+  my $save_curr_plugin = $opt->{_curr_plugin};
+  $opt->{_curr_hook} = $name;
+  my $ret = 0;
+  my @ret;
+  my $got_something = undef;
+  foreach my $hook ( @{$opt->{_plugin_hooks}{$name}} ) {
+    my ($sub,$from) = @$hook;
+    $opt->{_curr_plugin} = $from;
+    my @call_args = $data ? ($opt,$data,$name,@args) : ($opt,$name,@args);
+    my @got = $sub->(@call_args);	# Do the hook
+    if ($reinject) {
+      $got_something = 1 if defined $got[0];
+      $args[$reinject-1] = $got[0] if defined $got[0];
+    } elsif ($one) {
+      if (defined $got[0]) {
+        $opt->{_curr_plugin} = $save_curr_plugin;
+        $opt->{_curr_hook} = $save_curr_hook;
+        return wantarray ? @got : $got[0];
+      }
+    } else {
+      $ret |= $got[0];
+      push(@ret,@got);	# Might be messy if we get arrays back..
+    }
+  }
+  $opt->{_curr_plugin} = $save_curr_plugin;
+  $opt->{_curr_hook} = $save_curr_hook;
+  return $got_something ? $args[$reinject-1] : undef if $reinject;
+  return undef if $one;
+  wantarray ? @ret : $ret;
 }
 
 # Calls all hooks and returns either an array of return values or an 'or'
 sub do_hooks {
   my ($opt,$data,$name,@args) = @_;
-  my $ret = 0;
-  my @ret;
-  foreach my $sub ( @{$opt->{_plugin_hooks}{$name}} ) {
-    my $val = &$sub($opt,$data,$name,@args);
-    $ret |= $val;
-    push(@ret,$val);
-  }
-  wantarray ? @ret : $ret;
+  do_hooks_loop($opt,$data,0,0,$name,@args);
 }
 
 # Calls hooks until one of them returns a defined value
 sub do_hook {
   my ($opt,$data,$name,@args) = @_;
-  foreach my $sub ( @{$opt->{_plugin_hooks}{$name}} ) {
-    my $val = &$sub($opt,$data,$name,@args);
-    return $val if defined $val;
-  }
-  undef;
+  do_hooks_loop($opt,$data,1,0,$name,@args);
 }
 
-## How to print out the plugin info..
-#all_plugins($opt);
-#plugin_info($opt);
+# Calls all hooks and reinjects the returns as the first arg
+sub do_hooksR {
+  my ($opt,$data,$name,@args) = @_;
+  do_hooks_loop($opt,$data,0,1,$name,@args);
+}
+
+
+sub gather_hook_info {
+  my ($opt) = @_;
+
+  open(A,"<$0") || fatal($opt,"Couldn't read album script?? [$0]");
+  my %hooks;
+  while (<A>) {
+    if (/do_hook(|s|sR)\(([^,]+),([^,]+),\s*'([^']+)'\s*(,(.*)\))?/) {
+      my $hook = $4;
+      my @args = ($2,$3,"'$hook'",$6);
+      $hooks{$hook}{args} = ($args[1] =~ /^\s*undef\s*$/) ?
+        "($args[0], $args[2], $args[3])" :
+        "($args[0],$args[1], $args[2], $args[3])";
+      while (<A>) {
+        chomp;
+        last unless /^\s*#\s*(Description|Returns):\s*(\S.*)?/i;
+        push(@{$hooks{$hook}{lc($1)}}, $2);
+      }
+    }
+  }
+  close A;
+  \%hooks;
+}
+
+sub list_hooks {
+  my ($opt, $option, $just_hook) = @_;
+
+  my $hooks = gather_hook_info($opt);
+  my @hooks = sort keys %$hooks;
+
+  if ($option eq "hook_info") {
+    @hooks = grep($_ eq $just_hook, @hooks);
+    @hooks = grep(/$just_hook/, sort keys %$hooks) unless @hooks;
+    usage("No hooks found that match [$just_hook]") unless @hooks;
+  }
+
+  # Display hooks info
+  foreach my $hook ( @hooks ) {
+    print "Hook: $hook\n";
+    foreach my $key ( qw(args description returns) ) {
+      next unless $hooks->{$hook}{$key};
+      print "  ".ucfirst($key).": ";
+      print ((ref $hooks->{$hook}{$key} eq 'ARRAY') ?
+        join("\n    ",@{$hooks->{$hook}{$key}})."\n" :
+        "$hooks->{$hook}{$key}\n");
+    }
+    print "\n";
+  }
+  exit;
+}
+
+sub plugin_warn {
+  my ($opt,$msg) = @_;
+  $msg = "Plugin [$opt->{_curr_plugin}] hook [$opt->{_curr_hook}]:\n  WARNING: $msg";
+  hash_warn($opt,$msg);
+}
+
+# For plugins to call if they don't do album generation (such as plugin utils)
+sub done {
+  # Currently nothing needed...
+	exit(0);
+}
 
 ##################################################
 ##################################################
@@ -1725,12 +2482,19 @@ sub do_hook {
 ##################################################
 # Nice name for printing
 sub clean_name {
-  my ($opt,$name,$capname,$no_html) = @_;
+  my ($opt,$name,$capname) = @_;
 
   $name = $capname || $name;
+  my $iscaption = $capname ? 1 : 0;
+
+  my $val = do_hooksR($opt,undef, 'clean_name', $name, $iscaption);
+  # Description: Clean a filename for printing.
+  # Description: The name is either the filename or comes from the caption file.
+  # Returns: Clean name
+  return $val if defined $val;
 
   # No tags in filenames  :)
-  $name =~ s/\</&lt;/g unless $capname;
+  $name =~ s/\</&lt;/g unless $iscaption;
 
   # Remove postfixes
   $name =~ s/\.($IMAGE_TYPES)$//i;
@@ -1739,7 +2503,7 @@ sub clean_name {
   # Remove thumbnail cropping directives
   $name =~ s/CROP(top|bottom|left|right)$//;
 
-  unless ($capname) {
+  unless ($iscaption) {
     # Underbar = space
     $name =~ s/_/ /g;
     $name =~ s/\./ /g;
@@ -1747,10 +2511,6 @@ sub clean_name {
     # No paths
     $name =~ s|^.*/||g;
   }
-
-  # I sort my albums by date:   2001-10-03.some_directory
-  $name = "<font size='-1'>$1</font><br>$3"
-    if !$no_html && $name =~ /^(\d{4}-\d{1,2}(-\d{1,2})?)( .+)$/;
 
   $name;
 }
@@ -1812,22 +2572,30 @@ sub clean_thumb_dir {
   foreach my $file ( @files ) {
     my $remove;
     my $name = $file;
-    my $html = $opt->{index} ? ('.'.$opt->{index}) : $opt->{html};
+    my $html = index_page($opt) ? ('.'.index_page($opt)) : $opt->{html};
     if ($name =~ s/\Q$html\E$//) {
       $remove = "unused image page"
-        unless ($opt->{image_pages} && grep($_ eq $name, @pics));
+        unless ($opt->{image_pages} && contains($name, @pics));
     } elsif ($name  =~ /(.+)\.med\.(.+)/) {
       $name = "$1.$2";
+
+      # Check for matching -medium_type:
+      my $typematch = (!$opt->{medium_type} || $name =~ s/\.$opt->{medium_type}$//i);
+
+      my $saw = contains($name, @pics);
+      $saw = grep(/^\Q$name.\E(?i)$opt->{medium_type}$/, @pics)
+        unless $saw || !$opt->{medium_type};
+
       $remove = "unused medium image"
-        unless $opt->{medium} && grep($_ eq $name, @pics);
-    } elsif ($name  =~ /(.+)\.snap\.(.+?)(\.$opt->{type})?$/) {
+        unless $opt->{medium} && $typematch && $saw;
+    } elsif ($name  =~ /(.+)\.snap\.(.+?)(\.$opt->{type})?$/i) {
       $name = "$1.$2";
-      $remove = "unused snapshot image" unless grep($_ eq $name, @pics);
-    } elsif ($name  =~ /(.+)\.$opt->{type}$/) {
+      $remove = "unused snapshot image" unless contains($name, @pics);
+    } elsif ($name  =~ /(.+)\.$opt->{type}$/i) {
       # Thumbnail?
       $name = $1;
       $remove = "unused thumbnail"
-        unless grep($_ eq $name || $_ eq "$name.$opt->{type}", @pics);
+        unless grep($_ eq $name || /^\Q$name\E.(?i)$opt->{type}$/, @pics);
     } elsif ($name  =~ /(.+)\.$opt->{type}\.ppm$/) {
       my $mov = $1;
       $remove = "unused ppm thumbnail?" unless (grep(/^\Q$mov.\E/, @pics));
@@ -1835,7 +2603,6 @@ sub clean_thumb_dir {
       $remove = "unknown file";
     }
     if ($remove) {
-      print "Remove $remove: $dir/$file\n";
       hash_warn($opt,"Remove $remove: $dir/$file");
 # This doesn't seem to work (or show error) under windows.  Bah.
       hash_warn($opt,"Couldn't erase [$file]")
@@ -1847,25 +2614,30 @@ sub clean_thumb_dir {
 #########################
 # Quote stuff to avoid errors
 #########################
-sub quote {
-  my ($path,$opt,$url) = @_;
+sub url_quote {
+  my ($opt, $url) = @_;
 
-  if ($url) {
-    # Handle \'"#?*!:% always, regardless of -fix_urls - see RFC 1630
-    # or - RFC1630 legally allows:  [\?\/\+a-zA-Z0-9\$\-_\@\.&!\*"'\(\),]
-    $path =~ s/([\\'"#?*!:%])/"%".sprintf("%2.2x",ord($1))/eg;
-  } else {
-    $path =~ s/\'/%27/g;	# Just quotes
-  }
+  my $val = do_hook($opt,undef, 'url_quote', $url);
+  # Description: Quote a path string, generally for a URL or CGI form field
+  # Description: Generally the result should be in 'quotes' of some sort
+  # Returns: Quoted path
+  return $val if defined $val;
 
-  $path = "'$path'";	# And quote the rest
-  return $path unless $url && $opt && $opt->{fix_urls};
+  # Handle \'"#?*!:% always, regardless of -fix_urls - see RFC 1630
+  # or - RFC1630 legally allows:  [\?\/\+a-zA-Z0-9\$\-_\@\.&!\*"'\(\),]
+  $url =~ s/([\\'"#?*!:%])/"%".sprintf("%2.2x",ord($1))/eg;
+
+  # originally: $url =~ s/\'/%27/g;	# Just quotes
+
+  # XHTML doesn't like [href='some<f>ile']
+  $url =~ s/</%3C/g;  $url =~ s/>/%3E/g;
 
   # Handle all unsafe characters including space.
   # Encode everything below space and above 127
-  $path =~ s/([\x00-\x20\x7F-\xFF])/"%".sprintf("%2.2x",ord($1))/eg;
+  $url =~ s/([\x00-\x20\x7F-\xFF])/"%".sprintf("%2.2x",ord($1))/eg
+    if $opt->{fix_urls};
 
-  $path;
+  "'$url'";
 }
 
 ##################################################
@@ -1879,6 +2651,14 @@ sub quote {
 #########################
 sub read_captions {
   my ($opt,$dir) = @_;
+
+  my $val = do_hook($opt,undef, 'read_captions', $dir);
+  # Description: Read captions for a given album directory.
+  # Returns: hash reference.  Keys are filenames which point to caption hashes:
+  # Returns: caption hash keys are name, cap, alt, and order (for sorting)
+  plugin_warn($opt,"Didn't return a hash.")
+    if $val && ref $val ne 'HASH' && !$MAIN::WARN_PLUGIN_READ_CAPTIONS++;
+  return $val if defined $val && ref $val eq 'HASH';
 
   # $dir may actually be $data, get $data->{paths}{$dir}
   $dir = $dir->{paths}{dir} if ref $dir eq "HASH";
@@ -1902,11 +2682,16 @@ sub read_captions {
       $split_tabs ? split(/\t+/, $_, 4) : split(/\s*::\s*/, $_, 4);
     $name=$file if (!$name && $cap);
     next unless $file;
-    #$file=$1 if ($file eq '.' && $dir =~ m|([^/]+)$|);
+    $file =~ s/#\s*/#/g;		# Allow '# commented files'
+
     $caps{$file}{name}=$name;
     $caps{$file}{cap}=$cap if $cap;
-    $caps{$file}{alt}=quote($alt,$opt);
-    $caps{$file}{line}=$.+1;
+    # {alt} needs to be quoted because it's inside the <img> tag
+    # Though we add the actual outer ['] later so that files without
+    # captions can get them too (alt='')
+    $alt =~ s/\&/&amp;/g;  $alt =~ s/\'/&rsquo;/g;
+    $caps{$file}{alt}=$alt;
+    $caps{$file}{order}=$.+1;
   }
   close CAPS;
 
@@ -1915,10 +2700,14 @@ sub read_captions {
 
 # EXIF information added to captions.
 sub get_exif_info {
-  my ($opt,$pic) = @_;
+  my ($opt,$data,$pic) = @_;
 
-  my $val = do_hook($opt,undef, 'get_exif_info', $pic);
-  return $val if defined $val;
+  my $val = do_hook($opt,$data, 'get_exif_info', $pic);
+  # Description: Gets EXIF info for a picture
+  # Returns: hash reference, key->val matches the EXIF key/value pairs
+  plugin_warn($opt,"Didn't return a hash.")
+    if $val && ref $val ne 'HASH' && !$MAIN::WARN_PLUGIN_GET_EXIF_INFO++;
+  return $val if defined $val && ref $val eq 'HASH';
 
   my %exif;
   my $qpic = file_quote($opt,$pic);
@@ -1926,14 +2715,15 @@ sub get_exif_info {
   undef $opt->{jhead} unless $jhead;
   return "" unless $jhead;
   while(<$jhead>) {
-    print STDERR "get_exif_info(): $_" if $opt->{d};
+    print STDERR "get_exif_info(): $_" if $opt->{D};
     if (/command not found/) {	# Kind of kludgy
-      hash_warn($opt,"-exif specified but jhead not found [$opt->{jhead}]");
+      hash_warn($opt,"-exif specified but jhead not found [$opt->{jhead}]",
+        "Either specify -jhead, or use one of the EXIF replacement plugins");
       undef $opt->{jhead};
       $jhead->close;
       return "";
     }
-    $exif{$1} = $2 if /(.+?)\s*:\s*(\S.*)/;
+    $exif{$1} .= $2 if /(.+?)\s*:\s*(\S.*)/;
   }
   $jhead->close;
   \%exif;
@@ -1955,14 +2745,19 @@ sub get_exif_caption {
   my ($opt,$data,$pic) = @_;
 
   do_hooks($opt,$data, 'get_exif_caption', $pic);
+  # Description: Creates EXIF captions for a picture.
+  # Returns: None.
+  # Returns: Optionally adds to $data->{obj}{$pic}{exif, exif_image, exif_album}
+  # Returns: Call 'album::new_html($opt,$data,$pic)' if captions change.
 
   return unless $opt->{exif} || $opt->{exif_image} || $opt->{exif_album};
-  return if !$opt->{jhead};
+  return if !$opt->{jhead};	# Saw a jhead error..
   return unless $pic =~ /\.jpe?g$/i;
 
   my $dir = $data->{paths}{dir};
 
-  my $exif = get_exif_info($opt,"$dir/$pic");
+  my $exif = get_exif_info($opt,$data,"$dir/$pic");
+  return unless $exif;
 
   $data->{obj}{$pic}{exif} .= exif_replace($exif, @{$opt->{exif}})
     if $opt->{exif};
@@ -1996,19 +2791,25 @@ sub get_dir_caption {
 # Get pics/dirs caption info
 #########################
 sub get_captions {
-  my ($opt,$data, $get_exif) = @_;
+  my ($opt,$data) = @_;
 
   # First read the captions file
   my $caps = read_captions($opt,$data);
 
-  # Commented out lines in captions is same as .hide_album
+  # Commented out lines in captions is same as .no_album
   @{$data->{pics}} = grep(!$caps->{"#".$_} || $caps->{$_}, @{$data->{pics}});
   @{$data->{dirs}} = grep(!$caps->{"#".$_} || $caps->{$_}, @{$data->{dirs}});
 
   # Put caption info into %data
   foreach my $pic ( @{$data->{pics}} ) {
     $data->{obj}{$pic} = $caps->{$pic};	# Put cap info into data
-    get_exif_caption($opt,$data,$pic) if $get_exif;
+    get_exif_caption($opt,$data,$pic);
+
+    my $new = do_hook($opt,$data, 'modify_caption', $data->{paths}{dir}, $pic, $data->{obj}{$pic}{cap});
+    # Description: Modify captions for each file
+    # Returns: The new caption.
+    $data->{obj}{$pic}{cap} = $new if defined $new;
+
     $data->{obj}{$pic}{name} = clean_name($opt,$pic,$data->{obj}{$pic}{name});
   }
 
@@ -2019,7 +2820,16 @@ sub get_captions {
     } else {
       my $dircaps = read_captions($opt,"$data->{paths}{dir}/$dir");
       $data->{obj}{$dir} = $dircaps->{'.'} || $dircaps->{$dir};
+      delete $data->{obj}{$dir}{order};	# Line number is *not* used for sorting..
+        # Hopefully this won't screw up any plugins that override read_captions,
+        # they should 'find' the caption it in the parent directory anyways.
     }
+
+    my $new = do_hook($opt,$data, 'modify_dir_caption', $data->{paths}{dir}, $dir, $data->{obj}{$dir}{cap});
+    # Description: Modify captions for directories
+    # Returns: The new caption.
+    $data->{obj}{$dir}{cap} = $new if defined $new;
+
     $data->{obj}{$dir}{name} = clean_name($opt,$dir,$data->{obj}{$dir}{name});
   }
 }
@@ -2033,7 +2843,7 @@ sub get_captions {
 # The sort rank for a file, according to the captions file or date
 sub sort_rank {
   my ($opt,$data,$f) = @_;
-  return ($data->{obj}{$f} && $data->{obj}{$f}{line}) unless $opt->{date_sort};
+  return ($data->{obj}{$f} && $data->{obj}{$f}{order}) unless $opt->{sort} eq 'date';
   # Save mod times in a cache
   return $data->{paths}{_date_sort_cache}{$f}
     if $data->{paths}{_date_sort_cache} && $data->{paths}{_date_sort_cache}{$f};
@@ -2062,7 +2872,7 @@ sub sort_order {
   ($a,$b) = ($b,$a) if $opt->{reverse_sort};
 
   my ($an,$bn);
-  unless ($opt->{name_sort}) {
+  unless ($opt->{sort} eq 'name') {
     $an = sort_rank($opt,$data,$a);
     $bn = sort_rank($opt,$data,$b);
   }
@@ -2096,8 +2906,20 @@ sub obj_count {
 # Sort the pictures and directories as required
 sub sort_info {
   my ($opt,$data) = @_;
-  @{$data->{pics}} = sort { sort_order($opt,$data,$a,$b) } @{$data->{pics}};
-  @{$data->{dirs}} = sort { sort_order($opt,$data,$a,$b) } @{$data->{dirs}};
+
+  my @pics = @{$data->{pics}};
+  my @dirs = @{$data->{dirs}};
+
+  my @np = do_hook($opt,$data, 'sort_pics', @pics);
+  # Description: Sort pictures
+  # Returns: The array of sorted pictures.
+
+  my @nd = do_hook($opt,$data, 'sort_dirs', @dirs);
+  # Description: Sort directories
+  # Returns: The array of sorted directories.
+
+  @{$data->{pics}} = defined $np[0] ? @np : sort { sort_order($opt,$data,$a,$b) } @pics;
+  @{$data->{dirs}} = defined $nd[0] ? @nd : sort { sort_order($opt,$data,$a,$b) } @dirs;
   obj_count($opt,$data,'pics');
   obj_count($opt,$data,'dirs');
 }
@@ -2111,7 +2933,7 @@ sub split_path {
   $slash = $slash->{slash} if ref $slash eq 'HASH';
   my $slash = $slash || '/';
   return ($slash,'') if $path eq $slash;
-  my $re = "(.*)\Q$slash\E([^$\Q$slash\E}]+)\$";
+  my $re = "(.*)\Q$slash\E([^\$\Q$slash\E}]+)\$";
   $path =~ m|$re| ? ($1 ? $1 : $slash, $2) : ('.',$path);
 }
 
@@ -2129,7 +2951,7 @@ sub calc_paths {
   foreach my $dir_name ( @{$data->{dir_pieces}} ) {
     my $dir_cap = get_dir_caption($opt,join('/',@path),$dir_name);
     my $cap = $dir_cap->{name} if $dir_cap;
-    my $name = clean_name($opt,$dir_name, $cap,1);
+    my $name = clean_name($opt,$dir_name, $cap);
     # We only do {name} for parent_albums.  We could do {cap} as well,
     # but I don't imagine many themes would use it, and more importantly
     # we can store it via a hash because it's possible that the names of
@@ -2147,7 +2969,7 @@ sub calc_paths {
   }
 
   # Image page URLs are <img.html> or <img.indexname.html>
-  $data->{paths}{page_post_url} = $opt->{index} ? ('.'.$opt->{index}) : $opt->{html};
+  $data->{paths}{page_post_url} = index_page($opt) ? ('.'.index_page($opt)) : $opt->{html};
 
   # Setup obj info
   # Final obj is a hash of hashes:  full, medium, thumb
@@ -2163,7 +2985,7 @@ sub calc_paths {
       my $obj = $data->{obj}{$child};
       $obj->{dir} = $child;	# The unadulterated name
       $obj->{path} = "$dir/$child";
-      $obj->{URL}{album_page}{dir} = quote(index_page($opt,0,$child),$opt,1);
+      $obj->{URL}{album_page}{dir} = url_quote($opt, index_page($opt,0,$child));
     }
   }
 }
@@ -2315,6 +3137,19 @@ sub eperl {
 # I suppose I could keep track of the full path and use references, such
 # as ($data->{prev}{object}{stored}{here}) but I'm not sure if that works
 # in initialization data.
+#
+# Takes dump options in the $dmp hash:
+# $dmp->{ignore}		regex for fields to ignore
+# $dmp->{ignore_only_under}	minimum level for checking {ignore}
+#
+# Returns the dump in the $dmp hash.
+# $dmp->{lvl}			Keeps track of the internal dump level
+# @{$dmp->{dump}}		Array of the dump output
+#
+# Simple calling example:
+#   my $dmp;
+#   dumper($dmp,'MyHash',%MyHash);
+#   print @{$dmp->{dump}};
 #########################
 sub dumper {
   my ($dmp,$name,$var) = @_;
@@ -2325,7 +3160,7 @@ sub dumper {
   return if $ignore;
 
   my $ref = ref($var);
-  return hash_warn($dmp->{opt},"Option or data [$name] was used multiple times?\n\t(Internal consistency problem - probably with a module?)")
+  return hash_warn($dmp->{opt},"Option or data [$name] was referenced multiple times?\n\t(Internal consistency problem - probably with a module?)")
     if $ref && $dmp->{saw}{$var}++;
 
   return hash_warn($dmp->{opt},"Variable with no name?") unless $dmp->{lvl} || defined $name;
@@ -2386,6 +3221,8 @@ sub dumper_hash {
 sub data_to_eperl {
   my ($opt,$data) = @_;
 
+  return unless $opt->{'album.th'} || $opt->{'image.th'};
+
   # Data dump.  Convert $data to assignment statements
   my %dmp;
   $dmp{opt} = $opt;	# opt handle
@@ -2441,7 +3278,7 @@ sub Path {
 sub Image_Page() { \$IMAGE_PAGE; }
 sub Page_Type() { \$IMAGE_PAGE ? 'image_page' : 'album_page' }
 sub Theme_Path() { Image_Page() ? Path('img_theme') : Path('theme'); }
-sub Theme_URL() { \$opt->{theme_url} ? "\$opt->{theme_url}/\$opt->{theme}" : Theme_Path(); }
+sub Theme_URL() { (\$opt->{theme_url}&&!\$opt->{burn}) ? "\$opt->{theme_url}/\$opt->{theme}" : Theme_Path(); }
 
 sub read_file {
   my (\$f) = \@_;
@@ -2454,19 +3291,20 @@ sub read_file {
   return \@contents;
 }
 
-sub quote { my (\$s) = \@_; \$s =~ s/"/&quot;/g;  '"'.\$s.'"'; }
+# Not quite the same as the url_quote above
+sub url_quote { my (\$s) = \@_; \$s =~ s/"/&quot;/g;  '"'.\$s.'"'; }
 
 # Header/Footer
 sub isHeader { return (-r "\$data->{paths}{dir}/\$opt->{header}") ? 1 : 0; }
 sub pHeader {
-  print "<!--HEADER name=".quote("HEADER:\$opt->{header}")."-->\\n" if \$opt->{caption_edit};
-  pFile("\$data->{paths}{dir}/\$opt->{header}");
+  print "<!--HEADER name=".url_quote("HEADER:\$opt->{header}")."-->\\n" if \$opt->{caption_edit};
+  print read_file("\$data->{paths}{dir}/\$opt->{header}");
   print "<!--END_HEADER-->\\n" if \$opt->{caption_edit};
 }
 sub isFooter { return (-r "\$data->{paths}{dir}/\$opt->{footer}") ? 1 : 0; }
 sub pFooter {
-  print "<!--FOOTER name=".quote("FOOTER:\$opt->{footer}")."-->\\n" if \$opt->{caption_edit};
-  pFile("\$data->{paths}{dir}/\$opt->{footer}");
+  print "<!--FOOTER name=".url_quote("FOOTER:\$opt->{footer}")."-->\\n" if \$opt->{caption_edit};
+  print read_file("\$data->{paths}{dir}/\$opt->{footer}");
   print "<!--END_FOOTER-->\\n" if \$opt->{caption_edit};
 }
 
@@ -2545,7 +3383,7 @@ sub Parent_Album {
   \$dotdots++ if Image_Page();
   my \$str = "";
   \$str .= "<a href='". ("../"x\$dotdots). Option('index'). "'>" if \$dotdots;
-  \$str .= \$parent_albums->[\$num];
+  \$str .= Pretty(\$parent_albums->[\$num],1);
   \$str .= "</a>" if \$dotdots;
   \$str;
 }
@@ -2579,6 +3417,7 @@ sub Image {
 
   # Medium or full if not thumb?
 # TODO: Shouldn't this medium/full nonsense be a new: \$obj->{page}{...}
+# Also see Overlay below
   \$type = Get(\$obj,'medium','x') ? 'medium' : 'full' if \$type ne 'thumb';
   return '' unless \$obj->{\$type}{x};
 
@@ -2592,17 +3431,35 @@ sub Image {
   \$y += 15 if \$embed_movie && \$y;
 
   my \$str;
-  \$str .= "<\$tag src=\$src border='0'";
-  \$str .= " alt=\$obj->{alt} title=\$obj->{alt}" if \$obj->{alt};
+  \$str .= "<\$tag src=\$src style='border:0'";
+  \$str .= " alt='\$obj->{alt}'";
+  \$str .= " title='\$obj->{alt}'" if \$obj->{alt};
   \$str .= " width='\$obj->{\$type}{x}'" if \$obj->{\$type}{x};
   \$str .= " height='\$y'" if \$y;
   \$str .= " />";
+  \$str .= \$obj->{\$type}{overlay};	# Optional overlay..
   \$str;
+}
+
+# Overlay an image on an image tag
+# how values:  full, top-left, top-right, ...
+# (only how=full is currently supported)
+sub Overlay {
+  my (\$pic, \$type, \$how, \$overlay) = \@_;
+  \$type = Get(\$obj,'medium','x') ? 'medium' : 'full' if \$type ne 'thumb';
+  return '' unless \$obj->{\$type}{x};
+
+  my (\$oversrc,\$overx,\$overy) = \@\$overlay;
+  my (\$x,\$y) = (\$obj->{\$type}{x}, \$obj->{\$type}{y});
+
+  # Only how=full right now..
+  \$obj->{\$type}{overlay} .= Image_Array(\$oversrc,\$x,\$y,"style='margin-left:-\${x}px;'");
 }
 
 # Get a field/subfield property of an object.
 # Can also get URLs, with the "from" portion set to Page_Type if not specified
 # If field is 'href' - then return the URL wrapped in <a href=..>
+# If field is 'link' - then return <a href=url>name</a>
 sub Get {
   my (\$pic,\$field,\$subfield,\$subsub) = \@_;
   my \$obj = get_obj(\$pic);
@@ -2611,12 +3468,13 @@ sub Get {
   return Caption(\$pic) if \$field eq 'Caption';
   return '<a href='.Get(\$pic,'URL',\$subfield,\$subsub).'>'
     if \$field eq 'href';
+  return Get(\$pic,'href',\$subfield,\$subsub).Name(\$pic).'</a>'
+    if \$field eq 'link';
 
   if (\$field eq 'URL') {
     return \$obj->{URL}{\$subfield}{\$subsub} if \$subsub;
-    \$this_page = (Image_Page() ? 'image_page' : 'album_page');
-return \$obj->{URL}{Page_Type()}{\$subfield};
-}
+    return \$obj->{URL}{Page_Type()}{\$subfield};
+  }
   \$subfield ? \$obj->{\$field}{\$subfield} : \$obj->{\$field};
 }
 
@@ -2626,10 +3484,10 @@ sub mysplit {
   return split(//, \$str) unless \$str =~ /(<.*>|&.*;)/;
   my \@a;
   while (\$str =~ /(.*?)(<[^>]+>|&[^;]+;)(.*)/) {
-    push(\@a,split(//,\$1),\$2);
+    push(\@a,split(//,\$1),\$2); 
     \$str = \$3;
   }
-  (\@a,split(//,\$str));
+  (\@a,split(//,\$str)); 
 }
 
 # Explanation given in the non-eperl subroutine
@@ -2641,8 +3499,7 @@ sub shorten {
   return \$str if \@str <= \$len;
   my \@a = splice(\@str,0,\$len/2);
   my \@b = splice(\@str,-\$len/2,\$len/2);
-  # Keep any closing tags that got chopped
-  \@str = grep(m|^</.|, \@str);
+  \@str = grep(m|^<.*>|, \@str);
   join('',\@a,\@str,"..",\@b);
 }
 
@@ -2653,13 +3510,15 @@ sub Name {
   ##I don't have a clue why this next line was here:
   #return "Back" unless \$n;
   return \$n if Image_Page() && !\$MAIN::FIRST_NAME_CLEAN++;	#Kludge!
-  my \$s = (Image_Page() || !$opt->{name_length}) ? \$n : shorten(\$n,$opt->{name_length});
+  my \$s = (Image_Page() || !$opt->{name_length} || $opt->{caption_edit}) ? \$n : shorten(\$n,$opt->{name_length});
   return \$s if !$opt->{caption_edit};
-  \$n = quote(\$n);
-  my \$name = quote("NAME\$obj->{num}:".\$obj->{full}{file});
+  \$n = url_quote(\$n);
+  my \$name = url_quote("NAME\$obj->{num}:".\$obj->{full}{file});
   \$s =~ s/\\n//mg;
   "<!--IMAGE_NAME name=\$name value=\$n-->\$s<!--END_IMAGE_NAME-->";
 }
+
+# Pretty format (for dates)
 sub Pretty {
   my (\$str,\$html,\$lines) = \@_;
 
@@ -2672,11 +3531,12 @@ sub Pretty {
   }
   \$str;
 }
+
 sub Caption {
   my \$obj = get_obj(\@_);
   my \$norm_caps = ($opt->{album_captions} || Image_Page()) ? 1 : 0;
   my \$cap = "";
-  \$cap .= "<!--IMAGE_CAPTION name=".quote("CAPTION:".\$obj->{full}{file})."-->\\n"
+  \$cap .= "<!--IMAGE_CAPTION name=".url_quote("CAPTION:".\$obj->{full}{file})."-->\\n"
     if $opt->{caption_edit};
   \$cap .= \$obj->{cap} if \$norm_caps;
   \$cap .= \$obj->{exif} if \$norm_caps;
@@ -2694,7 +3554,7 @@ sub Caption {
 # These old routines may be removed soon.
 
 # Paths
-sub pAlbum_Name { Path('album_name'); }
+sub pAlbum_Name { print Path('album_name'); }
 sub Album_Filename { Path('album_file'); }
 sub pFile { print read_file(\@_); }
 sub Get_Opt { Option(\@_); }
@@ -2726,7 +3586,11 @@ sub Image_Caption { Caption(\@_); }
 sub Image_Thumb { Get(\$_[0],'URL','thumb'); }
 sub Image_Is_Pic { Get(\$_[0],'thumb'); }
 sub Image_Alt { Get(\$_[0],'alt'); }
-sub Image_Filesize { Get(\$_[0],'full','filesize'); }
+sub Image_Filesize {
+  Get(\$obj,'medium','x') ?
+    Get(\$_[0],'medium','filesize') :
+    Get(\$_[0],'full','filesize');
+}
 sub Image_Path { Get(\$_[0],'full','path'); }
 sub Image_Width { Get(\$_[0],'medium','x') || Get(\$_[0],'full','x'); }
 sub Image_Height { Get(\$_[0],'medium','y') || Get(\$_[0],'full','y'); }
@@ -2747,7 +3611,7 @@ sub Child_Album {
   my (\$num,\$nobr) = \@_;
   my \$obj = get_obj(\$num,'dirs');
   my \$name = Name(\$obj);
-  \$name =~ s/<br>//g if \$nobr;
+  #\$name =~ s/<br>//g if \$nobr;	# No longer necessary
   my \$url = Get(\$obj,'URL','dir');
   "<a href=\$url>\$name</a>";
 }
@@ -2813,9 +3677,13 @@ sub Image_Array {
   my \$str = "<img src='\$src'";
   \$str .= " width='\$x'" if \$x;
   \$str .= " height='\$y'" if \$y;
+  # Kind of a kludge, avoid multiple declarations of style:
+  \$str .= " style='border:0'" unless \$and =~ s/style='/style='border:0;/;
   \$str .= " \$and" if \$and;
-  \$str .= " alt='\$alt' title='\$alt'" if \$alt;
-  \$str .= " border='0' />";
+  #\$alt = '-' unless \$alt;	# This is better for lynx, but...
+  \$str .= " alt='\$alt'";
+  \$str .= " title='\$alt'" if \$alt;
+  \$str .= " />";
   \$str;
 }
 
@@ -2827,23 +3695,27 @@ sub Image_Array {
 #      L  IMG  R            L  IMG  R            L IMG R
 #      LB     RB            BL  B  BR            BBBBBBB
 #      BL  B  BR
+#
+# Constraints for 12 piece borders:
+#   Same width:  LT,L,LB.  T,R,RB
+#   Same height:  LT,RT.  LB,RB
+#   Should be same height:  TL,T,TR.  BL,B,BR
+#   height LT = height RT,  height LB = height RB
 sub Border {
   # Either call with:
   #   (img_object, type, href, border_image_arrays)
-  #   (img_string, x,y, border_image_arrays)
-  #   border_image_arrays can also just be (color, spacing)
+  #   (img_string, x,y, border_image_arrays)  <-- DEPRECATED!
+  #   Can also call (color,padding) instead of border_image_arrays (Minimalist)
 
   my \$img = shift \@_;
   my (\$x,\$y);
 
   if (ref \$img ne 'HASH') {
     # Called with (img_string,x,y, ..)
-    \$x = shift \@_;
-    \$y = shift \@_;
+    (\$x,\$y) = (shift \@_, shift \@_);
   } else {
     # Called with (img_object,type,href, ..)
-    my \$type = shift \@_;
-    my \$href = shift \@_;
+    my (\$type,\$href) = (shift \@_, shift \@_);
     # Medium or full if not thumb?
     \$type = Get(\$img,'medium','x') ? 'medium' : 'full' if \$type ne 'thumb';
     # Lookup href
@@ -2860,20 +3732,27 @@ sub Border {
     \$img = \$str;
   }
 
-  my \$width=1; my \$height=2;
+  my (\$width,\$height)=(1,2);	# Constants for image arrays
 
-  if (ref \$_[0] ne 'ARRAY') {
+  # (color, padding) format (like Minimalist)
+  if (ref \$_[0] ne 'ARRAY' && \$_[1] =~ /^\\d+\$/) {
     print <<COLOR_BORDER;
-					<table bgcolor='\$_[0]' cellspacing=0 cellpadding='\$_[1]'>
-						<tr>
-							<td>\$img</td>
-						</tr>
-					</table>
+          <table bgcolor='\$_[0]' cellspacing=0 cellpadding='\$_[1]'>
+            <tr>
+              <td>\$img</td>
+            </tr>
+          </table>
 COLOR_BORDER
-  } elsif (scalar \@_ == 0) {
-    # No corners
+    return;
+  }
+
+  # No corners
+  if (scalar \@_ == 0) {
     print "\$img<br />\n";
-  } elsif (scalar \@_ == 4) {
+    return;
+  }
+
+  if (scalar \@_ == 4) {
     my (\$T,\$R,\$B,\$L) = \@_;
 
     # Stretch top,bottom to fit image
@@ -2892,7 +3771,10 @@ COLOR_BORDER
 					<span style='white-space: nowrap'>\$l\$img\$r</span><br />
 					<span style='white-space: nowrap'>\$b</span><br />
 BORDER4
-  } elsif (scalar \@_ == 8) {
+    return;
+  }
+
+  if (scalar \@_ == 8) {
     my (\$TL,\$T,\$TR,\$R,\$BR,\$B,\$BL,\$L) = \@_;
 
     # Stretch top,bottom to fit image
@@ -2913,7 +3795,10 @@ BORDER4
 					<span style='white-space: nowrap'>\$l\$img\$r</span><br />
 					<span style='white-space: nowrap'>\$bl\$b\$br</span><br />
 BORDER8
-  } elsif (scalar \@_ == 12) {
+    return;
+  }
+
+  if (scalar \@_ == 12) {
     my (\$TL,\$T,\$TR,\$RT,\$R,\$RB,\$BR,\$B,\$BL,\$LB,\$L,\$LT) = \@_;
 
     # We might be calling without the need for 12 border pieces
@@ -2961,9 +3846,10 @@ BORDER8
 					</table>
 BORDER12
 
-  } else {
-    print STDERR "[",Theme_Path(),"] Error: Border called with wrong number of args\n";
+    return;
   }
+
+  print STDERR "[",Theme_Path(),"] Error: Border called with wrong number of args\n";
 }
 
 #########################
@@ -2973,8 +3859,11 @@ srand(time^\$\$);
 sub Credit {
   my \@start = (
   "Photo album generated by",
+  "Photo album generated by",
   "Created with the tool",
   "Album created by",
+  "Album created by",
+  "Powered by",
   );
   my \$start = \$start[int(rand(\$#start+1))];
 
@@ -3009,13 +3898,15 @@ sub Credit {
 
 # Meta tag needed for regenerating portions of the album tree.
 sub Meta {
-  print "<meta name='Generator' content='$GEN_STRING' />\\n";
-  print "<meta name='Album_Path' content='\$data->{paths}{album_path}' />\\n";
+  print "<meta name='Generator' content='$GEN_STRING'>\\n";
+  print "<meta name='Album_Path' content='\$data->{paths}{album_path}'>\\n";
 # DEPRECATED: These two are unnecessary unless you want to switch back to v2.0
 # (But see prev_next_theme_path_changed)
-  print "<meta name='Album_Theme' content='\$opt->{theme}' />\\n";
-  print "<meta name='caption_edit' content='yes' />\\n" if $opt->{caption_edit};
+  print "<meta name='Album_Theme' content='\$opt->{theme}'>\\n";
+  print "<meta name='caption_edit' content='yes'>\\n" if $opt->{caption_edit};
   if (Image_Page()) {
+    my \$First_url = Get(First(),'URL','image_page','image_page');
+    my \$Last_url = Get(Last(),'URL','image_page','image_page');
     my \$Prev = Prev(This_Image, \$opt->{image_loop});
     my \$Prev_pic = Get(\$Prev,'full','file');
     my \$Prev_url = Get(\$Prev,'URL','image_page','image_page');
@@ -3025,11 +3916,13 @@ sub Meta {
     my \$Next_url = Get(\$Next,'URL','image_page','image_page');
     my \$Next_src = Get(\$Next,'URL','image_page','image_src') || "''";
     print <<PREV_NEXT;
-<meta name='Prev_Image' content='\$Prev_pic' />
-<meta name='Next_Image' content='\$Next_pic' />
-<link rel='prev' href=\$Prev_url />
-<link rel='next' href=\$Next_url />
-<link rel='up' href='..' />
+<meta name='Prev_Image' content='\$Prev_pic'>
+<meta name='Next_Image' content='\$Next_pic'>
+<link rel='first' title='First Image' href=\$First_url>
+<link rel='last' title='Last Image' href=\$Last_url>
+<link rel='prev' title='Previous Image' href=\$Prev_url>
+<link rel='next' title='Next Image' href=\$Next_url>
+<link rel='up' title='Album' href='..'>
 <script type='text/javascript'>
 <!--
 if (document.images) {
@@ -3040,6 +3933,15 @@ if (document.images) {
 </script>
 
 PREV_NEXT
+# Dominik Lamp <d_lamp at informatik uni-kl de> points out that
+# "document.images" above will eval true even before page is fully loaded.
+# To fix this we could put the above code into a function and then do:
+#   <body onloaded='javascript:preloadImages()'>
+# Problem is the <body> tag isn't controlled in themes..
+
+
+  } else {
+    print "<link rel='up' title='Up' href='..'>";
   }
   \$CALLED_META=1;
 }
@@ -3071,7 +3973,7 @@ sub setup_output {
   if ($theme) {
     # We pipe into eperl stdin
     my $qout = file_quote($opt,$out);
-    (open(ALBUM,"|$^X > $qout")) ||
+    (open(ALBUM,"|\Q$^X\E > $qout")) ||
       fatal($opt,"Couldn't start perl pipe for theme [$out]\n");
   } else {
     # Just write a file
@@ -3103,18 +4005,19 @@ sub header {
 
   my @names = @{$data->{paths}{parent_albums}};
   push(@names,$name) if $name;
-  my $top = (@names || $image_page) ? 0 : 1;
+  my $top = ($#names>0 || $image_page) ? 0 : 1;
 
   my $this = pop(@names);
   my $header = "";
   my $back = $#names;
+  my $index = index_page($opt);
   while (my $n = pop(@names)) {
-    $header = "<a href='".("../"x($back-$#names))."$opt->{index}'>$n</a> : $header";
+    $header = "<a href='".("../"x($back-$#names)).$index."'>$n</a> : $header";
   }
   $header.=$this;
 
   my $Up = $image_page ? "Back" : "Up";
-  my $UpUrl = $top ? $opt->{top} : "../$opt->{index}";
+  my $UpUrl = $top ? $opt->{top} : "../$index";
   $UpUrl = "<h1><a href='$UpUrl'>$Up</a></h1>" if $UpUrl && $UpUrl ne "''";
 
   print ALBUM <<END_OF_HEADER;
@@ -3143,10 +4046,26 @@ sub header {
   <hr />
 END_OF_HEADER
 
-  if (-f "$dir/$opt->{header}" && (open(HEADER,"<$dir/$opt->{header}"))) {
-    while(<HEADER>) { print ALBUM; }
-    print ALBUM "<hr />\n";
+  if (!$image_page || $opt->{image_headers}) {
+    if (-f "$dir/$opt->{header}" && (open(HEADER,"<$dir/$opt->{header}"))) {
+      while(<HEADER>) { print ALBUM; }
+      print ALBUM "<hr />\n";
+    }
   }
+}
+
+sub credit {
+  my ($opt) = @_;
+  my $date = localtime;
+  return <<CREDIT;
+    <font size='-1'>
+      Photo album generated by
+      <a href='$ALBUM_URL'>$PROGNAME</a>
+      from <a href='http://GetDave.com/'>Dave's</a>
+      <a href='$HOME'>MarginalHacks</a>
+      on $date
+    </font>
+CREDIT
 }
 
 sub footer {
@@ -3158,15 +4077,8 @@ sub footer {
     while(<FOOTER>) { print ALBUM; }
     print ALBUM "<hr />\n";
   }
-  my $date = localtime;
+  print ALBUM credit($opt);
   print ALBUM <<END_OF_FOOTER;
-    <font size='-1'>
-      Photo album generated by
-      <a href='$ALBUM_URL'>$PROGNAME</a>
-      from <a href='http://GetDave.com/'>Dave's</a>
-      <a href='$HOME'>MarginalHacks</a>
-      on $date
-    </font>
   </body>
 </html>
 END_OF_FOOTER
@@ -3246,8 +4158,10 @@ sub shorten {
   return $str if @str <= $len;
   my @a = splice(@str,0,$len/2);
   my @b = splice(@str,-$len/2,$len/2);
-  # Keep any closing tags that got chopped
-  @str = grep(m|^</.|, @str);
+#  # Keep any closing tags that got chopped
+#  @str = grep(m|^</.|, @str);
+  # Actually, keep *any* tags, otherwise we'll have bad HTML
+  @str = grep(m|^<.*>|, @str);
   join('',@a,@str,"..",@b);
 }
 
@@ -3269,19 +4183,25 @@ sub write_index {
     foreach my $child ( @{$data->{dirs}} ) {
       new_element($opt);
       my $obj = $data->{obj}{$child};
+      print ALBUM "<a href=$obj->{URL}{album_page}{dir}>\n";
       if ($obj->{thumb}) {
-        print ALBUM "<a href=$obj->{URL}{album_page}{dir}>\n";
         print ALBUM "          <img";
         print ALBUM " width='$obj->{thumb}{x}'" if $obj->{thumb}{x};
         print ALBUM " height='$obj->{thumb}{y}'" if $obj->{thumb}{y};
-        print ALBUM " border='0' src=$obj->{URL}{album_page}{thumb}";
-        print ALBUM " alt=$obj->{alt} title=$obj->{alt}/><br />\n";
-        print ALBUM "<font size='+1'>$obj->{name}</font></a>\n";
-        print ALBUM "<font size='-1'><br \>$obj->{num_pics} images</font>\n"
-          if defined $obj->{num_pics};
-      } else {
-        print ALBUM "<font size='+1'><a href=$obj->{URL}{album_page}{dir}>$obj->{name}</a></font>\n";
+        print ALBUM " style='border:0' src=$obj->{URL}{album_page}{thumb}";
+        print ALBUM " alt='$obj->{alt}'";
+        print ALBUM " title='$obj->{alt}'" if $obj->{alt};
+        print ALBUM " /><br />\n";
       }
+      print ALBUM "<font size='+1'>$obj->{name}</font></a>\n";
+
+      my $num_pics = $obj->{num_pics};
+      $num_pics = $num_pics ? $num_pics>1 ? "$num_pics images" : "1 image" : 0;
+      print ALBUM "<font size='-1'><br />$num_pics</font>\n" if $num_pics;
+
+      my $num_dirs = $obj->{num_dirs};
+      $num_dirs = $num_dirs ? $num_dirs>1 ? "$num_dirs folders" : "1 folder" : 0;
+      print ALBUM "<font size='-1'><br />$num_dirs</font>\n" if $num_dirs;
     }
     end_table();
     print ALBUM "<hr />\n";
@@ -3302,8 +4222,10 @@ sub write_index {
       print ALBUM "          <img";
       print ALBUM " width='$obj->{thumb}{x}'" if $obj->{thumb}{x};
       print ALBUM " height='$obj->{thumb}{y}'" if $obj->{thumb}{y};
-      print ALBUM " border='0' src=$obj->{URL}{album_page}{thumb}";
-      print ALBUM " alt=$obj->{alt} title=$obj->{alt}/><br />\n";
+      print ALBUM " style='border:0' src=$obj->{URL}{album_page}{thumb}";
+      print ALBUM " alt='$obj->{alt}'";
+      print ALBUM " title='$obj->{alt}'" if $obj->{alt};
+      print ALBUM " /><br />\n";
       print ALBUM "          $pname\n";
       print ALBUM "          <font size='-1'><i>[$obj->{full}{filesize}]</i></font>\n"
         if $opt->{file_sizes};
@@ -3322,9 +4244,11 @@ sub write_index {
     }
 
     # Caption?
-    print ALBUM "          <font size='-2'>\n";
-    caption($obj,0);
-    print ALBUM "          </font>\n";
+    if ($opt->{album_captions}) {
+      print ALBUM "          <font size='-2'>\n";
+      caption($obj,0);
+      print ALBUM "          </font>\n";
+    }
   }
 
   end_table();
@@ -3346,6 +4270,8 @@ sub write_img_indexes {
   my $last_pic = $data->{pics}[-1];
   my $prev_url = $data->{obj}{$last_pic}{URL}{image_page}{image_page};
   my $prev_name = $data->{obj}{$last_pic}{name};
+  my $prev = "<h3><a href=$prev_url>$prev_name</a></h3>";
+  undef $prev unless $opt->{image_loop};
 
   for(my $i=0; $i<=$#{$data->{pics}}; $i++) {
     my $pic = $data->{pics}[$i];
@@ -3353,10 +4279,12 @@ sub write_img_indexes {
     next unless $obj->{thumb} && %{$obj->{thumb}};
     my $name = $obj->{name};
 
-    my $next = $i+1 > $#{$data->{pics}} ? 0 : $i+1;
-    my $next_pic = $data->{pics}[$next];
+    my $next_num = $i+1 > $#{$data->{pics}} ? 0 : $i+1;
+    my $next_pic = $data->{pics}[$next_num];
     my $next_url = $data->{obj}{$next_pic}{URL}{image_page}{image_page};
     my $next_name = $data->{obj}{$next_pic}{name};
+    my $next = "<h3><a href=$next_url>$next_name</a></h3>";
+    undef $next unless $next_num || $opt->{image_loop};
 
     my $file = "$opt->{dir}/$pic$data->{paths}{page_post_url}";
     setup_output($opt,"$dir/$file",0);
@@ -3367,10 +4295,10 @@ sub write_img_indexes {
 <table cellspacing='10' width='100%'>
   <tr>
     <td align='left'>
-      <h3><a href=$prev_url>$prev_name</a></h3>
+      $prev
     </td>
     <td align='right'>
-      <h3><a href=$next_url>$next_name</a></h3>
+      $next
     </td>
   </tr>
 </table>
@@ -3380,9 +4308,10 @@ PREV_NEXT
 
     print ALBUM "<center><i><font size='+1'>\n";
     print ALBUM "<a href=$obj->{URL}{image_page}{image}>\n";
-    print ALBUM "<$obj->{full}{tag} border='0'";
+    print ALBUM "<$obj->{full}{tag} style='border:0'";
     print ALBUM " src=$obj->{URL}{image_page}{image_src}";
-    print ALBUM " alt=$obj->{alt} title=$obj->{alt}";
+    print ALBUM " alt='$obj->{alt}'";
+    print ALBUM " title='$obj->{alt}'" if $obj->{alt};
     print ALBUM " /></a><br />\n";
     caption($obj,1);
     print ALBUM "</font></i></center>\n";
@@ -3395,8 +4324,9 @@ PREV_NEXT
 
     close_output($opt,0);
 
-    $prev_url = $obj->{URL}{image_page}{image_page};
-    $prev_name = $name;
+    $prev = "<h3><a href=$obj->{URL}{image_page}{image_page}>$name</a></h3>";
+
+    show_hashes($opt, 2+$i+1, 2 + $#{$data->{pics}}+1);
   }
 }
 
@@ -3483,7 +4413,15 @@ sub write_img_themes {
     my $file = "$opt->{dir}/$pic$data->{paths}{page_post_url}";
 
     my $theme = search_path($opt,$opt->{theme},@{$opt->{theme_path}});
-    $changed[$i] = $data->{_changed}{$pic} ||
+    $changed[$i] = $opt->{force_html} ||
+      option_changed($opt,'exif') ||
+      option_changed($opt,'exif_album') ||
+      option_changed($opt,'exif_image') ||
+      option_changed($opt,'just_medium') ||
+      option_changed($opt,'caption_edit') ||
+      option_changed($opt,'theme_url') ||
+      option_changed($opt,'burn') ||
+      $data->{_changed}{$pic} ||
       dependency_changed("$dir/$file",
         "$dir/$pic",		# The image itself
         $obj->{capfile},		# The image.txt file
@@ -3491,10 +4429,6 @@ sub write_img_themes {
         $0,			# Heck, even this program
         "$theme/image.th",	#   or the theme itself
       );
-    # Or if -exif has changed, we have to regen all HTML...
-    $changed[$i] = 1 if $opt->{SAVE}{exif};
-    $changed[$i] = 1 if $opt->{SAVE}{exif_album};
-    $changed[$i] = 1 if $opt->{SAVE}{exif_image};
   }
 
   for(my $i=0; $i<=$#{$data->{pics}}; $i++) {
@@ -3534,6 +4468,7 @@ sub write_img_themes {
       @{$data->{end_eperl}});
 
     close_output($opt,1);
+    show_hashes($opt, 2+$i+1, 2 + $#{$data->{pics}}+1);
   }
 }
 
@@ -3546,7 +4481,7 @@ sub is_image {
   my ($opt,$pic) = @_;
   return 0 if -f "${pic}$opt->{not_img}";
   return 0 if $pic =~ /\.html?$/i;
-  return 0 if $opt->{known_images} && $pic !~ /\.($IMAGE_TYPES)$/i;
+  return 0 if $pic !~ /\.($IMAGE_TYPES)$/i;
   1;
 }
 
@@ -3575,7 +4510,8 @@ sub gather_contents {
     # Ignore the .no_album/.hide_album/.not_img/.txt.. directive files
     next unless -s $path || -d $path;		# Ignore zero byte files
       # (windows can have zero byte directories)
-    next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
+    # Wrong!  no_album doesn't ignore the file/dir, it just doesn't descend!
+    #next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
     next if $bob =~ /\Q$opt->{not_img}\E$/;
     next if $bob =~ /\Q$opt->{no_album}\E$/;
     next if $bob =~ /\Q$opt->{hide_album}\E$/;
@@ -3597,6 +4533,11 @@ sub gather_contents {
   }
 }
 
+sub is_movie {
+  my ($opt,$pic) = @_;
+  $pic =~ /\.(mpe?g|mov|avi)$/i ? 1 : 0;
+}
+
 # Deal with each image/picture/file/whatever
 sub handle_file {
   my ($opt,$data,$pic) = @_;
@@ -3606,25 +4547,28 @@ sub handle_file {
   my $path = "$dir/$pic";
   my $obj = $data->{obj}{$pic};
 
-  $obj->{full}{filesize} = filesize $path if $opt->{file_sizes};
-
   # Figure out type
-  $obj->{is_movie} = $pic =~ /\.(mpe?g|mpg|mov|avi)$/i ? 1 : 0;
-  my $can_embed = ($pic =~ /\.(mpe?g|mov|avi|pdf|ps)$/i) ? 1 : 0;
+  $obj->{is_movie} = is_movie($opt,$pic);
+  my $can_embed = $obj->{is_movie};
+  $can_embed = 1 if $pic =~ /\.(pdf|ps)$/i;
   my $tag = 'img';
   $tag = 'embed' if $can_embed && $opt->{embed};
   $obj->{full}{tag} = $tag;
 
+  # Being a bit presumptive, here.  We can undo it if we fail to make a thumb.
+  # (see snapshot() call in thumbnail())
   $obj->{has_thumb} = is_image($opt,$path);
 
   #########################
   # Handle pictures, generate thumbnails
   #########################
-  snapshot($opt,$dir,$obj) if $obj->{has_thumb};
-  if ($obj->{has_thumb}) {
-    medium($opt,$dir,$obj);
-    thumbnail($opt,$dir,$obj);
-  }
+  thumbnail($opt,$dir,$obj) if $obj->{has_thumb};
+  medium($opt,$dir,$obj) if $obj->{has_thumb};
+
+  # File sizes
+  $obj->{full}{filesize} = filesize $path if $opt->{file_sizes};
+  $obj->{medium}{filesize} = filesize $obj->{medium}{path}
+    if $opt->{file_sizes} && $obj->{medium}{path};
 
   return if !$obj->{has_thumb} && $opt->{known_images};
 
@@ -3679,12 +4623,12 @@ sub handle_file {
 
   if ($use_image_pages) {
     my $image_page = "$pic$data->{paths}{page_post_url}";
-    $obj->{URL}{album_page}{image} = quote("$opt->{dir}/$image_page",$opt,1);
+    $obj->{URL}{album_page}{image} = url_quote($opt, "$opt->{dir}/$image_page");
 # Kludge - the number of ".." should be equal to the pathsize of $opt->{dir}
     my $image = ($opt->{just_medium} && $obj->{thumb})
       ? $obj->{medium}{file} : "../$pic";
-    $obj->{URL}{image_page}{image} = quote($image,$opt,1);
-    $obj->{URL}{image_page}{image_page} = quote($image_page,$opt,1);
+    $obj->{URL}{image_page}{image} = url_quote($opt, $image);
+    $obj->{URL}{image_page}{image_page} = url_quote($opt, $image_page);
 
     # The image src (only needed for 'image_page' actually).  Possibilites:
     # -embed: pic or medium, but pic if movie (../$pic)
@@ -3695,16 +4639,16 @@ sub handle_file {
       $image_src = $opt->{embed} ? "../$pic" :
         ($obj->{medium}{file} || $obj->{snapshot}{file});
     }
-    $obj->{URL}{image_page}{image_src} = quote($image_src, $opt, 1);
+    $obj->{URL}{image_page}{image_src} = url_quote($opt, $image_src);
 
     # Thumbnail
-    $obj->{URL}{album_page}{thumb} = quote("$opt->{dir}/$obj->{thumb}{file}", $opt, 1);
-    $obj->{URL}{image_page}{thumb} = quote($obj->{thumb}{file}, $opt, 1);
+    $obj->{URL}{album_page}{thumb} = url_quote($opt, "$opt->{dir}/$obj->{thumb}{file}");
+    $obj->{URL}{image_page}{thumb} = url_quote($opt, $obj->{thumb}{file});
   } else {
-    $obj->{URL}{album_page}{image} = quote($pic,$opt,1);
-    $obj->{URL}{album_page}{thumb} = quote("$opt->{dir}/$obj->{thumb}{file}", $opt, 1);
+    $obj->{URL}{album_page}{image} = url_quote($opt, $pic);
+    $obj->{URL}{album_page}{thumb} = url_quote($opt, "$opt->{dir}/$obj->{thumb}{file}");
     # We might normally have image pages, just not for this non-image
-    $obj->{URL}{image_page}{image_page} = quote("../$pic",$opt,1)
+    $obj->{URL}{image_page}{image_page} = url_quote($opt, "../$pic")
       if $opt->{image_pages};
   }
 
@@ -3712,7 +4656,7 @@ sub handle_file {
   if ($opt->{transform_url}) {
     $obj->{URL}{album_page}{image} = $opt->{transform_url};
     $obj->{URL}{album_page}{image} =~ s/%S/$pic/g;
-    my $s = $pic;  $s =~ s/\.[\.]+$//;
+    my $s = $pic;  $s =~ s/\.[^\.]+$//;
     $obj->{URL}{album_page}{image} =~ s/%s/$s/g;
   }
 
@@ -3725,21 +4669,26 @@ sub handle_file {
 
 # Pick an image to use for the directory thumbnail
 # Returns:  thumbnail path, full path to image, local path to image, image filename.
-# 
-# Thumbnail path:  Where the tn/ directory and the thumbnail gets created
-#   (local path from the current working directory)
-# Local thumbnail path:  Thumbnail path, but from the current album directory.
-# Full path to image:  Path to full size image from current working directory
-# Image filename:  Just the image part of the filename.
-#
-# The thumbnail path and the path used in the full path to the image
-# don't have to be the same, but they probably will be.
-#
-# Example:  (album/dir/, dir/, album/dir/image.gif, image.gif)
+# (See hook below for more info)
 sub dir_image {
   my ($opt,$data,$child) = @_;
 
   return undef unless $opt->{dir_thumbs};
+
+  my @ret = do_hook($opt,$data, 'dir_image', $child);
+  # Description: Picks the image for a directory thumbnail
+  # Returns: thumb path, full path to image, local path to image, image filename
+  # Returns: Thumb path:  Where the tn/ directory and the thumbnail gets created
+  # Returns: = (local path from the current working directory)
+  # Returns: Full path to image:  Path to full size image from current working directory
+  # Returns: Local path:  Thumbnail path, but from the current album directory.
+  # Returns: Image filename:  Just the image part of the filename.
+  # Returns:
+  # Returns: The thumbnail path and the path used in the full path to the image
+  # Returns: don't have to be the same, but they probably will be.
+  # Returns:
+  # Returns: Example:  (album/dir/, dir/, album/dir/image.gif, image.gif)
+  return @ret if defined $ret[0];
 
   $data->{obj}{$child}{num_pics} = 0;
   $data->{obj}{$child}{num_dirs} = 0;
@@ -3779,13 +4728,15 @@ sub handle_child {
 
     # Simplify for now..
     $obj->{full}{tag} = 'img';
+    $obj->{is_movie} = is_movie($opt,$file);
 
+    $obj->{has_thumb} = 1;	# Assume...
     thumbnail($opt,$tn_path,$obj);
     return unless $obj->{thumb};
     get_size($opt,'thumb',$obj);
 
     # URL to find the thumbnail
-    $obj->{URL}{album_page}{thumb} = quote("$url/$opt->{dir}/$obj->{thumb}{file}",$opt,1);
+    $obj->{URL}{album_page}{thumb} = url_quote($opt, "$url/$opt->{dir}/$obj->{thumb}{file}");
   }
 
 # Should caption be done here?
@@ -3794,8 +4745,7 @@ sub handle_child {
 # Create a new album data structure
 sub new_album_data {
   my ($opt,$dir) = @_;
-  my %data;
-  my $data = \%data;
+  my $data = {};
 
   # Directory
   $data->{paths}{dir} = $dir || '.';
@@ -3807,20 +4757,22 @@ sub new_album_data {
 sub figure_depth {
   my ($opt,$data,$dir,$noalb,@dir_pieces) = @_;
 
+  # Is this the first call to do_album?
+  $data->{start} = $#dir_pieces<1 ? 1 : 0;
+	delete $opt->{_depth_diff} if $data->{start};
+
   # Our calling depth may be different from album depth.
   $data->{calling_depth} = $#dir_pieces+1 unless $opt->{_depth_diff};
 
   # The current index
   parse_index($opt,$data) unless $noalb;
 
-  # Is this the first call to do_album?
-  $data->{start} = $#dir_pieces<1 ? 1 : 0;
-
   my $alb_path = $data->{paths}{album_path};
+	$alb_path =~ s|^/||;
   # If we're starting with a subalbum, update @dir_pieces based on parse_index()
   if (!$#dir_pieces && $alb_path) {
     # Can we find the album_path in this directory?
-    if ($dir !~ s|/$alb_path$||) {
+    if ($dir !~ s|/\Q$alb_path\E$||) {
       # They've moved something!  Damn!
       # Try to figure out where things changed.
       my @old = split(/\//, $alb_path);
@@ -3828,14 +4780,20 @@ sub figure_depth {
         last if $dir !~ s|/$old$||;
       }
       my @fatal = ("ERROR: Your album has moved");
-      push(@fatal, "\nIt looks like you've moved your top album.",
-        "",
-        "To fix this:",
-        "1) Erase: $dir/$opt->{default_index}",
-        "2) Run:   $PROGNAME $dir") unless @old;
-      push(@fatal, "\nIt looks like you've moved a subalbum.  To fix this, run:",
-        "",
-        "% $PROGNAME -add $dir") if @old;
+			if (@old) {
+        push(@fatal, "\nIt looks like you've moved a subalbum.  To fix this, run:");
+        push(@fatal, "\n% $PROGNAME -add $dir");
+      } else {
+        # Find the broken index.html, either it's the top dir or the full dir
+        my $broke = $dir;
+        $broke .= "/$dir_pieces[0]" unless -f index_page($opt,1,$broke);
+        my $index = index_page($opt,1,$broke);
+        push(@fatal, "\nIt looks like you've moved your top album.\n");
+        push(@fatal, "To fix this:");
+        push(@fatal, "1) Erase:   $index");
+        push(@fatal, "2) Run:     $PROGNAME $broke");
+        push(@fatal, "   or else: $PROGNAME $dir") unless $broke eq $dir;
+      }
       fatal($opt,@fatal);
     }
 
@@ -3862,28 +4820,34 @@ sub do_album {
   my ($opt,$dir,@dir_pieces) = @_;
 
   my $data = new_album_data($opt,$dir);
-
+  
   # How deep?
   my $noalb = -f "$dir/$opt->{no_album}" ? 1 : 0;
   figure_depth($opt,$data,$dir,$noalb,@dir_pieces);
   return if $opt->{depth}>=0 && $data->{calling_depth} > $opt->{depth};
+  my $album = join('/',@{$data->{dir_pieces}});
 
   # Deal with album.conf files
-  my $argv_theme_url = $opt->{SAVE}{theme_url};
-  my $pushed = album_confs($opt,$data);
+  my $pushed = album_confs($opt,$data) unless $noalb;
 
-  # Sanity check (no other place to put this!?)
-  usage("-theme_url requires -theme option (it does not replace it)")
-    if $argv_theme_url && $opt->{theme_url} && !$opt->{theme};
+  #########################
+  # Start hooks
+  #########################
+  do_hook($opt,$data, 'do_album_top', $dir, $album) if $data->{start};
+  # Description: Start of an album (top only, no sub-albums)
+  # Returns: No return value needed
+
+  do_hook($opt,$data, 'do_album', $dir, $album);
+  # Description: Start of an album or sub-album
+  # Returns: No return value needed
 
   # Print some info
-  my $p = join('/',@{$data->{dir_pieces}});
   my $w = $opt->{hash_width} - $opt->{num_hashes} - 3 - 8;
-  $p = '..'.substr($p,-$w+2) if (length($p) > $w);
-  start_hashes($opt, "Images: $p");
+  my $p = (length($album) >= $w) ?  '..'.substr($album,-$w+3) : $album;
+  start_hashes($opt, "Images:  $p");
   if ($noalb || $data->{unknown}) {
     hash_msg($opt,"<".($noalb ? $opt->{no_album} : "unknown").">");
-    print STDERR "\nCall album with your photo directory as an option.\n\n"
+    print STDERR "\nNothing to do.  Call album with your photo directory as an option.\n\n"
       if $data->{start};
     return;
   }
@@ -3896,7 +4860,7 @@ sub do_album {
   clean_thumb_dir($opt,$data) if $opt->{clean};
 
   # Lookup captions and get names of files
-  get_captions($opt,$data, 1);
+  get_captions($opt,$data);
 
   # Sort pictures/dirs
   sort_info($opt,$data);
@@ -3931,13 +4895,29 @@ sub do_album {
   #########################
   # Write the HTML
   #########################
+  start_hashes($opt, "Indexes: $p");
+  $hashes = 2 + $#pics+1;	# data conversion, album, then each picture index
+
   data_to_eperl($opt,$data);
+  show_hashes($opt, 1, $hashes);
+
+  my $did_index = do_hooks($opt,$data, 'write_index', $dir, $album);
+  # Description: Called before the album index page is written for a directory.
+  # Returns: 1 to skip the normal index writing code
 
   ($opt->{'album.th'}) ?
-    write_theme($opt,$data) : write_index($opt,$data);
+    write_theme($opt,$data) : write_index($opt,$data)
+      unless $did_index;
+  show_hashes($opt, 2, $hashes);
+
+  my $did_images = do_hooks($opt,$data, 'write_image_pages', $dir, $album);
+  # Description: Called before the album image pages are written
+  # Returns: 1 to skip the normal image page writing code
+
   ($opt->{'image.th'} ?
     write_img_themes($opt,$data) : write_img_indexes($opt,$data))
-      if $opt->{image_pages};
+      if $opt->{image_pages} && !$did_images;
+  stop_hashes($opt);
 
   #########################
   # Do the children albums
@@ -3947,8 +4927,19 @@ sub do_album {
   foreach my $child ( @{$data->{dirs}} ) {
     next if -f "$dir/$child/$opt->{no_album}" || -f "$dir/$child$opt->{no_album}";
     do_album($opt,"$dir/$child",@{$data->{dir_pieces}},$child)
-      unless $data->{start} && @add && !grep($child eq $_, @add);
+      unless $data->{start} && @add && !contains($child, @add);
   }
+
+  #########################
+  # End hooks
+  #########################
+  do_hook($opt,$data, 'end_album_top', $dir, $album) if $data->{start};
+  # Description: End of an album (top only, no sub-albums)
+  # Returns: No return value needed
+
+  do_hook($opt,$data, 'end_album', $dir, $album);
+  # Description: End of an album or sub-album
+  # Returns: No return value needed
 
   pop_opts($opt) if $pushed;
 }
@@ -3962,6 +4953,14 @@ sub do_album {
 # bob.gif, jpg  ->  tn/bob.gif.jpg
 sub new_image_path {
   my ($opt,$dir,$pic,$type,$add_nodir,$add_dir) = @_;
+
+  my $postfix = $add_nodir;
+  my @new = do_hook($opt,undef, 'new_image_path', $dir,$pic,$type,$postfix);
+  # Description: Create a pathname for a new image (such as a thumbnail)
+  # Description: Called with: directory, picture, new picture type and:
+  # Description: postfix hint, such as 'snap.' or 'med.'
+  # Returns: (filename, full pathname)
+  return @new if defined $new[0];
 
   # Separate/replace postfix
   my $post="";
@@ -3979,10 +4978,23 @@ sub new_image_path {
   return ($file,"$dir/$file");
 }
 
+my $IMAGESIZE = attempt_require('Image::Size');
 sub get_xy {
   my ($opt,$img) = @_;
 
+  my @xy = do_hook($opt,undef, 'get_xy', $img);
+  # Description: Figure out resolution of image
+  # Returns: (x,y)
+  return @xy if defined $xy[0];
+
   return (0,0) unless (-f $img);
+
+  # Try to use Image::Size first, evidently (and oddly) it's faster than convert
+  # Debian users can just: "apt-get install libimage-size-perl"
+  if ($IMAGESIZE) {
+    my ($x,$y,$typeErr) = Image::Size::imgsize($img);
+    return ($x,$y) if defined $x && defined $y;
+  }
 
   my $qimg = file_quote($opt,$img);
 
@@ -3992,7 +5004,7 @@ sub get_xy {
     undef $opt->{jhead};	# jhead didn't work, don't keep trying...
   }
 
-  my $try_noidentify = 0;	# Did identify fail?
+  my $unsupported = 0;
 
   # Try to use identify if we have it
   if ($opt->{identify}) {
@@ -4004,16 +5016,18 @@ sub get_xy {
           $opt->{identify} = 0;
           last;
         }
-        return (0,0) if (/no delegate for this image format/);
-        return (0,0) if (/support .*not yet available/);
+        if (/no delegate for this image format/
+            || /support .*not yet available/) {
+          $unsupported=1;
+          last;
+        }
         if (/\s(\d+)x(\d+)(\s|\+|\-)/) {
           $size->close;
           return ($1,$2);
         }
       }
+			$size->close;
     }
-    # I wish there was an easy way to tell if they had identify!
-    $try_noidentify = 1;
   }
 
   # Kludgy way to get size, but works with all images that convert reads
@@ -4023,10 +5037,10 @@ sub get_xy {
     print STDERR "get_xy(): $_" if $opt->{d};
     if(/\s(\d+)x(\d+)(\s|\+|\-)/) {
       $size->close;
-      $opt->{identify} = 0 if $try_noidentify;	# identify didn't work, convert did
       return ($1,$2);
     }
   }
+	$size->close;
   print STDERR "\n\n[$PROGNAME] Can't get [$img] size from 'convert -verbose' output\n";
   print STDERR "\tTry option:  -known_images to ignore garbage files\n"
     unless ($img =~ /\.$IMAGE_TYPES$/i);
@@ -4064,6 +5078,13 @@ sub check_anim_gifs {
 
 sub scale {
   my ($opt,$img,$scale_arg,$new,$medium) = @_;
+
+  my @xyxy = do_hook($opt,undef, 'scale', $img, $scale_arg, $new, $medium);
+  # Description: Scale an image by $scale_arg and save in $new.
+  # Description: $medium=1 for medium scaling (for -medium_scale_opts)
+  # Returns: (img_x, img_y, new_x, new_y)
+  # Returns: [since our scale routine should know this anyways]
+  return @xyxy if defined $xyxy[0];
 
   my $scale = $opt->{sample} ? "-sample $scale_arg" : "-geometry $scale_arg";
 
@@ -4107,6 +5128,11 @@ sub scale {
 sub crop {
   my ($opt,$img,$off_x,$off_y,$new) = @_;
 
+  my $ret = do_hook($opt,undef, 'crop', $img, $off_x, $off_y, $new);
+  # Description: Crop an image (at $off_x,$off_y) and save in $new.
+  # Returns: 1 on success.
+  return if $ret;
+
   my ($x,$y) = ($opt->{x},$opt->{y});
 
   return hash_warn($opt,"Error cropping $img (image not found)")
@@ -4126,6 +5152,13 @@ sub crop {
 #########################
 sub movie_frame {
   my ($opt,$movie,$img) = @_;
+
+  my $ret = do_hook($opt,undef, 'movie_frame', $movie, $img);
+  # Description: Create a movie frame from $movie and save in $img
+  # Description: This might be called with "non-movie" types,
+  # Description: so check in your hook for the types you can read.
+  # Returns: 1 on success.
+  return if $ret;
 
   my $qmovie = file_quote($opt,$movie);
   my $qimg = file_quote($opt,$img);
@@ -4184,6 +5217,17 @@ sub medium {
   return 0 unless $opt->{medium};
   return 0 if $obj->{is_movie} && $opt->{embed};
 
+  $obj->{medium}{path} = do_hook($opt,undef, 'medium', $dir, $obj, $file, $full_path);
+  # Description: Create a medium image using an image object or path.
+  # Description: This might be called with "non-image" types (such as movies)
+  # Description: so check in your hook for the types you can read.
+  # Returns: Full path to medium image
+  if ($obj->{medium}{path}) {
+    $obj->{medium}{path} = $obj->{medium}{file};
+    $obj->{medium}{path} =~ s|.*$opt->{slash}||g;
+    return get_size($opt,'medium',$obj)
+  }
+
   my $type = $opt->{medium_type};
   $type = $opt->{type} if $obj->{is_movie} && !$type;
   ($obj->{medium}{file},$obj->{medium}{path})
@@ -4191,20 +5235,27 @@ sub medium {
 
   # Don't regenerate mediums unless the image has changed
   return get_size($opt,'medium',$obj)
-    if (-f $obj->{medium}{path} && !$opt->{force} && -M $obj->{medium}{path} < -M $full_path);
+    if (-f $obj->{medium}{path} && !$opt->{force}
+        && !option_changed($opt,'medium')
+        && -M $obj->{medium}{path} < -M $full_path);
 
 # It would be neat if we could look at the scale options and figure
-# out if the medium option has changed??  Can we alternatively do
-# this by seeing what .conf options have been respec'd?
+# out if the medium option has changed??
 
   my $medium = $opt->{medium};
+
+  # Hack: If the medium scaling is <width>x<height>, add ">" on the
+  # end so convert will only shrink the images, never grow them
+  $medium.='>' if $medium =~ /^\d+x\d+$/ && !$opt->{windows};
+
 # Hack!  This doesn't work on Windows - at least on ActivePerl!  :(
 # I think it's because ActivePerl uses DOS for system calls and DOS doesn't
 # let you quote '>' to avoid redirection?  It complains that we need an
-# argument for -geometry option otherwise.  Can we just add '>'??
+# argument for -geometry option otherwise.
   $medium =~ s/\>/\\>/g unless $opt->{windows};
 
-  my ($fx,$fy,$mx,$my) = scale($opt,$full_path,$medium,$obj->{medium}{path},1);
+
+  my ($fx,$fy,$mx,$my) = scale($opt,$full_path,$medium,$obj->{medium}{path});
   ($obj->{full}{x},$obj->{full}{y}) = ($fx,$fy)
     if $base eq 'full' && $fx;
 
@@ -4217,21 +5268,36 @@ sub medium {
 sub thumbnail {
   my ($opt,$dir,$obj) = @_;
 
+  snapshot($opt,$dir,$obj);	# In case we need a snapshot
+  return unless $obj->{has_thumb};	# Snapshot might fail our thumbing..
+
   my $file = $obj->{full}{file};
   # Based off of full, unless we have a snapshot image.
   my $base = $obj->{snapshot} ? 'snapshot' : 'full';
   my $full_path = $obj->{$base}{path};
 
   return unless -r $full_path;
-
   print STDERR "IMAGE: $full_path\n" if $opt->{d};
+
+  $obj->{thumb}{path} = do_hook($opt,undef, 'thumbnail', $dir, $obj, $file, $full_path);
+  # Description: Create a thumbnail using an image object or path
+  # Description: This might be called with "non-image" types (such as movies)
+  # Description: so check in your hook for the types you can read.
+  # Returns: Full path to the thumbnail
+  if ($obj->{thumb}{path}) {
+    $obj->{thumb}{path} = $obj->{thumb}{file};
+    $obj->{thumb}{path} =~ s|.*$opt->{slash}||g;
+    return get_size($opt,'thumb',$obj);
+  }
 
   ($obj->{thumb}{file},$obj->{thumb}{path})
     = new_image_path($opt,$dir,$file,$opt->{type},'tn.','');
 
   # Don't regenerate thumbs if we don't need to.
   return get_size($opt,'thumb',$obj)
-    if (-f $obj->{thumb}{path} && !$opt->{force} && -M $obj->{thumb}{path} < -M $full_path);
+    if (-f $obj->{thumb}{path} && !$opt->{force}
+        && !option_changed($opt,'geometry')
+        && -M $obj->{thumb}{path} < -M $full_path);
 
   # In case we didn't get the size yet
   my ($x,$y) = get_size($opt,$base,$obj);
@@ -4282,9 +5348,8 @@ sub thumbnail {
 ##################################################
 sub main {
   my $opt = get_defaults();
-  $opt->{d} = 1 if grep($_ eq '-d', @ARGV);	# Hack to see read_confs debugs
-  $opt->{q} = 1 if grep($_ eq '-q', @ARGV); # Hack for read_conf quiet
-
+  $opt->{d} = 1 if contains('-d', @ARGV);	# Hack to see read_confs debugs
+  $opt->{q} = 1 if contains('-q', @ARGV);	# Hack for read_conf quiet
   read_confs($opt);
   parse_args($opt);
   scrub_opts($opt,1);
@@ -4293,7 +5358,9 @@ sub main {
 
   virgin_check($opt);
 
-  collect_plugins($opt);
+  do_hook($opt,undef, 'pre_do_albums');
+  # Description: Called before doing any albums.
+  # Returns: No return value needed
 
   foreach my $dir ( @{$opt->{_albums}} ) {
     print "\n" unless $opt->{q};
@@ -4358,17 +5425,25 @@ Or multiple arguments using the '--' form:
 
 % album --exif hi there --
 
+You can remove specific array options with -no_<option>:
+
+% album -no_exif hi
+
+Or clear all the array options with -clear_<option>:
+
+% album -clear_exif
+
 Boolean options:
 
-% album -q, -d, -save_conf, -image_pages, -dir_thumbs, -just_medium, -embed, -clean, -album_captions, -caption_edit, -file_sizes, -fix_urls, -known_images, -all, -hashes, -name_length, -date_sort, -name_sort, -reverse_sort, -image_loop, -crop, -force, -sample, -animated_gifs, -use_tcap
+% album -q, -d, -D, -virgin_check, -save_conf, -configure, -image_pages, -dir_thumbs, -just_medium, -embed, -clean, -image_headers, -album_captions, -caption_edit, -file_sizes, -fix_urls, -known_images, -all, -hashes, -reverse_sort, -image_loop, -burn, -crop, -force, -force_html, -sample, -animated_gifs, -use_tcap
 
 String/number options:
 
-% album -medium, -captions, -top, -body, -charset, -index, -default_index, -html, -type, -medium_type, -CROP, -dir, -sharpen, -theme_url, -theme_path, -convert, -identify, -jhead, -ffmpeg, -conf_file, -dev_null, -windows, -cygwin, -tcap, -tcap_out, -cmdproxy, -header, -footer, -no_album, -hide_album, -not_img
+% album -medium, -captions, -top, -sort, -body, -charset, -index, -default_index, -html, -type, -medium_type, -CROP, -dir, -sharpen, -plugin_post, -theme, -theme_url, -convert, -identify, -jhead, -ffmpeg, -conf_file, -dev_null, -windows, -cygwin, -tcap, -tcap_out, -cmdproxy, -header, -footer, -no_album, -hide_album, -not_img
 
 Array options:
 
-% album --exif, --exif_album, --exif_image, --add, --scale_opts, --medium_scale_opts, --thumb_scale_opts
+% album --exif, --exif_album, --exif_image, --add, --scale_opts, --medium_scale_opts, --thumb_scale_opts, --data_path, --plugin_path, --theme_path
 
 
 =head2 OPTION DESCRIPTIONS
@@ -4379,6 +5454,14 @@ Array options:
 
 Show usage
 
+=item B<-more>I<>
+
+To show more options.
+
+=item B<-More>I<>
+
+To show even more options.
+
 =item B<-q>I<>
 
 Be quiet [Default OFF]
@@ -4387,13 +5470,29 @@ Be quiet [Default OFF]
 
 Set debug mode [Default OFF]
 
+=item B<-D>I<>
+
+Heavy debug mode [Default OFF]
+
 =item B<-conf>I<=I<file>>
 
 Read a .conf file
 
+=item B<-virgin_check>I<>
+
+Do the virgin check to see if you've run album before [Default ON]
+
 =item B<-save_conf>I<>
 
-Save album.conf files in albums [Default ON]
+Save album.conf files in photo album [Default ON]
+
+=item B<-configure>I<>
+
+Setup initial album site configuration [Default OFF]
+
+=item B<-version>I<>
+
+Display program version info
 
 =back
 
@@ -4432,6 +5531,10 @@ Remove unused thumbnails [Default OFF]
 =item B<-captions>I<=I<string>>
 
 Specify captions filename [Default captions.txt]
+
+=item B<-image_headers>I<>
+
+Show header.txt on image pages (default theme only) [Default OFF]
 
 =item B<-album_captions>I<>
 
@@ -4489,15 +5592,11 @@ Show hash marks while generating thumbnails [Default ON]
 
 =item B<-name_length>I<>
 
-Limit length of image/dir names [Default ON]
+Limit length of image/dir names [Default 40]
 
-=item B<-date_sort>I<>
+=item B<-sort>I<=I<string>>
 
-Sort images/dirs by date instead of captions/name [Default OFF]
-
-=item B<-name_sort>I<>
-
-Sort by name, not caption order [Default OFF]
+Sort type, captions, name or date [Default captions]
 
 =item B<-reverse_sort>I<>
 
@@ -4505,7 +5604,7 @@ Sort in reverse [Default OFF]
 
 =item B<-body>I<=I<string>>
 
-Specify <body> tags for non-theme output
+Specify <body> tags for non-theme output [Default <body>]
 
 =item B<-charset>I<=I<str>>
 
@@ -4515,6 +5614,11 @@ Charset for non-theme output [Default iso-8859-1]
 
 Do first and last image pages loop around? [Default ON]
 
+=item B<-burn>I<>
+
+Setup an album to burn to CD
+Implies '-index index.html' and '-no_theme_url' [Default OFF]
+
 =item B<-index>I<=I<file>>
 
 Select the default 'index.html' to use.
@@ -4522,7 +5626,8 @@ For file://, try '-index index.html' to add 'index.html' to index links.
 
 =item B<-default_index>I<=I<file>>
 
-The file the webserver accesses when no file is specified. [Default index.html]
+The file the webserver accesses when
+when no file is specified. [Default index.html]
 
 =item B<-html>I<=I<post>>
 
@@ -4561,8 +5666,12 @@ Thumbnail directory [Default tn]
 
 =item B<-force>I<>
 
-Force overwrite of existing thumbnails
+Force overwrite of existing thumbnails and HTML
 otherwise they are only written when changed [Default OFF]
+
+=item B<-force_html>I<>
+
+Force rewrite of HTML [Default OFF]
 
 =item B<-sample>I<>
 
@@ -4590,9 +5699,47 @@ List of thumbnail convert options
 
 =back
 
-=head2 Theme Options:
+=head2 Plugin and Theme Options:
 
 =over 4
+
+=item B<--data_path>I<=I<strings>>
+
+Path for themes, plugins, language files, etc...
+ [Default /etc/album /usr/share/album /home/dave/.album]
+
+=item B<-plugin>I<=I<plugin>>
+
+Load a plugin.
+
+=item B<-plugin_usage>I<=I<plugin>>
+
+Show usage for a plugin.
+
+=item B<-plugin_info>I<=I<plugin>>
+
+Print info for a specific plugins.
+
+=item B<--plugin_path>I<=I<strings>>
+
+Add a path to search for plugins.
+	 [Default @DATA_PATH/plugins]
+
+=item B<-plugin_post>I<=I<string>>
+
+Default postfix for plugins. [Default .alp]
+
+=item B<-list_plugins>I<>
+
+Print info for all known plugins.
+
+=item B<-list_hooks>I<>
+
+Show all known plugin hooks (for developers).
+
+=item B<-hook_info>I<=I<hook>>
+
+Show all known plugin hooks (for developers).
 
 =item B<-theme>I<=I<dir>>
 
@@ -4602,21 +5749,9 @@ Specify a theme directory
 
 In case you want to refer to the theme by absolute URL
 
-=item B<-theme_path>I<=I<dir>>
+=item B<--theme_path>I<=I<dir>>
 
-Directory that contains themes
-
-=item B<-more>I<>
-
-To show more options.
-
-=item B<-More>I<>
-
-To show even more options.
-
-=item B<-version>I<>
-
-Display program version info
+Directories that contain themes [Default /data/proj/album/Themes/]
 
 =back
 
@@ -4643,6 +5778,10 @@ Path to ffmpeg (extracting movie frames) [Default ffmpeg]
 =item B<-conf_file>I<=I<string>>
 
 Conf filename for album configurations [Default album.conf]
+
+=item B<-conf_version>I<>
+
+Configuration file version
 
 =item B<-dev_null>I<=I<string>>
 
