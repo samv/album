@@ -81,7 +81,7 @@
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
     A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
 
-    T&nbsp;w&nbsp;o&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;M&nbsp;I&nbsp;N&nbsp;I&nbsp; &nbsp;H&nbsp;O&nbsp;W&nbsp;-&nbsp;T&nbsp;O&nbsp;
+    F&nbsp;i&nbsp;v&nbsp;e&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;F&nbsp;e&nbsp;a&nbsp;t&nbsp;u&nbsp;r&nbsp;e&nbsp; &nbsp;R&nbsp;e&nbsp;q&nbsp;u&nbsp;e&nbsp;s&nbsp;t&nbsp;s&nbsp;,&nbsp; &nbsp;B&nbsp;u&nbsp;g&nbsp;s&nbsp; &nbsp;a&nbsp;n&nbsp;d&nbsp; &nbsp;P&nbsp;a&nbsp;t&nbsp;c&nbsp;h&nbsp;e&nbsp;s&nbsp;
 <br>
 
   </font>
@@ -117,8 +117,8 @@
       <tr bgcolor=#BBBBBB><td>
         <h3>Documentation
           <font size='-1'>
-<br>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;English
-<br>&nbsp;&nbsp; <img src="fre/flag.png"> &nbsp;&nbsp;<a href="fre">français</a>
+<br>&nbsp;&nbsp; <img src=".././flag.png"> &nbsp;&nbsp;<a href="../">English</a>
+<br>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;français
 
           </font>
 </h3>
@@ -148,173 +148,67 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href='#Simple_album'><li>Simple album</a>
- <a href='#Add_captions'><li>Add captions</a>
- <a href='#Hiding_Photos'><li>Hiding Photos</a>
- <a href='#Using_A_Theme'><li>Using A Theme</a>
- <a href='#Medium_images'><li>Medium images</a>
- <a href='#Adding_some_EXIF_captions'><li>Adding some EXIF captions</a>
- <a href='#Adding_more_albums'><li>Adding more albums</a>
- <a href='#Translated_by:'><li>Translated by:</a>
+<ol><a href='#Feature_Requests'><li>Feature Requests</a>
+ <a href='#Bug_reports'><li>Bug reports</a>
+ <a href='#Writing_Patches,_Modifying_album'><li>Writing Patches, Modifying album</a>
+ <a href='#Known_Bugs'><li>Known Bugs</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name='Simple_album'>1:</a>   Simple album</b>
+<b><a name='Feature_Requests'>1:</a>   Feature Requests</b>
 
-Presuming you've already installed album properly, we can do some
-simple cases.  If you have any errors or problems here, see the
-installation docs.
+If there's something you want added to album, first make sure
+it doesn't already exist!  Check the man page or the usage:
 
-You need a web directory to put themes and your photo album.
-We'll use /home/httpd/test in this documentation.  This needs
-to be viewable by a webserver.  In this example we'll use the URL:
-  http://myserver/test/
+<code>% man album</code>
+<code>% album -h</code>
 
-Adjust your commands/URLs appropriately
+Also see -more and -More options.
 
-First create a directory and put some images in it.  We'll call this:
-  /home/httpd/test/Photos
+If you don't see it there, consider writing a patch or a plugin.
 
-And we'll add some images called 'IMG_001.jpg' through 'IMG_004.jpg'
+<b><a name='Bug_reports'>2:</a>   Bug reports</b>
 
-Now for the simple case, just run album:
+Before you submit a bug, please make sure you have the most current release of album!
 
-<code>% album /home/httpd/test/Photos</code>
+When submitting a bug, I need to know <b>at least</b>:
 
-Now you can view the album in a web browser at something like:
-  http://myserver/test/Photos
+1) Your operating system
+2) The exact problem and the exact error messages
 
-<b><a name='Add_captions'>2:</a>   Add captions</b>
+I'd also like to know, if possible:
+1) The exact album command you ran
+2) The output from the command
 
-Create a file /home/httpd/test/Photos/captions.txt with the following
-contents (use the 'tab' key where you see "  [tab]  ")
+And I generally also need the debug output of album:
 
--- captions.txt ---------
-IMG_001.jpg  [tab]  First image name
-IMG_002.jpg  [tab]  Second image
-IMG_003.jpg  [tab]  Another image  [tab]   with a caption!
-IMG_004.jpg  [tab]  Last image     [tab]   with another caption.
--------------------------
+<code>% album -d</code>
 
-And run album again:
+Finally, make sure that you've got the most current
+version of album, and the most current themes as well.
 
-<code>% album /home/httpd/test/Photos</code>
+<b><a name='Writing_Patches,_Modifying_album'>3:</a>   Writing Patches, Modifying album</b>
 
-And you'll see the captions change.
+If you want to modify album, you might want to check with me
+first to make sure it's not already on my development plate.
 
-Now create a file with text in: /home/httpd/test/Photos/header.txt
+If not, then consider writing it as a plugin instead of patching
+the album source.  This avoids adding complexity to album for
+features that may not be globally used.
+[[plugin support is expected to be included in the 3.1 release]]
 
-And run album again.  You'll see that text at the top of the page.
+If it needs to go into album (for example, if it's a bug), then
+please make sure to first download the most <a href='http://MarginalHacks.com/bin/album'>recent copy of album</a>
+first, then patch that and send me either a diff, a patch, or the
+full script.  If you comment off the changes you make that'd be great too.
 
-<b><a name='Hiding_Photos'>3:</a>   Hiding Photos</b>
+<b><a name='Known_Bugs'>4:</a>   Known Bugs</b>
 
-There are a few ways to hide photos/files/directories, but we'll use
-the captions file.  Try commenting out an image with '#' in captions.txt:
+v3.10:  Burning CDs doesn't quite work with theme absolute paths.
+v3.11:  -clear_* and -no_* doesn't clear out parent directory options.
 
--- captions.txt ---------
-IMG_001.jpg  [tab]  First image name
-#IMG_002.jpg  [tab]  Second image
-IMG_003.jpg  [tab]  Another image  [tab]   with a caption!
-IMG_004.jpg  [tab]  Last image     [tab]   with another caption.
--------------------------
-
-Run album again, and you'll see that IMG_002.jpg is now missing.
-If we had done this before running album the first time, we wouldn't
-have ever generated the medium or thumbnail images.  If you like,
-you can remove them now with -clean:
-
-<code>% album -clean /home/httpd/test/Photos</code>
-
-<b><a name='Using_A_Theme'>4:</a>   Using A Theme</b>
-
-If themes were installed properly and are in your theme_path then
-you should be able to use a theme with your album:
-
-<code>% album -theme Blue /home/httpd/test/Photos</code>
-
-The photo album should now be using the Blue theme.  If it has
-a bunch of broken images, then your theme probably hasn't been
-installed into a web-accessible directory, see the Installation docs.
-
-Album saves the options you specify, so the next time you run album:
-
-<code>% album /home/httpd/test/Photos</code>
-
-You'll still be using the Blue theme.  To turn off a theme, you can:
-
-<code>% album -no_theme /home/httpd/test/Photos</code>
-
-<b><a name='Medium_images'>5:</a>   Medium images</b>
-
-Full resolution images are usually too big for a web album, so
-we'll use medium images on the image pages:
-
-<code>% album -medium 33% /home/httpd/test/Photos</code>
-
-You can still access the full size images by clicking on the medium image, or:
-
-<code>% album -just_medium /home/httpd/test/Photos</code>
-
-Will keep the full size image from being linked in (presuming we'd
-run with the -medium option at some point)
-
-<b><a name='Adding_some_EXIF_captions'>6:</a>   Adding some EXIF captions</b>
-
-Let's add aperture info to the captions of each image.
-
-<code>% album -exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
-
-This will only add aperture information for any images that have specified
-the 'Aperture' exif tag (the part between the '%' signs).  We also put
-a &lt;br&gt; tag in there so the exif info is on a new line.
-
-We can add more exif info:
-
-<code>% album -exif "&lt;br&gt;focal: %FocalLength%" /home/httpd/test/Photos</code>
-
-Because album saved our options before, we now get both EXIF tags for any
-images that specify Aperture and FocalLength.  Let's remove aperture:
-
-<code>% album -no_exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
-
-The '-no_exif' option has to match the previous exif string exactly or
-it will be ignored.  You can also edit the config file that album created:
-  /home/httpd/test/Photos/album.conf
-And remove it there.
-
-<b><a name='Adding_more_albums'>7:</a>   Adding more albums</b>
-
-Let's say we go on a trip to spain.  We take some photos and put them in:
-  /home/httpd/test/Photos/Spain/
-
-Now run album again on the top level:
-
-<code>% album /home/httpd/test/Photos</code>
-
-This will fixup Photos so it now links to spain and will run album
-on Spain/ as well, with the same settings/theme, etc..
-
-Now let's go on another trip, and we create:
-  /home/httpd/test/Photos/Italy/
-
-We could run album on the top level:
-
-<code>% album /home/httpd/test/Photos</code>
-
-But that would rescan the Spain directory which hasn't changed.
-Album usually won't generate any HTML or thumbnails unless it needs to,
-but it can still waste time, especially as our albums get bigger.
-So we can tell it to just add the new directory:
-
-<code>% album -add /home/httpd/test/Photos/Italy</code>
-
-This will fix the top index (in Photos) and generate the Italy album.
-
-<b><a name='Translated_by:'>8:</a>   Translated by:</b>
-
-David Ljung Madison  [http://GetDave.com/]
 
 </pre>
 <p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>

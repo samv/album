@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.10';
+  my $VERSION=  '3.11';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -164,6 +164,7 @@ add_option(3,'plugin_info', \&list_plugins, args=>'<plugin>', one_time=>1, usage
 add_option(10,'plugin_path', OPTION_ARR, default=>['@DATA_PATH/plugins'], usage=>"Add a path to search for plugins.\n\t");
 add_option(10,'plugin_post', OPTION_STR, default=>'.alp', usage=>"Default postfix for plugins.");
 add_option(3,'list_plugins', \&list_plugins, one_time=>1, usage=>"Print info for all known plugins.");
+add_option(10,'list_plugins_crf', \&list_plugins, one_time=>1, usage=>"Print info for all known plugins in computer readable format.");
 add_option(4,'list_hooks', \&list_hooks, one_time=>1, usage=>"Show all known plugin hooks (for developers).");
 add_option(4,'hook_info', \&list_hooks, args=>'<hook>', one_time=>1, usage=>"Show all known plugin hooks (for developers).");
 
@@ -316,6 +317,7 @@ my $IMAGE_TYPES	=
 #   $opt->{_theme_line}{..}	The starting line
 #   $opt->{_theme_full}		Full theme path
 #   $opt->{_captions}{$dir}	Captions cache for a path
+#   $opt->{_done_exif}{$pic}	Have we run exif for a photo?
 #   $opt->{_read_conf}{$conf}	Avoid reading conf files multiple times
 # 				(in opt to survive multiple do_album calls)
 #   $opt->{_depth_diff}		Beginning depth of starting album
@@ -491,7 +493,7 @@ sub usage {
 
   version();
 
-  my $plugin = get_plugin($opt,$option,$val);
+  my $plugin = $option =~ /plugin/ ? get_plugin($opt,$option,$val) : undef;
 
   # If it was called from -h, -more or -More
   my $show=1;
@@ -724,6 +726,8 @@ sub deprecated_option {
 sub get_option {
   my ($opt,$option,$plugin) = @_;
 
+	#$option =~ s/(clear|no)[_-]?//;	# Doesn't quite work in save_conf
+
   if ($plugin) {
     # Make sure we've loaded the plugin and get the full plugin name
     $plugin = get_plugin($opt,$option,$plugin);
@@ -954,6 +958,10 @@ sub defer_to_argv {
 # Add to the list of albums
 sub add_album_dir {
   my ($opt,$dir) = @_;
+
+	# If on windows, C:/Photos is preferred over C:\Photos
+  usage("Use '/' instead of '\\' in paths [$dir]")
+  	if $opt->{windows} && $dir =~ /^[a-z]:\\/i;
 
   my $path = port_abs_path($opt,$dir);
   return if $opt->{_album}{$path}{added}++;
@@ -1349,8 +1357,8 @@ sub scrub_opts {
       push(@{$opt->{_album}{$parent}{add}}, $name);
     }
 
-    # ffmpeg can handle AVI, MOV
-    $IMAGE_TYPES.="|AVI|MOV|MOOV" if $opt->{ffmpeg};
+    # ffmpeg can handle AVI, MOV (see 'is_movie()')
+    $IMAGE_TYPES.="|AVI|MOV|MOOV|MP4" if $opt->{ffmpeg};
 
     #########################
     # Windows crap
@@ -1387,6 +1395,9 @@ sub scrub_opts {
   usage("Need to specify -medium <geom> with -just_medium option")
     if $opt->{just_medium} && !$opt->{medium};
 
+  # Old versions of album saved '\>' in medium options, but that's broke now.
+  $opt->{medium} =~ s/\\//g;
+
   # -clean and hashes is ugly
   $opt->{hashes}=0 if $opt->{clean} || $opt->{d} || $opt->{q};
 
@@ -1420,7 +1431,7 @@ sub get_themes {
 
   # -theme_url needs -theme
   hash_warn($opt,"WARNING: -theme_url still requires -theme option, it doesn't replace it")
-    if option_changed($opt,'theme_url') && !$theme && !$MAIN::WARNED_THEME_URL++;
+    if option_changed($opt,'theme_url') && $opt->{theme_url} && !$theme && !$MAIN::WARNED_THEME_URL++;
 
   # -no_theme
   unless ($theme) {
@@ -2135,7 +2146,7 @@ sub show_hashes {
 sub stop_hashes {
   my ($opt) = @_;
 
-  my $val = do_hook($opt,undef, 'show_hashes');
+  my $val = do_hook($opt,undef, 'stop_hashes');
   # Description: Finish the progress meter
   # Description: (You should hook all or none of the *_hashes hooks.)
   # Returns: 1 if you don't want normal hashes printed
@@ -2333,15 +2344,19 @@ sub list_plugins {
   foreach my $plugin ( @plugins ) {
     my $info = $opt->{_plugin}{$plugin};
 
-    print "-"x length($plugin),"\n";
-    print "$plugin";
-    print " v$info->{version}" if $info->{version};
-    print ":\n";
-    print "-"x length($plugin),"\n";
+    if ($option =~ /crf/) {
+      print "PLUGIN: $plugin;;$info->{version};;$info->{author};;$info->{href}\n";
+    } else {
+      print "-"x length($plugin),"\n";
+      print "$plugin";
+      print " v$info->{version}" if $info->{version};
+      print ":\n";
+      print "-"x length($plugin),"\n";
 
-    print "Author:  $info->{author}";
-    print " <$info->{href}>" if $info->{href};
-    print "\n\n";
+      print "Author:  $info->{author}";
+      print " <$info->{href}>" if $info->{href};
+      print "\n\n";
+    }
 
     print "$opt->{_plugin}{$plugin}{description}\n";
     print "\n";
@@ -2570,6 +2585,7 @@ sub clean_thumb_dir {
 
   # Check each file to make sure it's a currently used thumbnail or image_page
   foreach my $file ( @files ) {
+    next unless -f "$dir/$file";	# Don't bother with directories.
     my $remove;
     my $name = $file;
     my $html = index_page($opt) ? ('.'.index_page($opt)) : $opt->{html};
@@ -2744,7 +2760,13 @@ sub exif_replace {
 sub get_exif_caption {
   my ($opt,$data,$pic) = @_;
 
-  do_hooks($opt,$data, 'get_exif_caption', $pic);
+  my $dir = $data->{paths}{dir};
+  my $path = "$dir/$pic";
+
+  # Only do it once per image (it will get saved in $opt->{_captions}{dir})
+  return if $opt->{_done_exif}{$path}++;
+
+  do_hooks($opt,$data, 'get_exif_caption', $pic, $dir);
   # Description: Creates EXIF captions for a picture.
   # Returns: None.
   # Returns: Optionally adds to $data->{obj}{$pic}{exif, exif_image, exif_album}
@@ -2753,8 +2775,6 @@ sub get_exif_caption {
   return unless $opt->{exif} || $opt->{exif_image} || $opt->{exif_album};
   return if !$opt->{jhead};	# Saw a jhead error..
   return unless $pic =~ /\.jpe?g$/i;
-
-  my $dir = $data->{paths}{dir};
 
   my $exif = get_exif_info($opt,$data,"$dir/$pic");
   return unless $exif;
@@ -3382,7 +3402,9 @@ sub Parent_Album {
   my \$dotdots = num('parent_albums') - \$num - 1;
   \$dotdots++ if Image_Page();
   my \$str = "";
-  \$str .= "<a href='". ("../"x\$dotdots). Option('index'). "'>" if \$dotdots;
+	my \$index = Option('index');
+	\$index = \$index || Option('default_index') if Option('burn');
+	\$str .= "<a href='". ("../"x\$dotdots). \$index. "'>" if \$dotdots;
   \$str .= Pretty(\$parent_albums->[\$num],1);
   \$str .= "</a>" if \$dotdots;
   \$str;
@@ -3398,8 +3420,10 @@ sub Parent_Albums {
 
 # Go back to a previous index, or just ".." for the top page of the album
 sub Back {
+	my \$index = Option('index');
+	\$index = \$index || Option('default_index') if Option('burn');
   (num('parent_albums')>1 || Image_Page()) ?
-    "'../".Option('index')."'" : "'".Option('top')."'";
+    "'../".\$index."'" : "'".Option('top')."'";
 }
 
 #########################
@@ -3687,6 +3711,22 @@ sub Image_Array {
   \$str;
 }
 
+# Show an image using a repeating table background
+# This is an internal album function - don't use this as it may change
+sub Image_Repeat_td {
+  my (\$rx, \$ry, \$src, \$x, \$y) = \@_;
+	\$rx = \$rx || \$x;
+	\$ry = \$ry || \$y;
+  "<td width='\$rx' height='\$ry' background='\$src'></td>";
+}
+sub Image_Repeat {
+  my (\$rx, \$ry, \$src, \$x, \$y) = \@_;
+  \$rx = \$rx || \$x;
+  \$ry = \$ry || \$y;
+  #"<div style='float:left;width:\$rx; height:\$ry; background-image:url(\$src);
+	"<table cellpadding=0 cellspacing=0 width='\$rx'><tr height='\$ry'><td background='\$src'></td></tr></table>";
+}
+
 # Borders can be 0 pieces, 4 pieces, 8 or 12
 # Called starting from top (left) going clockwise.
 #   12 piece borders     
@@ -3755,7 +3795,7 @@ COLOR_BORDER
   if (scalar \@_ == 4) {
     my (\$T,\$R,\$B,\$L) = \@_;
 
-    # Stretch top,bottom to fit image
+    # Old method: Stretch top,bottom to fit image
     my \@t = \@\$T; my \@b = \@\$B;
     my \@l = \@\$L; my \@r = \@\$R;
     \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width];
@@ -3777,23 +3817,44 @@ BORDER4
   if (scalar \@_ == 8) {
     my (\$TL,\$T,\$TR,\$R,\$BR,\$B,\$BL,\$L) = \@_;
 
-    # Stretch top,bottom to fit image
-    my \@t = \@\$T; my \@b = \@\$B;
-    my \@l = \@\$L; my \@r = \@\$R;
-    # Just *try* to read this mess...
-    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width];
-    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width];
-    \$l[\$height] = \$y;
-    \$r[\$height] = \$y;
+#    # Old Method: Stretch top,bottom to fit image
+#    my \@t = \@\$T; my \@b = \@\$B;
+#    my \@l = \@\$L; my \@r = \@\$R;
+#    # Just *try* to read this mess...
+#    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width];
+#    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width];
+#    \$l[\$height] = \$y;
+#    \$r[\$height] = \$y;
+#
+#    my (\$tl,\$t,\$tr,\$r,\$br,\$b,\$bl,\$l) =
+#      map( Image_Array(\@\$_), 
+#        (\$TL,\\\@t,\$TR,\\\@r,\$BR,\\\@b,\$BL,\\\@l));
+#
+#    print <<BORDER8;
+#					<span style='white-space: nowrap'>\$tl\$t\$tr</span><br />
+#					<span style='white-space: nowrap'>\$l\$img\$r</span><br />
+#					<span style='white-space: nowrap'>\$bl\$b\$br</span><br />
+#BORDER8
 
-    my (\$tl,\$t,\$tr,\$r,\$br,\$b,\$bl,\$l) =
-      map( Image_Array(\@\$_), 
-        (\$TL,\\\@t,\$TR,\\\@r,\$BR,\\\@b,\$BL,\\\@l));
+    # New Method: Repeat everything to fit image.
+    my \$t = Image_Repeat_td(\$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width],0, \@\$T);
+    my \$b = Image_Repeat_td(\$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width],0, \@\$B);
+    my \$l = Image_Repeat_td(0,\$y, \@\$L);
+    my \$r = Image_Repeat_td(0,\$y, \@\$R);
+    my (\$tl,\$tr,\$br,\$bl) = map( Image_Array(\@\$_), (\$TL,\$TR,\$BR,\$BL));
 
     print <<BORDER8;
-					<span style='white-space: nowrap'>\$tl\$t\$tr</span><br />
-					<span style='white-space: nowrap'>\$l\$img\$r</span><br />
-					<span style='white-space: nowrap'>\$bl\$b\$br</span><br />
+					<table border='0' cellpadding='0' cellspacing='0'><tr>
+							<td>\$tl</td>\$t<td>\$tr</td>
+					</tr></table>
+					<table border='0' cellpadding='0' cellspacing='0'><tr>
+							\$l
+							<td>\$img</td>
+							\$r
+					</tr></table>
+					<table border='0' cellpadding='0' cellspacing='0'><tr>
+							<td>\$bl</td>\$b<td>\$br</td>
+					</tr></table>
 BORDER8
     return;
   }
@@ -3810,38 +3871,70 @@ BORDER8
     return Border(\$img,\$x,\$y,\$T,\$R,\$B,\$L) if \$border && !\$corners12;
     return Border(\$img,\$x,\$y) if !\$border && !\$corners12;
 
-    # Stretch top,bottom,sides to fit image
-    my \@t = \@\$T; my \@b = \@\$B;
-    my \@l = \@\$L; my \@r = \@\$R;
-    # Just *try* to read this mess...
-    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width];
-    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width];
-    \$l[\$height] = \$y-\$LT->[\$height]-\$LB->[\$height];
-    \$r[\$height] = \$y-\$RT->[\$height]-\$RB->[\$height];
+#    # Old Method: Stretch top,bottom,sides to fit image
+#    my \@t = \@\$T; my \@b = \@\$B;
+#    my \@l = \@\$L; my \@r = \@\$R;
+#    # Just *try* to read this mess...
+#    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width];
+#    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width];
+#    \$l[\$height] = \$y-\$LT->[\$height]-\$LB->[\$height];
+#    \$r[\$height] = \$y-\$RT->[\$height]-\$RB->[\$height];
+#
+#    my (\$tl,\$t,\$tr,\$rt,\$r,\$rb,\$br,\$b,\$bl,\$lb,\$l,\$lt) =
+#      map( Image_Array(\@\$_), 
+#        (\$TL,\\\@t,\$TR,\$RT,\\\@r,\$RB,\$BR,\\\@b,\$BL,\$LB,\\\@l,\$LT));
+#
+#    # Embedded stuff is aligned top in case there are controls, otherwise
+#    # align middle in case the thumbnail is very small and there's blank space.
+#    my \$align = \$img =~ /<embed/ ? 'top' : 'middle';
+#    print <<BORDER12;
+#					<table border='0' cellpadding='0' cellspacing='0'>
+#						<tr>
+#							<td colspan='3'>\$tl\$t\$tr</td>
+#						</tr> <tr>
+#							<td>\$lt</td>
+#							<td rowspan='3' valign=\$align>\$img</td>
+#							<td>\$rt</td>
+#						</tr> <tr>
+#							<td>\$l</td>
+#							<td>\$r</td>
+#						</tr> <tr>
+#							<td>\$lb</td>
+#							<td>\$rb</td>
+#						</tr> <tr>
+#							<td colspan='3'>\$bl\$b\$br</td>
+#						</tr>
+#					</table>
+#BORDER12
 
-    my (\$tl,\$t,\$tr,\$rt,\$r,\$rb,\$br,\$b,\$bl,\$lb,\$l,\$lt) =
-      map( Image_Array(\@\$_), 
-        (\$TL,\\\@t,\$TR,\$RT,\\\@r,\$RB,\$BR,\\\@b,\$BL,\$LB,\\\@l,\$LT));
+    # New Method: Repeat everything to fit image.
+    my \$t = Image_Repeat_td(\$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width],0, \@\$T);
+    my \$b = Image_Repeat_td(\$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width],0, \@\$B);
+    my \$l = Image_Repeat_td(0,\$y-\$LT->[\$height]-\$LB->[\$height], \@\$L);
+    my \$r = Image_Repeat_td(0,\$y-\$RT->[\$height]-\$RB->[\$height], \@\$R);
+    my (\$tl,\$tr,\$rt,\$rb,\$br,\$bl,\$lb,\$lt) =
+      map( Image_Array(\@\$_), (\$TL,\$TR,\$RT,\$RB,\$BR,\$BL,\$LB,\$LT));
 
     # Embedded stuff is aligned top in case there are controls, otherwise
     # align middle in case the thumbnail is very small and there's blank space.
     my \$align = \$img =~ /<embed/ ? 'top' : 'middle';
+		# This is a freakin' mess.  Ugh.  Maybe it's time to convert to <div>?
     print <<BORDER12;
 					<table border='0' cellpadding='0' cellspacing='0'>
 						<tr>
-							<td colspan='3'>\$tl\$t\$tr</td>
+							<td colspan='3'><table cellpadding='0' cellspacing='0'><tr><td>\$tl</td>\$t<td>\$tr</td></tr></table></td>
 						</tr> <tr>
 							<td>\$lt</td>
 							<td rowspan='3' valign=\$align>\$img</td>
 							<td>\$rt</td>
 						</tr> <tr>
-							<td>\$l</td>
-							<td>\$r</td>
+							\$l
+							\$r
 						</tr> <tr>
 							<td>\$lb</td>
 							<td>\$rb</td>
 						</tr> <tr>
-							<td colspan='3'>\$bl\$b\$br</td>
+							<td colspan='3'><table cellpadding='0' cellspacing='0'><tr><td>\$bl</td>\$b<td>\$br</td></tr></table></td>
 						</tr>
 					</table>
 BORDER12
@@ -4490,6 +4583,11 @@ sub gather_contents {
 
   my $dir = $data->{paths}{dir};
 
+  return if do_hook($opt,$data,'gather_contents', $dir);
+  # Description: Gather the list of pictures and subdirectories for a directory
+  # Description: Should populate the @{$data->{pics}} and @{$data->{dirs}} arrays
+  # Returns: 1 to skip normal gather_contents code
+
   #########################
   # Get images and subdirectories
   #########################
@@ -4498,44 +4596,49 @@ sub gather_contents {
   closedir(DIR);
 
   # Sort through the contents
-  foreach my $bob ( @contents ) {
-    my $path = "$dir/$bob";
-    next if $bob =~ /^CVS|SCCS|RCS$/;	# Ignore revision control directories
-    next if $bob eq ".xvpics";		# Silly xv
-    next if $bob eq $opt->{dir};	# Thumbnail/HTML directory
+  foreach my $item ( @contents ) {
+    next if do_hook($opt,$data,'gather_contents_item', $dir, $item);
+    # Description: Handle the gathering of a file item in gather_contents.
+    # Description: Generally ignores the file or adds to @{$data->{pics}} and @{$data->{dirs}}
+    # Returns: 1 to finish handling this file (don't run gather_contents for it)
+
+    my $path = "$dir/$item";
+    next if $item =~ /^CVS|SCCS|RCS$/;	# Ignore revision control directories
+    next if $item eq ".xvpics";		# Silly xv
+    next if $item eq $opt->{dir};	# Thumbnail/HTML directory
     next if -f "$path$opt->{hide_album}";
     next if -f "$path/$opt->{hide_album}";
-    next if $bob =~ /^\./ && !$opt->{all};	# Dot files/directories
+    next if $item =~ /^\./ && !$opt->{all};	# Dot files/directories
 
     # Ignore the .no_album/.hide_album/.not_img/.txt.. directive files
     next unless -s $path || -d $path;		# Ignore zero byte files
       # (windows can have zero byte directories)
     # Wrong!  no_album doesn't ignore the file/dir, it just doesn't descend!
     #next if -f "$path$opt->{no_album}";	# Ignore .no_album files/directories
-    next if $bob =~ /\Q$opt->{not_img}\E$/;
-    next if $bob =~ /\Q$opt->{no_album}\E$/;
-    next if $bob =~ /\Q$opt->{hide_album}\E$/;
+    next if $item =~ /\Q$opt->{not_img}\E$/;
+    next if $item =~ /\Q$opt->{no_album}\E$/;
+    next if $item =~ /\Q$opt->{hide_album}\E$/;
 
     # Directories
-    push(@{$data->{dirs}}, $bob) if -d $path;
+    push(@{$data->{dirs}}, $item) if -d $path;
     next if -d $path;
 
     # Files
     next if $opt->{known_images} && !is_image($opt,$path);
-    next if $bob =~ /\.(txt|htaccess|cvsignore)$/;
-    next if $bob =~ /~$/;		# Emacs backup files
-    next if $bob eq index_page($opt,1);	# Index html
-    next if $bob eq $opt->{header};	# Header/footer
-    next if $bob eq $opt->{footer};
-    next if $bob eq $opt->{captions};	# Captions
-    next if $bob eq $opt->{conf_file};
-    push(@{$data->{pics}}, $bob);
+    next if $item =~ /\.(txt|htaccess|cvsignore)$/;
+    next if $item =~ /~$/;		# Emacs backup files
+    next if $item eq index_page($opt,1);	# Index html
+    next if $item eq $opt->{header};	# Header/footer
+    next if $item eq $opt->{footer};
+    next if $item eq $opt->{captions};	# Captions
+    next if $item eq $opt->{conf_file};
+    push(@{$data->{pics}}, $item);
   }
 }
 
 sub is_movie {
   my ($opt,$pic) = @_;
-  $pic =~ /\.(mpe?g|mov|avi)$/i ? 1 : 0;
+  $pic =~ /\.(mpe?g|mov|avi|mp4)$/i ? 1 : 0;
 }
 
 # Deal with each image/picture/file/whatever
@@ -4833,13 +4936,13 @@ sub do_album {
   #########################
   # Start hooks
   #########################
-  do_hook($opt,$data, 'do_album_top', $dir, $album) if $data->{start};
+  return if $data->{start} && do_hook($opt,$data, 'do_album_top', $dir, $album);
   # Description: Start of an album (top only, no sub-albums)
-  # Returns: No return value needed
+  # Returns: Return false to skip album
 
-  do_hook($opt,$data, 'do_album', $dir, $album);
+  return if do_hook($opt,$data, 'do_album', $dir, $album);
   # Description: Start of an album or sub-album
-  # Returns: No return value needed
+  # Returns: Return false to skip album
 
   # Print some info
   my $w = $opt->{hash_width} - $opt->{num_hashes} - 3 - 8;
@@ -4856,11 +4959,11 @@ sub do_album {
   # Get the list of pics/dirs
   gather_contents($opt,$data);
 
-  # Clean out thumbnail directory of images we don't have anymore
-  clean_thumb_dir($opt,$data) if $opt->{clean};
-
   # Lookup captions and get names of files
   get_captions($opt,$data);
+
+  # Clean out thumbnail directory of images we don't have anymore
+  clean_thumb_dir($opt,$data) if $opt->{clean};
 
   # Sort pictures/dirs
   sort_info($opt,$data);
@@ -5178,7 +5281,9 @@ sub movie_frame {
   #my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f jpeg $tmpout";
 
   ### ffmpeg -f singlejpeg
-  my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f singlejpeg $qimg";
+	#my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f singlejpeg $qimg";
+	# 'singlejpeg' has been replaced by 'mjpeg'??  Don't know when..  *grrr*
+  my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f mjpeg $qimg";
   print STDERR "movie_frame() run: $cmd\n" if $opt->{d};
   system("$cmd > $opt->{dev_null} 2>&1");
   return $img unless $?;
@@ -5223,8 +5328,8 @@ sub medium {
   # Description: so check in your hook for the types you can read.
   # Returns: Full path to medium image
   if ($obj->{medium}{path}) {
-    $obj->{medium}{path} = $obj->{medium}{file};
-    $obj->{medium}{path} =~ s|.*$opt->{slash}||g;
+    $obj->{medium}{file} = $obj->{medium}{path};
+    $obj->{medium}{file} =~ s|.*$opt->{slash}||g;
     return get_size($opt,'medium',$obj)
   }
 
@@ -5285,8 +5390,8 @@ sub thumbnail {
   # Description: so check in your hook for the types you can read.
   # Returns: Full path to the thumbnail
   if ($obj->{thumb}{path}) {
-    $obj->{thumb}{path} = $obj->{thumb}{file};
-    $obj->{thumb}{path} =~ s|.*$opt->{slash}||g;
+    $obj->{thumb}{file} = $obj->{thumb}{path};
+    $obj->{thumb}{file} =~ s|.*$opt->{slash}||g;
     return get_size($opt,'thumb',$obj);
   }
 

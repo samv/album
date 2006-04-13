@@ -1,0 +1,163 @@
+Configuration Files
+
+ITEM: Configuration Files
+
+Album behavior can be controlled through command-line options, such as:
+
+<code>% album -no_known_images</code>
+
+<code>% album -geometry 133x100</code>
+
+<code>% album -exif "File: %File name% " -exif "taken with %Camera make%"</code>
+
+But these options can also be specified in a configuration file:
+
+<tt># Example configuration file      # comments are ignored
+known_images       0            # known_images=0 is same as no_known_images
+geometry           133x100
+exif               "File: %File name% "
+exif               "taken with %Camera make%"</tt>
+
+The configuration file format is one option per line optionally followed
+by whitespace and the option value.  Boolean options can be set without
+the option value or can be cleared/set with 0 and 1.
+
+ITEM: Location Of Configuration Files
+
+album looks for configuration files in a few locations, in order:
+
+/etc/album/conf              System-wide settings
+/etc/album.conf              System-wide settings
+$BASENAME/album.conf         In the 'album' install directory
+$HOME/.albumrc               User specific settings
+$HOME/.album.conf            User specific settings
+$DOT/album.conf              User specific (I keep my dot files elsewhere)
+$USERPROFILE/album.conf      For Windows (C:\Documents and Settings\TheUser)
+
+album also looks for album.conf files inside the photo album directories.
+Sub-albums can also have album.conf which will alter the settings 
+from parent directories (this allows you to, for example, have a 
+different theme for part of your photo album).  Any album.conf files 
+in your photo album directories will configure the album and any sub-albums
+unless overridden by any album.conf settings found in a sub-album.
+
+As an example, consider a conf for a photo album at 'images/album.conf':
+
+<tt>theme       Dominatrix6
+columns     3</tt>
+
+And another conf inside 'images/europe/album.conf':
+
+<tt>theme       Blue
+crop</tt>
+
+album will use the Dominatrix6 theme for the images/ album and all of
+it's sub-albums except for the images/europe/ album which will use
+the Blue theme.  All of the images/ album and sub-albums will have
+3 columns since that wasn't changed in the images/europe/ album, however
+all of the thumbnails in images/europe/ and all of it's sub-albums
+will be cropped due to the 'crop' configuration setting.
+
+ITEM: Saving Options
+
+Whenever you run an album, the command-line options are saved in
+an album.conf inside the photo album directory.  If an album.conf
+already exists it will be modified not overwritten, so it is safe
+to edit this file in a text editor.
+
+This makes it easy to make subsequent calls to album.  If you
+first generate an album with:
+
+<code>% album -crop -no_known_images -theme Dominatrix6 -sort date images/</code>
+
+Then the next time you call album you can just:
+
+<code>% album images/</code>
+
+This works for sub-albums as well:
+
+<code>% album images/africa/</code>
+
+Will also find all of the saved options.
+
+Some 'one-time only' options are not saved for obvious reasons, such
+as -add, -clean, -force, -depth, etc..
+
+Running album multiple times on the same directories can
+get confusing if you don't understand how options are saved.
+Here are some examples.
+
+Premises:
+1) Command-line options are processed before conf options found
+   in the album directory.
+   
+2) Album should run the same the next time you call it if you
+   don't specify any options.
+
+   For example, consider running album twice on a directory:
+
+   <code>% album -exif "comment 1" photos/spain</code>
+   <code>% album photos/spain</code>
+
+   The second time you run album you'll still get the "comment 1"
+   exif comment in your photos directory.
+
+3) Album shouldn't end up with multiple copies of the same array
+   options if you keep calling it with the same command-line
+
+   For example:
+
+   <code>% album -exif "comment 1" photos/spain</code>
+   <code>% album -exif "comment 1" photos/spain</code>
+   
+   The second time you run album you will NOT end up with multiple
+   copies of the "comment 1" exif comment.
+
+   <b>However, please note that if you re-specify the same options
+   each time, album may run slower because it thinks it needs to
+   regenerate your html!</b>
+
+As an example, if you run:
+
+<code>% album -medium 640x640 photos/spain</code>
+  (then later...)
+<code>% album -medium 640x640 photos/spain</code>
+
+Then the second time will unnecessarily regenerate all your
+medium images.  This is <b>much</b> slower.
+
+It's better to specify command-line options only the first time
+and let them get saved, such as:
+
+<code>% album -medium 640x640 photos/spain</code>
+  (then later...)
+<code>% album photos/spain</code>
+
+
+Unfortunately these constraints mean that any new array options will
+be put at the beginning of your list of -exif options.
+
+For example:
+
+<code>% album -exif "comment 1" photos/spain</code>
+<code>% album -exif "comment 2" photos/spain</code>
+
+The comments will actually be ordered "comment 2" then "comment 1"
+
+To specify exact ordering, you may need to re-specify all options.
+
+Either specify "comment 1" to put it back on top:
+
+<code>% album -exif "comment 1" photos/spain</code>
+
+Or just specify all the options in the order you want:
+
+<code>% album -exif "comment 1" -exif "comment 2" photos/spain</code>
+
+Sometimes it may be easier to merely edit the album.conf file directly
+to make any changes.
+
+Finally, this only allows us to accumulate options.
+We can delete options using -no and -clear, see the section on <a href='Section_3.html#Options'>Options</a>,
+these settings (or clearings) will also be saved from run to run.
+

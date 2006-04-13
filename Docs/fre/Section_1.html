@@ -81,7 +81,7 @@
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
     A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
 
-    T&nbsp;w&nbsp;o&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;M&nbsp;I&nbsp;N&nbsp;I&nbsp; &nbsp;H&nbsp;O&nbsp;W&nbsp;-&nbsp;T&nbsp;O&nbsp;
+    O&nbsp;n&nbsp;e&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;I&nbsp;n&nbsp;s&nbsp;t&nbsp;a&nbsp;l&nbsp;l&nbsp;a&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp;
 <br>
 
   </font>
@@ -117,8 +117,8 @@
       <tr bgcolor=#BBBBBB><td>
         <h3>Documentation
           <font size='-1'>
-<br>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;English
-<br>&nbsp;&nbsp; <img src="fre/flag.png"> &nbsp;&nbsp;<a href="fre">français</a>
+<br>&nbsp;&nbsp; <img src=".././flag.png"> &nbsp;&nbsp;<a href="../">English</a>
+<br>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;français
 
           </font>
 </h3>
@@ -148,173 +148,138 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href='#Simple_album'><li>Simple album</a>
- <a href='#Add_captions'><li>Add captions</a>
- <a href='#Hiding_Photos'><li>Hiding Photos</a>
- <a href='#Using_A_Theme'><li>Using A Theme</a>
- <a href='#Medium_images'><li>Medium images</a>
- <a href='#Adding_some_EXIF_captions'><li>Adding some EXIF captions</a>
- <a href='#Adding_more_albums'><li>Adding more albums</a>
- <a href='#Translated_by:'><li>Translated by:</a>
+<ol><a href='#Minimum_Requirements'><li>Minimum Requirements</a>
+ <a href='#Initial_Configuration'><li>Initial Configuration</a>
+ <a href='#Optional_Installation'><li>Optional Installation</a>
+ <a href='#UNIX'><li>UNIX</a>
+ <a href='#Debian_UNIX'><li>Debian UNIX</a>
+ <a href='#Macintosh_OSX'><li>Macintosh OSX</a>
+ <a href='#Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP'><li>Win95, Win98, Win2000/Win2k, WinNT, WinXP</a>
+ <a href='#How_do_I_edit_the_Windows_path'><li>How do I edit the Windows path?</a>
+ <a href='#Macintosh_OS9'><li>Macintosh OS9</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name='Simple_album'>1:</a>   Simple album</b>
+<b><a name='Minimum_Requirements'>1:</a>   Minimum Requirements</b>
 
-Presuming you've already installed album properly, we can do some
-simple cases.  If you have any errors or problems here, see the
-installation docs.
+1) The <a href='http://MarginalHacks.com/Hacks/album/'>album</a> perl script
+2) <a href='http://MarginalHacks.com/redir.cgi?http://imagemagick.org/'>ImageMagick</a> tools (specifically 'convert')
 
-You need a web directory to put themes and your photo album.
-We'll use /home/httpd/test in this documentation.  This needs
-to be viewable by a webserver.  In this example we'll use the URL:
-  http://myserver/test/
+Put the 'album' script and the ImageMagick tools somewhere in your PATH,
+or else call 'album' by it's full path (and specify the full path to
+convert either in the album script or in the album configuration files.
 
-Adjust your commands/URLs appropriately
+<b><a name='Initial_Configuration'>2:</a>   Initial Configuration</b>
 
-First create a directory and put some images in it.  We'll call this:
-  /home/httpd/test/Photos
+The first time you run album it will ask you a few questions to
+setup the configuration for you.  If you're on UNIX/OSX, then you
+can run the first time as root so that it sets up the global configuration
+and themes for everyone instead of just the current user.
 
-And we'll add some images called 'IMG_001.jpg' through 'IMG_004.jpg'
+<b><a name='Optional_Installation'>3:</a>   Optional Installation</b>
 
-Now for the simple case, just run album:
+3) <a href='http://MarginalHacks.com/Hacks/album/Themes.html'>Themes</a>
+4) <a href='http://MarginalHacks.com/redir.cgi?http://ffmpeg.sourceforge.net/'>ffmpeg</a> (for movie thumbnails)
+5) <a href='http://MarginalHacks.com/redir.cgi?http://www.sentex.net/~mwandel/jhead/'>jhead</a> (for reading EXIF info)
+6) plugins
+7) Various <a href='http://MarginalHacks.com/Hacks/album/Download.html'>tools</a> available at MarginalHacks.com
 
-<code>% album /home/httpd/test/Photos</code>
+<b><a name='UNIX'>4:</a>   UNIX</b>
 
-Now you can view the album in a web browser at something like:
-  http://myserver/test/Photos
+Most UNIX distros come with ImageMagick and perl, so just download
+the album script and themes (#1 and #3 above) and you're done.
+To test your install, run the script on a directory with images:
 
-<b><a name='Add_captions'>2:</a>   Add captions</b>
+<code>% album /path/to/my/photos/</code>
 
-Create a file /home/httpd/test/Photos/captions.txt with the following
-contents (use the 'tab' key where you see "  [tab]  ")
+<b><a name='Debian_UNIX'>5:</a>   Debian UNIX</b>
 
--- captions.txt ---------
-IMG_001.jpg  [tab]  First image name
-IMG_002.jpg  [tab]  Second image
-IMG_003.jpg  [tab]  Another image  [tab]   with a caption!
-IMG_004.jpg  [tab]  Last image     [tab]   with another caption.
--------------------------
+album is in debian stable, though right now it's a bit stale.
+I recommend getting the latest version from MarginalHacks.
+You can save the .deb package, and then, as root, run:
 
-And run album again:
+<code>% dpkg -i album.deb</code>
 
-<code>% album /home/httpd/test/Photos</code>
+<b><a name='Macintosh_OSX'>6:</a>   Macintosh OSX</b>
 
-And you'll see the captions change.
+It works fine on OSX, but you have to run it from a terminal window.  Just
+install the album script and ImageMagick tools, and type in the path to album,
+any album options you want, and then the path to the directory with the
+photos in them (all separated by spaces), such as:
 
-Now create a file with text in: /home/httpd/test/Photos/header.txt
+<code>% album -theme Blue /path/to/my/photos/</code>
 
-And run album again.  You'll see that text at the top of the page.
+<b><a name='Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP'>7:</a>   Win95, Win98, Win2000/Win2k, WinNT, WinXP</b>
+(Windows 95, Windows 98, Windows 2000, Windows NT, Windows XP)
 
-<b><a name='Hiding_Photos'>3:</a>   Hiding Photos</b>
+There are two methods to run perl scripts on Windows, either using ActivePerl
+or Cygwin.
 
-There are a few ways to hide photos/files/directories, but we'll use
-the captions file.  Try commenting out an image with '#' in captions.txt:
+ActivePerl is simpler and allows you to run album from a DOS prompt,
+Cygwin is a bulkier but more robust package that gives you access to
+a bunch of UNIX like utilities, and album is run from a bash (UNIX shell)
+prompt.
 
--- captions.txt ---------
-IMG_001.jpg  [tab]  First image name
-#IMG_002.jpg  [tab]  Second image
-IMG_003.jpg  [tab]  Another image  [tab]   with a caption!
-IMG_004.jpg  [tab]  Last image     [tab]   with another caption.
--------------------------
+<b>Cygwin method</b>
+-------------
+1) Install <a href='http://MarginalHacks.com/redir.cgi?http://sources.redhat.com/cygwin/'>Cygwin</a>
+   Choose packages:  perl, ImageMagick, bash
+   Do not use the normal ImageMagick install!  You must use the Cygwin ImageMagick packages!
+2) Install <a href='http://MarginalHacks.com/bin/album'>album</a> in bash path or call using absolute path:
+   <tt>bash% album /some/path/to/photos</tt>
+3) If you want exif info in your captions, you need the Cygwin version of <a href='http://MarginalHacks.com/Hacks/album/tools/jhead.exe'>jhead</a>
 
-Run album again, and you'll see that IMG_002.jpg is now missing.
-If we had done this before running album the first time, we wouldn't
-have ever generated the medium or thumbnail images.  If you like,
-you can remove them now with -clean:
 
-<code>% album -clean /home/httpd/test/Photos</code>
+<b>ActivePerl method</b>
+-----------------
+1) Install <a href='http://MarginalHacks.com/redir.cgi?http://ImageMagick.org/'>ImageMagick</a> for Windows
+2) Install <a href='http://MarginalHacks.com/redir.cgi?http://www.activestate.com/Products/ActivePerl/'>ActivePerl</a>, Full install (no need for PPM profile)
+   Choose: "Add perl to PATH" and "Create Perl file extension association"
+3) If Win98: Install <a href='http://MarginalHacks.com/redir.cgi?http://www.simtel.net/pub/pd/11141.html'>tcap</a> in path
+4) Save album as album.pl in windows path
+5) Use dos command prompt to run:
+   <tt>C:> album.pl C:\some\path\to\photos</tt>
 
-<b><a name='Using_A_Theme'>4:</a>   Using A Theme</b>
+<b><i>Note:</i></b> Some versions of Windows (2000/NT at least) have their
+own "convert.exe" in the c:\windows\system32 directory (an NTFS utility?).
+If you have this, then you either need to edit your path variable,
+or else just specify the full path to convert in your album script.
 
-If themes were installed properly and are in your theme_path then
-you should be able to use a theme with your album:
+<b><a name='How_do_I_edit_the_Windows_path'>8:</a>   How do I edit the Windows path?</b>
 
-<code>% album -theme Blue /home/httpd/test/Photos</code>
+<b>Windows NT4 Users</b>
+  Right Click on My Computer, select Properties.
+  Select Environment tab.
+  In System Variables box select Path.
+  In Value edit box add the new paths separated by semicolons
+  Press OK/Set, press OK again.
 
-The photo album should now be using the Blue theme.  If it has
-a bunch of broken images, then your theme probably hasn't been
-installed into a web-accessible directory, see the Installation docs.
+<b>Windows 2000 Users</b>
+  Right Click My Computer, select Properties.
+  Select Advanced tab.
+  Click Environment Variables.
+  In System Variables box select double-click Path
+  In Value edit box add the new paths separated by semicolons
+  Press OK/Set, press OK again.
 
-Album saves the options you specify, so the next time you run album:
+<b>Windows XP Users</b>
+  Click My Computer, select Change a Setting.
+  Double click System.
+  Select Advanced tab.
+  Select Environment Variables.
+  In System Variables box select double-click Path
+  In Value edit box add the new paths separated by semicolons
+  Press OK.
 
-<code>% album /home/httpd/test/Photos</code>
 
-You'll still be using the Blue theme.  To turn off a theme, you can:
+<b><a name='Macintosh_OS9'>9:</a>   Macintosh OS9</b>
 
-<code>% album -no_theme /home/httpd/test/Photos</code>
+I don't have any plans to port this to OS9 - I don't know what
+the state of shells and perl is for pre-OSX.  If you have it working
+on OS9, let me know.
 
-<b><a name='Medium_images'>5:</a>   Medium images</b>
-
-Full resolution images are usually too big for a web album, so
-we'll use medium images on the image pages:
-
-<code>% album -medium 33% /home/httpd/test/Photos</code>
-
-You can still access the full size images by clicking on the medium image, or:
-
-<code>% album -just_medium /home/httpd/test/Photos</code>
-
-Will keep the full size image from being linked in (presuming we'd
-run with the -medium option at some point)
-
-<b><a name='Adding_some_EXIF_captions'>6:</a>   Adding some EXIF captions</b>
-
-Let's add aperture info to the captions of each image.
-
-<code>% album -exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
-
-This will only add aperture information for any images that have specified
-the 'Aperture' exif tag (the part between the '%' signs).  We also put
-a &lt;br&gt; tag in there so the exif info is on a new line.
-
-We can add more exif info:
-
-<code>% album -exif "&lt;br&gt;focal: %FocalLength%" /home/httpd/test/Photos</code>
-
-Because album saved our options before, we now get both EXIF tags for any
-images that specify Aperture and FocalLength.  Let's remove aperture:
-
-<code>% album -no_exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
-
-The '-no_exif' option has to match the previous exif string exactly or
-it will be ignored.  You can also edit the config file that album created:
-  /home/httpd/test/Photos/album.conf
-And remove it there.
-
-<b><a name='Adding_more_albums'>7:</a>   Adding more albums</b>
-
-Let's say we go on a trip to spain.  We take some photos and put them in:
-  /home/httpd/test/Photos/Spain/
-
-Now run album again on the top level:
-
-<code>% album /home/httpd/test/Photos</code>
-
-This will fixup Photos so it now links to spain and will run album
-on Spain/ as well, with the same settings/theme, etc..
-
-Now let's go on another trip, and we create:
-  /home/httpd/test/Photos/Italy/
-
-We could run album on the top level:
-
-<code>% album /home/httpd/test/Photos</code>
-
-But that would rescan the Spain directory which hasn't changed.
-Album usually won't generate any HTML or thumbnails unless it needs to,
-but it can still waste time, especially as our albums get bigger.
-So we can tell it to just add the new directory:
-
-<code>% album -add /home/httpd/test/Photos/Italy</code>
-
-This will fix the top index (in Photos) and generate the Italy album.
-
-<b><a name='Translated_by:'>8:</a>   Translated by:</b>
-
-David Ljung Madison  [http://GetDave.com/]
 
 </pre>
 <p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>

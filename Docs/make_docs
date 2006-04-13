@@ -1,0 +1,83 @@
+#!/usr/bin/perl
+
+my $proj = "/data/proj/languages";
+my $langs = "$proj/iso-639-2";
+my $flags = "$proj/flags";
+
+#########################
+# Read the language codes
+#########################
+open(LANGS,"<$langs") || die("Couldn't read $langs");
+while (<LANGS>) {
+	$lang{$1} = $2 if /^(...); ([^;,]+)/;
+}
+close LANGS;
+
+#########################
+# What other languages do we have docs for?
+#########################
+opendir(DOC,".") || die("Couldn't opendir(.)");
+my @lang = grep(!/^\.{1,2}$/ && -d $_ && $lang{$_}, readdir(DOC));
+@lang = grep($_ ne "Pics", @lang);
+closedir(DOC);
+
+#########################
+# What txt_ files do we need?
+#########################
+my @txt = <txt_*>;
+
+#########################
+# Create the language menu
+#########################
+sub url {
+	my ($from, $to) = @_;
+	return $lang{$to} if $from eq $to;
+	my $url = $to eq "eng" ? "" : $to;
+	$url = "../$url" unless $from eq "eng";
+	return "<a href=\"$url\">$lang{$to}</a>";
+}
+sub flag {
+	my ($from, $to) = @_;
+	return "flag.png" if $from eq $to;
+	my $url = $to eq "eng" ? "." : $to;
+	$url = "../$url" unless $from eq "eng";
+	return "$url/flag.png";
+}
+sub langline {
+	my ($from,$to) = @_;
+	my $flag = flag($from,$to);
+	system("cp $flags/$to.png $flag") if -f "$flags/$to.png" && ! -f $flag;
+	$flag = -f $flag ? "<img src=\"$flag\">" : "-";
+	print LANGMENU "<br>&nbsp;&nbsp; $flag &nbsp;&nbsp;",url($from,$to),"\n";
+}
+
+sub langmenu {
+	my ($from) = @_;
+	open(LANGMENU,">langmenu") || die("Can't write langmenu");
+	langline($from,"eng");
+	foreach my $lang ( @lang ) {
+		langline($from,$lang);
+	}
+	close LANGMENU;
+}
+
+#########################
+# Make docs for english
+#########################
+langmenu("eng");
+system("make_faq");
+
+#########################
+# Make docs for other languages
+#########################
+foreach my $lang ( @lang ) {
+	print "Language: $lang - $lang{$lang}\n";
+	chdir $lang;
+	foreach my $txt ( @txt ) {
+		symlink("../$txt",$txt);
+	}
+	symlink("../conf","conf");
+	langmenu($lang);
+	system("make_faq");
+	chdir "..";
+}

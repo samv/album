@@ -81,7 +81,7 @@
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
     A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
 
-    T&nbsp;w&nbsp;o&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;M&nbsp;I&nbsp;N&nbsp;I&nbsp; &nbsp;H&nbsp;O&nbsp;W&nbsp;-&nbsp;T&nbsp;O&nbsp;
+    F&nbsp;o&nbsp;u&nbsp;r&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;C&nbsp;o&nbsp;n&nbsp;f&nbsp;i&nbsp;g&nbsp;u&nbsp;r&nbsp;a&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp; &nbsp;F&nbsp;i&nbsp;l&nbsp;e&nbsp;s&nbsp;
 <br>
 
   </font>
@@ -117,8 +117,8 @@
       <tr bgcolor=#BBBBBB><td>
         <h3>Documentation
           <font size='-1'>
-<br>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;English
-<br>&nbsp;&nbsp; <img src="fre/flag.png"> &nbsp;&nbsp;<a href="fre">français</a>
+<br>&nbsp;&nbsp; <img src=".././flag.png"> &nbsp;&nbsp;<a href="../">English</a>
+<br>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;français
 
           </font>
 </h3>
@@ -148,173 +148,175 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href='#Simple_album'><li>Simple album</a>
- <a href='#Add_captions'><li>Add captions</a>
- <a href='#Hiding_Photos'><li>Hiding Photos</a>
- <a href='#Using_A_Theme'><li>Using A Theme</a>
- <a href='#Medium_images'><li>Medium images</a>
- <a href='#Adding_some_EXIF_captions'><li>Adding some EXIF captions</a>
- <a href='#Adding_more_albums'><li>Adding more albums</a>
- <a href='#Translated_by:'><li>Translated by:</a>
+<ol><a href='#Configuration_Files'><li>Configuration Files</a>
+ <a href='#Location_Of_Configuration_Files'><li>Location Of Configuration Files</a>
+ <a href='#Saving_Options'><li>Saving Options</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name='Simple_album'>1:</a>   Simple album</b>
+<b><a name='Configuration_Files'>1:</a>   Configuration Files</b>
 
-Presuming you've already installed album properly, we can do some
-simple cases.  If you have any errors or problems here, see the
-installation docs.
+Album behavior can be controlled through command-line options, such as:
 
-You need a web directory to put themes and your photo album.
-We'll use /home/httpd/test in this documentation.  This needs
-to be viewable by a webserver.  In this example we'll use the URL:
-  http://myserver/test/
+<code>% album -no_known_images</code>
 
-Adjust your commands/URLs appropriately
+<code>% album -geometry 133x100</code>
 
-First create a directory and put some images in it.  We'll call this:
-  /home/httpd/test/Photos
+<code>% album -exif "File: %File name% " -exif "taken with %Camera make%"</code>
 
-And we'll add some images called 'IMG_001.jpg' through 'IMG_004.jpg'
+But these options can also be specified in a configuration file:
 
-Now for the simple case, just run album:
+<tt># Example configuration file      # comments are ignored
+known_images       0            # known_images=0 is same as no_known_images
+geometry           133x100
+exif               "File: %File name% "
+exif               "taken with %Camera make%"</tt>
 
-<code>% album /home/httpd/test/Photos</code>
+The configuration file format is one option per line optionally followed
+by whitespace and the option value.  Boolean options can be set without
+the option value or can be cleared/set with 0 and 1.
 
-Now you can view the album in a web browser at something like:
-  http://myserver/test/Photos
+<b><a name='Location_Of_Configuration_Files'>2:</a>   Location Of Configuration Files</b>
 
-<b><a name='Add_captions'>2:</a>   Add captions</b>
+album looks for configuration files in a few locations, in order:
 
-Create a file /home/httpd/test/Photos/captions.txt with the following
-contents (use the 'tab' key where you see "  [tab]  ")
+/etc/album/conf              System-wide settings
+/etc/album.conf              System-wide settings
+$BASENAME/album.conf         In the 'album' install directory
+$HOME/.albumrc               User specific settings
+$HOME/.album.conf            User specific settings
+$DOT/album.conf              User specific (I keep my dot files elsewhere)
+$USERPROFILE/album.conf      For Windows (C:\Documents and Settings\TheUser)
 
--- captions.txt ---------
-IMG_001.jpg  [tab]  First image name
-IMG_002.jpg  [tab]  Second image
-IMG_003.jpg  [tab]  Another image  [tab]   with a caption!
-IMG_004.jpg  [tab]  Last image     [tab]   with another caption.
--------------------------
+album also looks for album.conf files inside the photo album directories.
+Sub-albums can also have album.conf which will alter the settings 
+from parent directories (this allows you to, for example, have a 
+different theme for part of your photo album).  Any album.conf files 
+in your photo album directories will configure the album and any sub-albums
+unless overridden by any album.conf settings found in a sub-album.
 
-And run album again:
+As an example, consider a conf for a photo album at 'images/album.conf':
 
-<code>% album /home/httpd/test/Photos</code>
+<tt>theme       Dominatrix6
+columns     3</tt>
 
-And you'll see the captions change.
+And another conf inside 'images/europe/album.conf':
 
-Now create a file with text in: /home/httpd/test/Photos/header.txt
+<tt>theme       Blue
+crop</tt>
 
-And run album again.  You'll see that text at the top of the page.
+album will use the Dominatrix6 theme for the images/ album and all of
+it's sub-albums except for the images/europe/ album which will use
+the Blue theme.  All of the images/ album and sub-albums will have
+3 columns since that wasn't changed in the images/europe/ album, however
+all of the thumbnails in images/europe/ and all of it's sub-albums
+will be cropped due to the 'crop' configuration setting.
 
-<b><a name='Hiding_Photos'>3:</a>   Hiding Photos</b>
+<b><a name='Saving_Options'>3:</a>   Saving Options</b>
 
-There are a few ways to hide photos/files/directories, but we'll use
-the captions file.  Try commenting out an image with '#' in captions.txt:
+Whenever you run an album, the command-line options are saved in
+an album.conf inside the photo album directory.  If an album.conf
+already exists it will be modified not overwritten, so it is safe
+to edit this file in a text editor.
 
--- captions.txt ---------
-IMG_001.jpg  [tab]  First image name
-#IMG_002.jpg  [tab]  Second image
-IMG_003.jpg  [tab]  Another image  [tab]   with a caption!
-IMG_004.jpg  [tab]  Last image     [tab]   with another caption.
--------------------------
+This makes it easy to make subsequent calls to album.  If you
+first generate an album with:
 
-Run album again, and you'll see that IMG_002.jpg is now missing.
-If we had done this before running album the first time, we wouldn't
-have ever generated the medium or thumbnail images.  If you like,
-you can remove them now with -clean:
+<code>% album -crop -no_known_images -theme Dominatrix6 -sort date images/</code>
 
-<code>% album -clean /home/httpd/test/Photos</code>
+Then the next time you call album you can just:
 
-<b><a name='Using_A_Theme'>4:</a>   Using A Theme</b>
+<code>% album images/</code>
 
-If themes were installed properly and are in your theme_path then
-you should be able to use a theme with your album:
+This works for sub-albums as well:
 
-<code>% album -theme Blue /home/httpd/test/Photos</code>
+<code>% album images/africa/</code>
 
-The photo album should now be using the Blue theme.  If it has
-a bunch of broken images, then your theme probably hasn't been
-installed into a web-accessible directory, see the Installation docs.
+Will also find all of the saved options.
 
-Album saves the options you specify, so the next time you run album:
+Some 'one-time only' options are not saved for obvious reasons, such
+as -add, -clean, -force, -depth, etc..
 
-<code>% album /home/httpd/test/Photos</code>
+Running album multiple times on the same directories can
+get confusing if you don't understand how options are saved.
+Here are some examples.
 
-You'll still be using the Blue theme.  To turn off a theme, you can:
+Premises:
+1) Command-line options are processed before conf options found
+   in the album directory.
+   
+2) Album should run the same the next time you call it if you
+   don't specify any options.
 
-<code>% album -no_theme /home/httpd/test/Photos</code>
+   For example, consider running album twice on a directory:
 
-<b><a name='Medium_images'>5:</a>   Medium images</b>
+   <code>% album -exif "comment 1" photos/spain</code>
+   <code>% album photos/spain</code>
 
-Full resolution images are usually too big for a web album, so
-we'll use medium images on the image pages:
+   The second time you run album you'll still get the "comment 1"
+   exif comment in your photos directory.
 
-<code>% album -medium 33% /home/httpd/test/Photos</code>
+3) Album shouldn't end up with multiple copies of the same array
+   options if you keep calling it with the same command-line
 
-You can still access the full size images by clicking on the medium image, or:
+   For example:
 
-<code>% album -just_medium /home/httpd/test/Photos</code>
+   <code>% album -exif "comment 1" photos/spain</code>
+   <code>% album -exif "comment 1" photos/spain</code>
+   
+   The second time you run album you will NOT end up with multiple
+   copies of the "comment 1" exif comment.
 
-Will keep the full size image from being linked in (presuming we'd
-run with the -medium option at some point)
+   <b>However, please note that if you re-specify the same options
+   each time, album may run slower because it thinks it needs to
+   regenerate your html!</b>
 
-<b><a name='Adding_some_EXIF_captions'>6:</a>   Adding some EXIF captions</b>
+As an example, if you run:
 
-Let's add aperture info to the captions of each image.
+<code>% album -medium 640x640 photos/spain</code>
+  (then later...)
+<code>% album -medium 640x640 photos/spain</code>
 
-<code>% album -exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
+Then the second time will unnecessarily regenerate all your
+medium images.  This is <b>much</b> slower.
 
-This will only add aperture information for any images that have specified
-the 'Aperture' exif tag (the part between the '%' signs).  We also put
-a &lt;br&gt; tag in there so the exif info is on a new line.
+It's better to specify command-line options only the first time
+and let them get saved, such as:
 
-We can add more exif info:
+<code>% album -medium 640x640 photos/spain</code>
+  (then later...)
+<code>% album photos/spain</code>
 
-<code>% album -exif "&lt;br&gt;focal: %FocalLength%" /home/httpd/test/Photos</code>
 
-Because album saved our options before, we now get both EXIF tags for any
-images that specify Aperture and FocalLength.  Let's remove aperture:
+Unfortunately these constraints mean that any new array options will
+be put at the beginning of your list of -exif options.
 
-<code>% album -no_exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
+For example:
 
-The '-no_exif' option has to match the previous exif string exactly or
-it will be ignored.  You can also edit the config file that album created:
-  /home/httpd/test/Photos/album.conf
-And remove it there.
+<code>% album -exif "comment 1" photos/spain</code>
+<code>% album -exif "comment 2" photos/spain</code>
 
-<b><a name='Adding_more_albums'>7:</a>   Adding more albums</b>
+The comments will actually be ordered "comment 2" then "comment 1"
 
-Let's say we go on a trip to spain.  We take some photos and put them in:
-  /home/httpd/test/Photos/Spain/
+To specify exact ordering, you may need to re-specify all options.
 
-Now run album again on the top level:
+Either specify "comment 1" to put it back on top:
 
-<code>% album /home/httpd/test/Photos</code>
+<code>% album -exif "comment 1" photos/spain</code>
 
-This will fixup Photos so it now links to spain and will run album
-on Spain/ as well, with the same settings/theme, etc..
+Or just specify all the options in the order you want:
 
-Now let's go on another trip, and we create:
-  /home/httpd/test/Photos/Italy/
+<code>% album -exif "comment 1" -exif "comment 2" photos/spain</code>
 
-We could run album on the top level:
+Sometimes it may be easier to merely edit the album.conf file directly
+to make any changes.
 
-<code>% album /home/httpd/test/Photos</code>
+Finally, this only allows us to accumulate options.
+We can delete options using -no and -clear, see the section on <a href='Section_3.html#Options'>Options</a>,
+these settings (or clearings) will also be saved from run to run.
 
-But that would rescan the Spain directory which hasn't changed.
-Album usually won't generate any HTML or thumbnails unless it needs to,
-but it can still waste time, especially as our albums get bigger.
-So we can tell it to just add the new directory:
-
-<code>% album -add /home/httpd/test/Photos/Italy</code>
-
-This will fix the top index (in Photos) and generate the Italy album.
-
-<b><a name='Translated_by:'>8:</a>   Translated by:</b>
-
-David Ljung Madison  [http://GetDave.com/]
 
 </pre>
 <p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>
