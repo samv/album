@@ -130,7 +130,16 @@ And you can get specific information about a hook:
 
 <code>% album -hook_info &lt;hook_name&gt;</code>
 
-In our plugin we register the hook by calling the hook() function.
+We can use album to generate our plugin framework for us:
+
+<code>% album -create_plugin</code>
+
+For this to work, you need to understand album hooks and album options.
+
+We can also write the plugin by hand, it helps to use an already
+written plugin as a base to work off of.
+
+In our plugin we register the hook by calling the album::hook() function.
 To call functions in the album code, we use the <code>album</code> namespace.
 To register some code for the <code>clean_name</code> hook our plugin can call:
 
@@ -237,7 +246,15 @@ This <b>must</b> be done in the start_plugin code.  Some examples:
 For more info, see the 'add_option' code in album and see all of the uses
 of it (at the top of album and in plugins that use 'add_option')
 
+If your plugin needs to load modules that are not part of the
+standard Perl distribution, please do this conditionally.  For
+an example of this, see plugins/extra/rss.alp.
+
 The best way to figure out how to write plugins is to look at other
 plugins, possibly copying one that is similar to yours and working
 off of that.  Plugin development tools may be created in the future.
+
+Again, album can help create the plugin framework for you:
+
+<code>% album -create_plugin</code>
 

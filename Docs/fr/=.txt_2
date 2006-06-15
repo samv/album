@@ -1,5 +1,6 @@
+MINI HOW-TO
 
-q: Simple album
+ITEM: Simple album
 
 En supposant que vous avez d=C3=A9j=C3=A0 installer album correctement, nou=
 s pouvons r=C3=A9aliser quelques manipulations basiques. Si vous rencontrez=
@@ -29,7 +30,7 @@ Maintenant, vous pouvez visualiser l'album cr=C3=A9=C3=A9 via un navigateur=
  =C3=A0 l'adresse :
 	http://myserver/test/Photos
 
-q: Ajouter des l=C3=A9gendes
+ITEM: Ajouter des l=C3=A9gendes
 
 Cr=C3=A9ez un fichier /home/httpd/test/Photos/captions.txt avec le contenu =
 suivants (utilisez la touche 'tab' si vous voyez "  [tab]  ") :
@@ -54,7 +55,7 @@ hotos/header.txt
 Et relancez la commande album une fois de plus. Vous verrz alors le texte d=
 u fichier affich=C3=A9e au sommet de la page.
 
-q: Masquer des photos
+ITEM: Masquer des photos
 
 Il y a quelques moyens de masquer des photos / des fichiers / des r=C3=A9pe=
 rtoires mais nous allons utiliser le fichier des l=C3=A9gendes. Essayez de =
@@ -78,7 +79,7 @@ ant l'option -clean :
 
 % album -clean /home/httpd/test/Photos
 
-q: Utiliser un th=C3=A8me
+ITEM: Utiliser un th=C3=A8me
 
 Si les th=C3=A8mes ont =C3=A9t=C3=A9 correctement install=C3=A9s and sont a=
 ccessibles via them_path (chemin d'acc=C3=A8s aux th=C3=A8mes), alors vous =
@@ -104,7 +105,7 @@ vous utiliserez toujours le th=C3=A8me Blue. Pour d=C3=A9sactiver un th=C3=
 % album -no_theme /home/httpd/test/Photos
 
 
-q: Images r=C3=A9duites
+ITEM: Images r=C3=A9duites
 
 Les images de pleine taille sont en g=C3=A9n=C3=A9rale d'une taille trop im=
 posante pour un album photo sur le web. C'est pourquoi nous utiliserons des=
@@ -123,7 +124,7 @@ emp=C3=AAchera la liaison entre les images de taille r=C3=A9duite et les im=
 ages pleine taille, en pr=C3=A9sumant que nous avons lanc=C3=A9 pr=C3=A9c=
 =C3=A9demment une commande avec l'option -medium.
 
-q: Ajouter des l=C3=A9gendes EXIF
+ITEM: Ajouter des l=C3=A9gendes EXIF
 
 Ajoutons la valeur du diaphragme dans les l=C3=A9gendes de chaque image.
 
@@ -153,7 +154,7 @@ orrespondre exactement =C3=A0 celle entr=C3=A9e pr=C3=A9c=C3=A9demment avec=
 	/home/httpd/test/Photos/album.conf
 Puis supprimez l'option en question.
 
-q: Ajouter d'autres albums
+ITEM: Ajouter d'autres albums
 
 Imaginons que vous faites un voyage en Espagne. Vous prenez des photos et l=
 es mettez dans le r=C3=A9pertoire :

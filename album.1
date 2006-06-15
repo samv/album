@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ALBUM 1"
-.TH ALBUM 1 "2006-04-13" "album v3.11" ""
+.TH ALBUM 1 "2006-06-14" "album v3.12" ""
 album \- Make a web photo album
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
@@ -176,11 +176,11 @@ Or clear all the array options with \-clear_<option>:
 .PP
 Boolean options:
 .PP
-% album \-q, \-d, \-D, \-virgin_check, \-save_conf, \-configure, \-image_pages, \-dir_thumbs, \-just_medium, \-embed, \-clean, \-image_headers, \-album_captions, \-caption_edit, \-file_sizes, \-fix_urls, \-known_images, \-all, \-hashes, \-reverse_sort, \-image_loop, \-burn, \-crop, \-force, \-force_html, \-sample, \-animated_gifs, \-use_tcap
+% album \-q, \-d, \-D, \-virgin_check, \-save_conf, \-configure, \-image_pages, \-dir_thumbs, \-just_medium, \-slideshow, \-embed, \-clean, \-image_headers, \-album_captions, \-caption_edit, \-file_sizes, \-fix_urls, \-known_images, \-all, \-hashes, \-reverse_sort, \-case_sort, \-image_loop, \-burn, \-crop, \-force, \-force_html, \-sample, \-animated_gifs, \-use_tcap
 .PP
 String/number options:
 .PP
-% album \-medium, \-captions, \-top, \-sort, \-body, \-charset, \-index, \-default_index, \-html, \-type, \-medium_type, \-CROP, \-dir, \-sharpen, \-plugin_post, \-theme, \-theme_url, \-convert, \-identify, \-jhead, \-ffmpeg, \-conf_file, \-dev_null, \-windows, \-cygwin, \-tcap, \-tcap_out, \-cmdproxy, \-header, \-footer, \-no_album, \-hide_album, \-not_img
+% album \-medium, \-captions, \-top, \-sort, \-body, \-charset, \-index, \-default_index, \-html, \-type, \-medium_type, \-CROP, \-dir, \-sharpen, \-plugin_post, \-theme, \-theme_url, \-convert, \-identify, \-jhead, \-ffmpeg, \-conf_file, \-dev_null, \-windows, \-cygwin, \-tcap, \-tcap_out, \-cmdproxy, \-header, \-footer, \-credit, \-no_album, \-hide_album, \-not_img
 .PP
 Array options:
 .PP
@@ -220,6 +220,12 @@ Setup initial album site configuration [Default \s-1OFF\s0]
 .IP "\fB\-version\fR" 4
 .IX Item "-version"
 Display program version info
+.IP "\fB\-mv\fR" 4
+.IX Item "-mv"
+Move images across albums (see 'album \-plugin_info utils/mv')
+.IP "\fB\-create_plugin\fR" 4
+.IX Item "-create_plugin"
+Create a new plugin (see 'album \-plugin_info utils/create_plugin')
 .Sh "Album Options:"
 .IX Subsection "Album Options:"
 .IP "\fB\-image_pages\fR" 4
@@ -234,6 +240,9 @@ Generate medium size images
 .IP "\fB\-just_medium\fR" 4
 .IX Item "-just_medium"
 Don't link to full-size images [Default \s-1OFF\s0]
+.IP "\fB\-slideshow\fR" 4
+.IX Item "-slideshow"
+Slideshow capabilities (only with some themes) [Default \s-1OFF\s0]
 .IP "\fB\-embed\fR" 4
 .IX Item "-embed"
 Use image pages for non-picture image pages [Default \s-1ON\s0]
@@ -287,6 +296,9 @@ Add a new directory to the album it's been placed in
 .IP "\fB\-depth\fR" 4
 .IX Item "-depth"
 Depth to descend directories (default infinite) [Default \-1]
+.IP "\fB\-follow_symlinks\fR" 4
+.IX Item "-follow_symlinks"
+Dereference symbolic links [Default 1]
 .IP "\fB\-hashes\fR" 4
 .IX Item "-hashes"
 Show hash marks while generating thumbnails [Default \s-1ON\s0]
@@ -299,6 +311,9 @@ Sort type, captions, name or date [Default captions]
 .IP "\fB\-reverse_sort\fR" 4
 .IX Item "-reverse_sort"
 Sort in reverse [Default \s-1OFF\s0]
+.IP "\fB\-case_sort\fR" 4
+.IX Item "-case_sort"
+Use case sensitive sorting when sorting names [Default \s-1OFF\s0]
 .IP "\fB\-body\fR\fI=\fIstring\fI\fR" 4
 .IX Item "-body=string"
 Specify <body> tags for non-theme output [Default <body>]
@@ -394,12 +409,15 @@ Default postfix for plugins. [Default .alp]
 .IP "\fB\-list_plugins\fR" 4
 .IX Item "-list_plugins"
 Print info for all known plugins.
+.IP "\fB\-list_plugins_crf\fR" 4
+.IX Item "-list_plugins_crf"
+Print info for all known plugins in computer readable format.
 .IP "\fB\-list_hooks\fR" 4
 .IX Item "-list_hooks"
 Show all known plugin hooks (for developers).
 .IP "\fB\-hook_info\fR\fI=\fIhook\fI\fR" 4
 .IX Item "-hook_info=hook"
-Show all known plugin hooks (for developers).
+Show hook info for a specific hook (for developers).
 .IP "\fB\-theme\fR\fI=\fIdir\fI\fR" 4
 .IX Item "-theme=dir"
 Specify a theme directory
@@ -456,6 +474,9 @@ Path to header file [Default header.txt]
 .IP "\fB\-footer\fR\fI=\fIstring\fI\fR" 4
 .IX Item "-footer=string"
 Path to footer file [Default footer.txt]
+.IP "\fB\-credit\fR\fI=\fIstring\fI\fR" 4
+.IX Item "-credit=string"
+Credit line to add to the bottom of every album.
 .IP "\fB\-no_album\fR\fI=\fIstring\fI\fR" 4
 .IX Item "-no_album=string"
 Ignore dir/files if file with this postfix exists [Default .no_album]

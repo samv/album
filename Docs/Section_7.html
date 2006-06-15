@@ -2,9 +2,13 @@
 <!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN'>
 <html>
 <head>
+	<meta http-equiv='Content-Language' content='en'>
+	<link rel='alternate' type='text/html' href='it' hreflang='it' lang='it' title='album documentation'>
+	<link rel='alternate' type='text/html' href='fr' hreflang='fr' lang='fr' title='album documentation'>
+
   <title>MarginalHacks album Documentation</title>
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
-  <meta http-equiv='content-type' content='text/html;charset=ISO-8859-1'>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <style>
   <!--
   code {color: red;}
@@ -41,6 +45,7 @@
 
 <body bgcolor=white link='#0000FF' alink='#0000FF' vlink='#5000FF' text='#000000'>
 
+<div lang='en'>
 <center>
 <table border=0 cellspacing=0 cellpadding=0 width=100%>
   <tr> <td rowspan=2>
@@ -117,8 +122,9 @@
       <tr bgcolor=#BBBBBB><td>
         <h3>Documentation
           <font size='-1'>
-<br>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;English
-<br>&nbsp;&nbsp; <img src="fre/flag.png"> &nbsp;&nbsp;<a href="fre">français</a>
+<br><span lang='en'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;English</span>
+<br><span lang='it'>&nbsp;&nbsp; <img src="it/flag.png"> &nbsp;&nbsp;<a href="it">italiano</a></span>
+<br><span lang='fr'>&nbsp;&nbsp; <img src="fr/flag.png"> &nbsp;&nbsp;<a href="fr">fran&ccedil;ais</a></span>
 
           </font>
 </h3>
@@ -288,7 +294,16 @@ And you can get specific information about a hook:
 
 <code>% album -hook_info &lt;hook_name&gt;</code>
 
-In our plugin we register the hook by calling the hook() function.
+We can use album to generate our plugin framework for us:
+
+<code>% album -create_plugin</code>
+
+For this to work, you need to understand album hooks and album options.
+
+We can also write the plugin by hand, it helps to use an already
+written plugin as a base to work off of.
+
+In our plugin we register the hook by calling the album::hook() function.
 To call functions in the album code, we use the <code>album</code> namespace.
 To register some code for the <code>clean_name</code> hook our plugin can call:
 
@@ -395,9 +410,17 @@ This <b>must</b> be done in the start_plugin code.  Some examples:
 For more info, see the 'add_option' code in album and see all of the uses
 of it (at the top of album and in plugins that use 'add_option')
 
+If your plugin needs to load modules that are not part of the
+standard Perl distribution, please do this conditionally.  For
+an example of this, see plugins/extra/rss.alp.
+
 The best way to figure out how to write plugins is to look at other
 plugins, possibly copying one that is similar to yours and working
 off of that.  Plugin development tools may be created in the future.
+
+Again, album can help create the plugin framework for you:
+
+<code>% album -create_plugin</code>
 
 
 </pre>
@@ -405,88 +428,16 @@ off of that.  Plugin development tools may be created in the future.
     </td>
   </tr>
 </table>
+</div>
 
 </body>
 </html>
-<pre>
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-
-     &uarr;
-</pre>
+	<center>
+	<br><br><br>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	</center>

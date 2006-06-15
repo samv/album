@@ -5,12 +5,12 @@
 <head>
 	<style>
 	<!--
-	:lang(fr) { color: green; }
+	:lang(it) { color: green; }
 	-->
 	</style>
 	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
-	<link rel='alternate' type='text/html' href='../it' hreflang='it' lang='it' title='album documentation'>
-	<meta http-equiv='Content-Language' content='fr'>
+	<meta http-equiv='Content-Language' content='it'>
+	<link rel='alternate' type='text/html' href='../fr' hreflang='fr' lang='fr' title='album documentation'>
 
   <title>MarginalHacks album Documentation</title>
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
@@ -128,8 +128,8 @@
         <h3>Documentation
           <font size='-1'>
 <br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
-<br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">italiano</a></span>
-<br><span lang='fr'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;fran&ccedil;ais</span>
+<br><span lang='it'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;italiano</span>
+<br><span lang='fr'>&nbsp;&nbsp; <img src="../fr/flag.png"> &nbsp;&nbsp;<a href="../fr">fran&ccedil;ais</a></span>
 
           </font>
 </h3>
@@ -162,28 +162,104 @@
     <h1>Table Of Contents:</h1>
   </td>
   <td align=right>
-    <i><a href=index.html>Long Index</a></i>
+    <i><a href=Short.html>Short Index</a></i>
   </td>
 </tr></table>
 
 &nbsp;&nbsp;<i><font color=red>Not all sections have been translated.</font></i>
 <ol>
-<li value=1> <a href='Section_1.html'>Installation
+<li value=1><a href='Section_1.html'>Installation
 </a>
-<li value=2> <a href='Section_2.html'>MINI HOW-TO
+<ol>
+<li><a href='Section_1.html#Minimum_Requirements'>Minimum Requirements</a>
+<li><a href='Section_1.html#Initial_Configuration'>Initial Configuration</a>
+<li><a href='Section_1.html#Optional_Installation'>Optional Installation</a>
+<li><a href='Section_1.html#UNIX'>UNIX</a>
+<li><a href='Section_1.html#Debian_UNIX'>Debian UNIX</a>
+<li><a href='Section_1.html#Macintosh_OSX'>Macintosh OSX</a>
+<li><a href='Section_1.html#Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP'>Win95, Win98, Win2000/Win2k, WinNT, WinXP</a>
+<li><a href='Section_1.html#How_do_I_edit_the_Windows_path'>How do I edit the Windows path?</a>
+<li><a href='Section_1.html#Macintosh_OS9'>Macintosh OS9</a>
+</ol>
+<li value=2><a href='Section_2.html'>MINI HOW-TO
 </a>
-<li value=3> <a href='Section_3.html'>Running album / Basic Options
+<ol>
+<li><a href='Section_2.html#Un_semplice_album'>Un semplice album</a>
+<li><a href='Section_2.html#Aggiungere_titoli'>Aggiungere titoli</a>
+<li><a href='Section_2.html#Nascondere_immagini'>Nascondere immagini</a>
+<li><a href='Section_2.html#Temi'>Temi</a>
+<li><a href='Section_2.html#Immagini_intermedie'>Immagini intermedie</a>
+<li><a href='Section_2.html#Aggiungere_i_metadati_EXIF_nei_titoli'>Aggiungere i metadati EXIF nei titoli</a>
+<li><a href='Section_2.html#Generare_pi&ugrave;_album'>Generare pi&ugrave; album</a>
+<li><a href='Section_2.html#Tradotto_da'>Tradotto da</a>
+</ol>
+<li value=3><a href='Section_3.html'>Running album / Basic Options
 </a>
-<li value=4> <a href='Section_4.html'>Configuration Files
+<ol>
+<li><a href='Section_3.html#Basic_execution'>Basic execution</a>
+<li><a href='Section_3.html#Options'>Options</a>
+<li><a href='Section_3.html#Themes'>Themes</a>
+<li><a href='Section_3.html#Sub-albums'>Sub-albums</a>
+<li><a href='Section_3.html#Avoiding_Thumbnail_Regeneration'>Avoiding Thumbnail Regeneration</a>
+<li><a href='Section_3.html#Cleaning_Out_The_Thumbnails'>Cleaning Out The Thumbnails</a>
+<li><a href='Section_3.html#Medium_size_images'>Medium size images</a>
+<li><a href='Section_3.html#Captions'>Captions</a>
+<li><a href='Section_3.html#EXIF_Captions'>EXIF Captions</a>
+<li><a href='Section_3.html#Headers_and_Footers'>Headers and Footers</a>
+<li><a href='Section_3.html#Hiding_Files_Directories'>Hiding Files/Directories</a>
+<li><a href='Section_3.html#Cropping_Images'>Cropping Images</a>
+<li><a href='Section_3.html#Video'>Video</a>
+<li><a href='Section_3.html#Burning_CDs_(using_file:__)'>Burning CDs (using file://)</a>
+<li><a href='Section_3.html#Indexing_your_entire_album'>Indexing your entire album</a>
+<li><a href='Section_3.html#Updating_Albums_With_CGI'>Updating Albums With CGI</a>
+</ol>
+<li value=4><a href='Section_4.html'>Configuration Files
 </a>
-<li value=5> <a href='Section_5.html'>Feature Requests, Bugs, Patches and Troubleshooting
+<ol>
+<li><a href='Section_4.html#Configuration_Files'>Configuration Files</a>
+<li><a href='Section_4.html#Location_Of_Configuration_Files'>Location Of Configuration Files</a>
+<li><a href='Section_4.html#Saving_Options'>Saving Options</a>
+</ol>
+<li value=5><a href='Section_5.html'>Feature Requests, Bugs, Patches and Troubleshooting
 </a>
-<li value=6> <a href='Section_6.html'>Creating Themes
+<ol>
+<li><a href='Section_5.html#Feature_Requests'>Feature Requests</a>
+<li><a href='Section_5.html#Bug_reports'>Bug reports</a>
+<li><a href='Section_5.html#Writing_Patches,_Modifying_album'>Writing Patches, Modifying album</a>
+<li><a href='Section_5.html#Known_Bugs'>Known Bugs</a>
+<li><a href='Section_5.html#PROBLEM:_My_index_pages_are_too_large'>PROBLEM: My index pages are too large!</a>
+<li><a href='Section_5.html#ERROR:_no_delegate_for_this_image_format_(._album)'><b>ERROR:</b> no delegate for this image format (./album)</a>
+<li><a href='Section_5.html#ERROR:_no_delegate_for_this_image_format_(some_non_image_file)'><b>ERROR:</b> no delegate for this image format (some_non_image_file)</a>
+<li><a href='Section_5.html#ERROR:_no_delegate_for_this_image_format_(some.jpg)'><b>ERROR:</b> no delegate for this image format (some.jpg)</a>
+<li><a href='Section_5.html#ERROR:_identify:_JPEG_library_is_not_available_(some.jpg)'><b>ERROR:</b> identify: JPEG library is not available (some.jpg)</a>
+<li><a href='Section_5.html#ERROR:_Cant_get_[some_image]_size_from_-verbose_output.'><b>ERROR:</b> Can't get [some_image] size from -verbose output.</a>
+</ol>
+<li value=6><a href='Section_6.html'>Creating Themes
 </a>
-<li value=7> <a href='Section_7.html'>Plugins, Usage, Creation,..
+<ol>
+<li><a href='Section_6.html#Methods'>Methods</a>
+<li><a href='Section_6.html#Editing_current_theme_HTML'>Editing current theme HTML</a>
+<li><a href='Section_6.html#The_easy_way,_simmer_theme_from_graphics.'>The easy way, simmer_theme from graphics.</a>
+<li><a href='Section_6.html#From_scratch,_Theme_API'>From scratch, Theme API</a>
+<li><a href='Section_6.html#Submitting_Themes'>Submitting Themes</a>
+<li><a href='Section_6.html#Converting_v2.0_Themes_to_v3.0_Themes'>Converting v2.0 Themes to v3.0 Themes</a>
+</ol>
+<li value=7><a href='Section_7.html'>Plugins, Usage, Creation,..
 </a>
-<li value=8> <a href='Section_8.html'>Language Support
+<ol>
+<li><a href='Section_7.html#What_are_Plugins'>What are Plugins?</a>
+<li><a href='Section_7.html#Installing_Plugins_and_plugin_support'>Installing Plugins and plugin support</a>
+<li><a href='Section_7.html#Loading_Unloading_Plugins'>Loading/Unloading Plugins</a>
+<li><a href='Section_7.html#Plugin_Options'>Plugin Options</a>
+<li><a href='Section_7.html#Writing_Plugins'>Writing Plugins</a>
+</ol>
+<li value=8><a href='Section_8.html'>Language Support
 </a>
+<ol>
+<li><a href='Section_8.html#Language_Support_Details'>Language Support Details</a>
+<li><a href='Section_8.html#Album_messages'>Album messages</a>
+</ol>
+
 </ol>
 <p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>
     </td>

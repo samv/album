@@ -6,7 +6,7 @@ Language support is coming soon.  I need volunteers to do translations
 for me, specifically of:
 
 1) The Mini How-To.  Please translate from the <a href="txt_2">source</a>.
-2) album messages, as listed below
+2) album messages, as listed below.
 
 If you are willing to do the translation of either one or both
 of these items, please contact me!
@@ -14,12 +14,27 @@ of these items, please contact me!
 Also be sure to let me know how you want to be credited,
 by your name, name and email, or name and website.
 
+And please include the proper spelling and capitalization of the
+name of your language <b>in your language</b>.  For example, "français"
+instead of the "French"
+
+I am open to suggestions for what charset to use.  Current options are:
+
+1) HTML characters such as [&amp;eacute;]] (though they only work in browsers)
+2) Unicode (UTF) such as [Ã©] (though again, only in browsers)
+3) ASCII code, where possible, such as [é] (works in text editors, though
+   not currently in this page because it's set to unicode)
+
 ITEM: Album messages
 
 Here's a full list of messages I need translated.  If you can only
 do a portion of the list, that could still be helpful.
 
 Ignore anything that starts with "##" - that's just for organization.
+
+########################################
+## Beginning of translated messages
+########################################
 
 ##
 ## USAGE
@@ -294,4 +309,7 @@ Try using option -animated_gifs in the future
 Error cropping
 Error extracting movie frame
 
+########################################
+## End of translated messages
+########################################
 

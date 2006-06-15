@@ -1,15 +1,24 @@
 #!/usr/bin/perl
 
 my $proj = "/data/proj/languages";
-my $langs = "$proj/iso-639-2";
 my $flags = "$proj/flags";
+#my $langs = "$proj/iso-639-1";
+#my $langs = "$proj/iso-639-2";
+my $langs = "/data/proj/album/Language/LIST";
 
 #########################
 # Read the language codes
 #########################
 open(LANGS,"<$langs") || die("Couldn't read $langs");
 while (<LANGS>) {
-	$lang{$1} = $2 if /^(...); ([^;,]+)/;
+	# iso-639-2
+	#$lang{$1} = $2 if /^(...); (.+?)(; |$)/;
+
+	# iso-639-1
+	#$lang{$1} = $2 if /^(..)\s+(.+?)(; |$)/;
+
+	# Language/LIST
+	$lang{$1} = $2 if /^(..)=(.+)/;
 }
 close LANGS;
 
@@ -17,7 +26,7 @@ close LANGS;
 # What other languages do we have docs for?
 #########################
 opendir(DOC,".") || die("Couldn't opendir(.)");
-my @lang = grep(!/^\.{1,2}$/ && -d $_ && $lang{$_}, readdir(DOC));
+my @lang = grep(!/^\.{1,2}$/ && -d $_ && !-l $_ && $lang{$_}, readdir(DOC));
 @lang = grep($_ ne "Pics", @lang);
 closedir(DOC);
 
@@ -31,32 +40,64 @@ my @txt = <txt_*>;
 #########################
 sub url {
 	my ($from, $to) = @_;
-	return $lang{$to} if $from eq $to;
-	my $url = $to eq "eng" ? "" : $to;
-	$url = "../$url" unless $from eq "eng";
-	return "<a href=\"$url\">$lang{$to}</a>";
+	return undef if $from eq $to;
+	my $url = $to eq "en" ? "" : $to;
+	$url = "../$url" unless $from eq "en";
+	return $url;
+}
+sub href {
+	my ($from, $to) = @_;
+	my $url = url($from,$to);
+	return $url ? "<a href=\"$url\">$lang{$to}</a>" : $lang{$to};
 }
 sub flag {
 	my ($from, $to) = @_;
-	return "flag.png" if $from eq $to;
-	my $url = $to eq "eng" ? "." : $to;
-	$url = "../$url" unless $from eq "eng";
-	return "$url/flag.png";
+	my $p = url($from,$to);
+	return $p ? "$p/flag.png" : "flag.png";
 }
 sub langline {
 	my ($from,$to) = @_;
+	my $iso639_1 = iso639_1($to);
 	my $flag = flag($from,$to);
-	system("cp $flags/$to.png $flag") if -f "$flags/$to.png" && ! -f $flag;
+	system("cp $flags/$to.png $flag ; chmod ugo+r $flag") if -f "$flags/$to.png" && ! -f $flag;
 	$flag = -f $flag ? "<img src=\"$flag\">" : "-";
-	print LANGMENU "<br>&nbsp;&nbsp; $flag &nbsp;&nbsp;",url($from,$to),"\n";
+	my $href=href($from,$to);
+	my $url=url($from,$to);
+
+	print LANGMENU "<br><span lang='$iso639_1'>&nbsp;&nbsp; $flag &nbsp;&nbsp;$href</span>\n";
+
+	# We should use translations of "album documentation" here:
+	print LANGHTML "\t<link rel='alternate' type='text/html' href='$url' hreflang='$iso639_1' lang='$iso639_1' title='album documentation'>\n"
+	  unless $from eq $to;
+	print LANGHTML "\t<meta http-equiv='Content-Language' content='$iso639_1'>\n"
+		if $from eq $to;
+}
+
+sub iso639_1 {
+	my ($iso639_2) = @_;
+	# This substr is hokey bullshit.  ISO 639-1 is obsolete, but it's
+	# what the web uses!  List: http://www.loc.gov/standards/iso639-2/englangn.html
+	substr($iso639_2,0,2);
 }
 
 sub langmenu {
 	my ($from) = @_;
 	open(LANGMENU,">langmenu") || die("Can't write langmenu");
-	langline($from,"eng");
-	foreach my $lang ( @lang ) {
-		langline($from,$lang);
+	open(LANGHTML,">langhtml") || die("Can't write langhtml");
+
+	my $iso639_1 = iso639_1($from);
+	#print LANGHTML "<html lang='$iso639_1'>\n<head>\n";
+	print LANGHTML "<html>\n<head>\n";
+	print LANGHTML <<STYLE if $from ne "en";
+	<style>
+	<!--
+	:lang($iso639_1) { color: green; }
+	-->
+	</style>
+STYLE
+
+	foreach my $to ( "en", @lang ) {
+		langline($from,$to);
 	}
 	close LANGMENU;
 }
@@ -64,7 +105,7 @@ sub langmenu {
 #########################
 # Make docs for english
 #########################
-langmenu("eng");
+langmenu("en");
 system("make_faq");
 
 #########################
@@ -81,3 +122,6 @@ foreach my $lang ( @lang ) {
 	system("make_faq");
 	chdir "..";
 }
+
+unlink("langmenu");
+unlink("langhtml");

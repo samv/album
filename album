@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.11';
+  my $VERSION=  '3.12';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -88,6 +88,8 @@ add_option(2,'virgin_check',OPTION_BOOL, one_time=>1, default=>1, usage=>"Do the
 add_option(3,'save_conf',OPTION_BOOL, default=>1, usage=>"Save $PROGFILE.conf files in photo album");
 add_option(3,'configure',OPTION_BOOL, usage=>"Setup initial $PROGNAME site configuration");
 add_option(1,'version',\&version, usage=>"Display program version info");
+add_option(1,'mv',\&get_plugin, usage=>"Move images across albums (see 'album -plugin_info utils/mv')");
+add_option(3,'create_plugin',\&get_plugin, usage=>"Create a new plugin (see 'album -plugin_info utils/create_plugin')");
 
 # Album Options:
 add_option(1,'Album Options:',OPTION_SEP);
@@ -95,6 +97,7 @@ add_option(3,'image_pages',OPTION_BOOL, default=>1, usage=>"Create a page for ea
 add_option(2,'dir_thumbs',OPTION_BOOL, default=>1, usage=>"Directories have thumbnail (if supported by theme)");
 add_option(1,'medium', OPTION_STR, args=>'<geom>', usage=>"Generate medium size images");
 add_option(2,'just_medium',OPTION_BOOL, usage=>"Don't link to full-size images");
+add_option(1,'slideshow',OPTION_BOOL, default=>0, usage=>"Slideshow capabilities (only with some themes)");
 add_option(1,'embed',OPTION_BOOL, default=>1, usage=>"Use image pages for non-picture image pages");
 add_option(3,'columns',OPTION_NUM, default=>4, usage=>"Number of image columns");
 add_option(1,'clean',OPTION_BOOL, one_time=>1, usage=>"Remove unused thumbnails");
@@ -116,6 +119,7 @@ add_option(2,'top',OPTION_STR, default=>'../', usage=>"URL for 'Back' link on to
 add_option(2,'all',OPTION_BOOL, usage=>"Do not hide files/directories starting with '.'");
 add_option(1,'add', OPTION_ARR, args=>'<dir>', one_time=>1, usage=>"Add a new directory to the album it's been placed in");
 add_option(2,'depth',OPTION_NUM, default=>-1, one_time=>1, usage=>"Depth to descend directories (default infinite)");
+add_option(3,'follow_symlinks',OPTION_NUM, default=>1, usage=>"Dereference symbolic links");
 add_option(2,'hashes',OPTION_BOOL, default=>1, one_time=>1, usage=>"Show hash marks while generating thumbnails");
 add_option(2,'name_length',OPTION_NUM, default=>40, usage=>"Limit length of image/dir names");
 add_option(2,'sort',OPTION_STR, default=>'captions', usage=>"Sort type, captions, name or date");
@@ -123,6 +127,7 @@ add_option(2,'sort',OPTION_STR, default=>'captions', usage=>"Sort type, captions
 	add_option(99,'date_sort', \&deprecated_option, args=>'sort', usage=>"DEPRECATED: Sort images/dirs by date instead of captions/name");
 	add_option(99,'name_sort', \&deprecated_option, args=>'sort', usage=>"DEPRECATED: Sort by name, not caption order");
 add_option(2,'reverse_sort',OPTION_BOOL, usage=>"Sort in reverse");
+add_option(2,'case_sort',OPTION_BOOL, default=>0, usage=>"Use case sensitive sorting when sorting names");
 add_option(3,'body',OPTION_STR, default=>'<body>', usage=>"Specify <body> tags for non-theme output");
 add_option(3,'charset', OPTION_STR, args=>'<str>', default=>'iso-8859-1', usage=>"Charset for non-theme output");
 add_option(2,'image_loop',OPTION_BOOL, default=>1, usage=>"Do first and last image pages loop around?");
@@ -166,7 +171,7 @@ add_option(10,'plugin_post', OPTION_STR, default=>'.alp', usage=>"Default postfi
 add_option(3,'list_plugins', \&list_plugins, one_time=>1, usage=>"Print info for all known plugins.");
 add_option(10,'list_plugins_crf', \&list_plugins, one_time=>1, usage=>"Print info for all known plugins in computer readable format.");
 add_option(4,'list_hooks', \&list_hooks, one_time=>1, usage=>"Show all known plugin hooks (for developers).");
-add_option(4,'hook_info', \&list_hooks, args=>'<hook>', one_time=>1, usage=>"Show all known plugin hooks (for developers).");
+add_option(4,'hook_info', \&list_hooks, args=>'<hook>', one_time=>1, usage=>"Show hook info for a specific hook (for developers).");
 
 # Theme Options:
 #add_option(1,'Theme Options:',OPTION_SEP);
@@ -198,8 +203,9 @@ add_option($TCAP?1:10,'cmdproxy',OPTION_STR, default=>'cmdproxy', usage=>"Path t
 # Default directory page
 add_option(10,'header',OPTION_STR, default=>'header.txt', usage=>"Path to header file");
 add_option(10,'footer',OPTION_STR, default=>'footer.txt', usage=>"Path to footer file");
-              # We can't set -no_album as an option because it gets misread
-              # as a -no_<option>, but that's okay with me...
+add_option(10,'credit',OPTION_STR, usage=>"Credit line to add to the bottom of every album.");
+              # We can't set -no_album as a command-line option because it
+							# gets misread as a -no_<option>, but that's okay with me...
               # This wouldn't be difficult to fix in parse_arg,
               # though it would be less readable.
 add_option(10,'no_album',OPTION_STR, default=>'.no_album', usage=>"Ignore dir/files if file with this postfix exists");
@@ -264,6 +270,8 @@ my $IMAGE_TYPES	=
 #   {img_theme}		  Full path to the theme directory from image pages
 #   {page_post_url}	  The ".html" to add onto image pages
 #   {parent_albums}	  Array of parent albums (album_path split up)
+# $data->{head}		String to print between the <head></head> of an album
+# $data->{body_tag}     String to print inside the <body> tag of an album
 #
 # $obj
 # ----
@@ -275,10 +283,13 @@ my $IMAGE_TYPES	=
 # $obj->{has_thumb}	Boolean: does it have a thumbnail?
 # $obj->{name}		Name (cleaned and optionally from captions)
 # $obj->{cap}		Image caption
+# $obj->{cap_image}	Caption to only show in image pages.  (For plugins)
+# $obj->{cap_album}	Caption to only show in album pages.
 # $obj->{capfile}	Optional caption file
 # $obj->{alt}		Alt tag
-# $obj->{num_pics}	[directories only, -dir_thumbs] Num of pics in directory
-# $obj->{num_dirs}	[directories only, -dir_thumbs] Num of dirs in directory
+# $obj->{intag}		Optional:  Add to the <img|embed> tag for this object
+# $obj->{num_pics}	[directories only] Num of pics in directory
+# $obj->{num_dirs}	[directories only] Num of dirs in directory
 #
 # There are three sizes of images for each pic: full, medium, thumb.
 # For each of these sizes, we have:
@@ -289,6 +300,7 @@ my $IMAGE_TYPES	=
 #   $obj->{<size>}{path}		Filename (full path)
 #   $obj->{<size>}{filesize}	Filesize in bytes
 #   $obj->{full}{tag}	Tag - either 'image' or 'embed' (only for full)
+#   $obj->{<size>}{intag}		Optional:  Add to the <img|embed> tag
 #
 # Image objs also have URL info:
 #
@@ -398,14 +410,14 @@ sub add_option {
   #    (Though 2>&1 works in Win2000, ActivePerl and Cygwin)
   my $TMPFILE;
   sub open_pipe {
-    my ($opt,$cmd,$args) = @_;
-    print STDERR "run: $cmd $args\n" if $opt->{d};
+    my ($opt,$cmd,@args) = @_;
+    print STDERR "run: $cmd @args\n" if $opt->{d};
     my $fh = new IO::File;
 
-    $cmd = file_quote($opt,$cmd);
+    my $qcmd = file_quote($opt,$cmd);
 
     # Happy Unix
-    return (open($fh, "$cmd $args 2>&1 |")) && $fh
+    return (open($fh, "$qcmd @args 2>&1 |")) && $fh
       unless $opt->{cygwin} || $opt->{use_tcap};
 
     # Win98 (use TCAP)
@@ -414,9 +426,9 @@ sub add_option {
       # Put tcap args in the tcap env var, so to reduce line length (128 limit)
       $ENV{tcap}="-overwrite *$opt->{tcap_out}";
       $TMPFILE = $opt->{tcap_out};	# Interrupt handlers can remove it..
-      my $tcap = file_quote($opt,$opt->{tcap});
-      $tcap .= " ".file_quote($opt,$opt->{cmdproxy}) if $opt->{cmdproxy};
-      system("$tcap -c $cmd $args");
+			my @tcap = ($opt->{tcap});
+			push(@tcap,$opt->{cmdproxy}) if $opt->{cmdproxy};
+      system(@tcap,'-c',$cmd,@args);
       (open($fh, "$opt->{tcap_out}")) || fatal($opt,"Can't open $opt->{tcap} output [$opt->{tcap_out}]");
       return $fh;
     }
@@ -430,7 +442,7 @@ sub add_option {
     return $fh if $pid;			# Parent
     # Child
     (open(STDERR,">&STDOUT")) || fatal($opt,"open_pipe(): Can't dup stdout\n");
-    exec("$cmd $args");
+    exec($cmd,@args);
   }
 
   # 5 1/2)  Clean up the tmp file	(for Win98)
@@ -460,7 +472,7 @@ my $OLD_GEN_RE	= "Generated by <a href=.+>$PROGNAME</a> and <a href=.+>thumb</a>
 sub get_defaults {
   my %opt = %DEFAULTS;	# Copy defaults
   my $opt = \%opt;
-  $GLOBAL_OPT = $opt;	# Global for add_option plugins.  Shh! Don't tell anyone...
+  $GLOBAL_OPT = $opt;	# Global for plugin add_option calls.  Shh! Don't tell anyone...
 
 	$opt->{PROGNAME} = $PROGNAME;	# For plugins, mostly
 	$opt->{BASENAME} = $BASENAME;
@@ -772,9 +784,9 @@ sub parse_arg {
   my ($opt,$Option,$val, $from) = @_;
 
   # Is it a -no_option or -clear_option or a --option?
-  my $clear = ($Option =~ s/^clear[_-]?//) ? 1 : 0;
+  my $clear = ($Option =~ s/(^|:)clear[_-]?//) ? 1 : 0;
   my $dashdash = ($Option =~ s/^-//) ? 1 : 0;
-  my $no = ($Option =~ s/^no[_-]?//) ? 1 : 0;
+  my $no = ($Option =~ s/(^|:)no[_-]?/$1/) ? 1 : 0;
   usage("Unnecessary '--' in options") if $dashdash && !$Option;
 
   return if $no && $clear;	# That's just silly.
@@ -1823,12 +1835,11 @@ sub install_find_current_data {
   if (-f $targz && !-d $What) {
     print STDERR "\nI found a gzipped $What tar: $targz\n\nWould you like me to try to unzip it?\n";
     if (install_get_yn($opt,'y')) {
-      system("tar xzf $targz");
+      system("tar","xzf",$targz);
       if ($?) {
         # Try gunzip/tar
-        #system("gunzip $targz");
-        #system("tar xf $tar") unless $?;
-        system("tar", "xzf", $targz);
+        system("gunzip",$targz);
+        system("tar","xf",$tar) unless $?;
       }
       return $What unless $? || !-d $What;
       print STDERR $? ? "\nError untarring: $!\n\n" :
@@ -1840,7 +1851,7 @@ sub install_find_current_data {
   if (-f $zip && !-d $What) {
     print STDERR "\nI found a zipped $What archive: $zip\n\nWould you like me to try to unzip it?\n";
     if (install_get_yn($opt,'y')) {
-      system("unzip $zip");
+      system("unzip",$zip);
       return $What unless $? || !-d $What;
       print STDERR $? ? "\nError unzipping: $!\n\n" :
         "\nError: Unzipping didn't create expected directory [$What]\n\n";
@@ -1901,7 +1912,7 @@ sub install_get_yn {
 }
 
 sub install_get_answer {
-  my ($opt,$question,$default,$desc) = @_;
+  my ($opt,$question,$default,$desc,$undef_okay) = @_;
 
   print STDERR "$desc\n" if $desc;
   my $ret;
@@ -1911,6 +1922,7 @@ sub install_get_answer {
     print STDERR "> ";
     my $line = scalar <STDIN>;  chomp($line);
     $ret = $line eq "" ? $default : $line;
+    last if $undef_okay;
   }
   $ret;
 }
@@ -1926,6 +1938,25 @@ sub install_hit_enter {
   my ($opt) = @_;
   print STDERR "Press enter/return to continue ";
   scalar <>;
+}
+
+# album doesn't use this, but plugins can.
+sub install_get_text {
+  my ($opt,$question,$desc) = @_;
+
+  print STDERR "$desc\n" if $desc;
+  my $ret;
+  print STDERR "Finish typing text by entering a line with only '.' on it.\n";
+	my $num = 0;
+  while (1) {
+    print STDERR "Enter " unless defined $ret;
+    print STDERR "$question> ";
+    my $line = scalar <STDIN>;
+		return $ret if ($line eq ".\n");
+		$ret .= $line;
+    print STDERR "Finish typing text by entering a line with only '.' on it.\n"
+      unless ++$num % 10;
+  }
 }
 
 ##################################################
@@ -2230,6 +2261,9 @@ sub no_plugin_option {
 sub get_plugin {
   my ($opt,$option,$plugin) = @_;
 
+	$plugin = 'utils/mv' if $option eq 'mv';
+	$plugin = 'utils/create_plugin' if $option eq 'create_plugin';
+
   return 0 unless $plugin;
 
   # Remove postfix
@@ -2452,7 +2486,7 @@ sub gather_hook_info {
 }
 
 sub list_hooks {
-  my ($opt, $option, $just_hook) = @_;
+  my ($opt, $option, $just_hook, $no_die) = @_;
 
   my $hooks = gather_hook_info($opt);
   my @hooks = sort keys %$hooks;
@@ -2475,7 +2509,7 @@ sub list_hooks {
     }
     print "\n";
   }
-  exit;
+  exit unless $no_die;
 }
 
 sub plugin_warn {
@@ -2776,7 +2810,8 @@ sub get_exif_caption {
   return if !$opt->{jhead};	# Saw a jhead error..
   return unless $pic =~ /\.jpe?g$/i;
 
-  my $exif = get_exif_info($opt,$data,"$dir/$pic");
+  my $pic_file = $data->{obj}{$pic}{full}{path} || "$dir/$pic";
+  my $exif = get_exif_info($opt,$data,$pic_file);
   return unless $exif;
 
   $data->{obj}{$pic}{exif} .= exif_replace($exif, @{$opt->{exif}})
@@ -2841,8 +2876,9 @@ sub get_captions {
       my $dircaps = read_captions($opt,"$data->{paths}{dir}/$dir");
       $data->{obj}{$dir} = $dircaps->{'.'} || $dircaps->{$dir};
       delete $data->{obj}{$dir}{order};	# Line number is *not* used for sorting..
+				# Not when it's in the same directory instead of in the parent.
         # Hopefully this won't screw up any plugins that override read_captions,
-        # they should 'find' the caption it in the parent directory anyways.
+        # they should 'find' the caption that's in the parent directory anyways.
     }
 
     my $new = do_hook($opt,$data, 'modify_dir_caption', $data->{paths}{dir}, $dir, $data->{obj}{$dir}{cap});
@@ -2900,6 +2936,11 @@ sub sort_order {
   # Get name
   $a = $data->{obj}{$a}{name};
   $b = $data->{obj}{$b}{name};
+
+	unless ($opt->{case_sort}) {
+		$a = lc($a);
+		$b = lc($b);
+	}
 
 # This tries to mingle captioned images with non-captioned.  It won't work.
 # Consider images:  a, b, c and captions file only has c then a.  No sort!
@@ -2995,15 +3036,17 @@ sub calc_paths {
   # Final obj is a hash of hashes:  full, medium, thumb
   # Each hash contains:  file, x, y and possibly filesize and path
   foreach my $pic ( @{$data->{pics}} ) {
-    $data->{obj}{$pic}{full}{file} = $pic;
-    $data->{obj}{$pic}{full}{path} = "$dir/$pic";
+    $data->{obj}{$pic}{full}{file} = $pic unless $data->{obj}{$pic}{full}{file};
+    $data->{obj}{$pic}{full}{path} = "$dir/$pic" unless $data->{obj}{$pic}{full}{path};
+		# We also store it in just obj->{file} to match directory objects.
+    $data->{obj}{$pic}{file} = $pic unless $data->{obj}{$pic}{file};
   }
 
   # Links to sub-albums
   if (@{$data->{dirs}}) {
     foreach my $child ( @{$data->{dirs}} ) {
       my $obj = $data->{obj}{$child};
-      $obj->{dir} = $child;	# The unadulterated name
+      $obj->{file} = $child;	# The unadulterated name
       $obj->{path} = "$dir/$child";
       $obj->{URL}{album_page}{dir} = url_quote($opt, index_page($opt,0,$child));
     }
@@ -3285,6 +3328,13 @@ my \$THIS_IMAGE = 0;	# For image pages
 # Get any of the command line options
 sub Option { \$opt->{\$_[0]}; }
 
+sub Version { $VERSION; }
+sub Version_Num {
+  my \$ver = $VERSION;
+	\$ver =~ s/[^\\d\\.]//g;
+	\$ver + 0;
+}
+
 #########################
 # Paths
 #########################
@@ -3456,6 +3506,8 @@ sub Image {
 
   my \$str;
   \$str .= "<\$tag src=\$src style='border:0'";
+  \$str .= " \$obj->{intag} " if \$obj->{intag};
+  \$str .= " \$obj->{\$type}{intag} " if \$obj->{\$type}{intag};
   \$str .= " alt='\$obj->{alt}'";
   \$str .= " title='\$obj->{alt}'" if \$obj->{alt};
   \$str .= " width='\$obj->{\$type}{x}'" if \$obj->{\$type}{x};
@@ -3528,6 +3580,7 @@ sub shorten {
 }
 
 # We can chop down extra long image names on the album page if needed
+my \$order = -1;
 sub Name {
   my \$obj = get_obj(\@_);
   my \$n = \$obj->{name};
@@ -3537,7 +3590,8 @@ sub Name {
   my \$s = (Image_Page() || !$opt->{name_length} || $opt->{caption_edit}) ? \$n : shorten(\$n,$opt->{name_length});
   return \$s if !$opt->{caption_edit};
   \$n = url_quote(\$n);
-  my \$name = url_quote("NAME\$obj->{num}:".\$obj->{full}{file});
+	my \$num = \$obj->{order} ? \$obj->{order}-2 : \$order--;
+  my \$name = url_quote("NAME\$num:".\$obj->{file});
   \$s =~ s/\\n//mg;
   "<!--IMAGE_NAME name=\$name value=\$n-->\$s<!--END_IMAGE_NAME-->";
 }
@@ -3560,13 +3614,14 @@ sub Caption {
   my \$obj = get_obj(\@_);
   my \$norm_caps = ($opt->{album_captions} || Image_Page()) ? 1 : 0;
   my \$cap = "";
-  \$cap .= "<!--IMAGE_CAPTION name=".url_quote("CAPTION:".\$obj->{full}{file})."-->\\n"
+  \$cap .= "<!--IMAGE_CAPTION name=".url_quote("CAPTION:".\$obj->{file})."-->\\n"
     if $opt->{caption_edit};
   \$cap .= \$obj->{cap} if \$norm_caps;
-  \$cap .= \$obj->{exif} if \$norm_caps;
-  \$cap .= Image_Page() ? \$obj->{exif_image} :  \$obj->{exif_album};
   \$cap .= join('',read_file(\$obj->{capfile})) if \$norm_caps;
   \$cap .= "<!--END_IMAGE_CAPTION-->\\n" if $opt->{caption_edit};
+  \$cap .= Image_Page() ? \$obj->{cap_image} :  \$obj->{cap_album};
+  \$cap .= \$obj->{exif} if \$norm_caps;
+  \$cap .= Image_Page() ? \$obj->{exif_image} :  \$obj->{exif_album};
   \$cap;
 }
 
@@ -3728,13 +3783,20 @@ sub Image_Repeat {
 }
 
 # Borders can be 0 pieces, 4 pieces, 8 or 12
-# Called starting from top (left) going clockwise.
+# Ordered starting from top (left) going clockwise.
 #   12 piece borders     
 #      TL  T  TR          8 piece borders       4 piece borders
 #      LT     RT            TL  T  TR            TTTTTTT
 #      L  IMG  R            L  IMG  R            L IMG R
 #      LB     RB            BL  B  BR            BBBBBBB
 #      BL  B  BR
+#
+# OVERLAY BORDERS can be used by specifying an "padding" as an extra
+# integer parameter to the T, L, R and B image arrays.  This is the
+# amount of the border that shouldn't overlap the image (the outside part).
+# The T and L padding will be used for the TL border, etc..
+# You cannot mix overlay borders with non-overlay, and overlay borders
+# are always 8 pieces (you can skip any pieces with empty image arrays).
 #
 # Constraints for 12 piece borders:
 #   Same width:  LT,L,LB.  T,R,RB
@@ -3743,23 +3805,24 @@ sub Image_Repeat {
 #   height LT = height RT,  height LB = height RB
 sub Border {
   # Either call with:
-  #   (img_object, type, href, border_image_arrays)
+  #   (img_object, type, href_type, border_image_arrays)
   #   (img_string, x,y, border_image_arrays)  <-- DEPRECATED!
   #   Can also call (color,padding) instead of border_image_arrays (Minimalist)
 
   my \$img = shift \@_;
   my (\$x,\$y);
+	my \$href;
 
   if (ref \$img ne 'HASH') {
     # Called with (img_string,x,y, ..)
     (\$x,\$y) = (shift \@_, shift \@_);
   } else {
-    # Called with (img_object,type,href, ..)
-    my (\$type,\$href) = (shift \@_, shift \@_);
+    # Called with (img_object,type,href_type, ..)
+    my (\$type,\$href_type) = (shift \@_, shift \@_);
     # Medium or full if not thumb?
     \$type = Get(\$img,'medium','x') ? 'medium' : 'full' if \$type ne 'thumb';
     # Lookup href
-    \$href = Get(\$img,'href',\$href) if \$href;
+    \$href = Get(\$img,'href',\$href_type) if \$href_type;
     \$x = Get(\$img,\$type,'x');
     \$y = Get(\$img,\$type,'y');
     my \$str = Image(\$img,\$type);
@@ -3772,7 +3835,7 @@ sub Border {
     \$img = \$str;
   }
 
-  my (\$width,\$height)=(1,2);	# Constants for image arrays
+  my (\$width,\$height,\$overlay)=(1,2,3);	# Constants for image arrays
 
   # (color, padding) format (like Minimalist)
   if (ref \$_[0] ne 'ARRAY' && \$_[1] =~ /^\\d+\$/) {
@@ -3795,8 +3858,8 @@ COLOR_BORDER
   if (scalar \@_ == 4) {
     my (\$T,\$R,\$B,\$L) = \@_;
 
-    # Old method: Stretch top,bottom to fit image
-    my \@t = \@\$T; my \@b = \@\$B;
+    # Stretch top,bottom to fit image
+    my \@t = \@\$T; my \@b = \@\$B;	# Copy them so we can alter/stretch
     my \@l = \@\$L; my \@r = \@\$R;
     \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width];
     \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width];
@@ -3817,26 +3880,64 @@ BORDER4
   if (scalar \@_ == 8) {
     my (\$TL,\$T,\$TR,\$R,\$BR,\$B,\$BL,\$L) = \@_;
 
-#    # Old Method: Stretch top,bottom to fit image
-#    my \@t = \@\$T; my \@b = \@\$B;
-#    my \@l = \@\$L; my \@r = \@\$R;
-#    # Just *try* to read this mess...
-#    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width];
-#    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width];
-#    \$l[\$height] = \$y;
-#    \$r[\$height] = \$y;
-#
-#    my (\$tl,\$t,\$tr,\$r,\$br,\$b,\$bl,\$l) =
-#      map( Image_Array(\@\$_), 
-#        (\$TL,\\\@t,\$TR,\\\@r,\$BR,\\\@b,\$BL,\\\@l));
-#
-#    print <<BORDER8;
-#					<span style='white-space: nowrap'>\$tl\$t\$tr</span><br />
-#					<span style='white-space: nowrap'>\$l\$img\$r</span><br />
-#					<span style='white-space: nowrap'>\$bl\$b\$br</span><br />
-#BORDER8
+    # OVERLAY BORDERS
+    if (\$#\$T==3 || \$#\$R==3 || \$#\$B==3 || \$#\$L==3) {
+      my \@t = \@\$T; my \@b = \@\$B;	# Copy them so we can alter/stretch
+      my \@l = \@\$L; my \@r = \@\$R;
+      my \$t_pad = \$t[\$overlay]; my \$b_pad = \$b[\$overlay];
+      my \$l_pad = \$l[\$overlay]; my \$r_pad = \$r[\$overlay];
+      my \$full_width = \$l_pad + \$x + \$r_pad;
+      my \$full_height = \$t_pad + \$y + \$b_pad;
+      \$t[\$width] = \$full_width - \$TL->[\$width]-\$TR->[\$width];
+      \$b[\$width] = \$full_width - \$TL->[\$width]-\$TR->[\$width];
+      \$l[\$height] = \$full_height - \$TL->[\$height]-\$BL->[\$height];
+      \$r[\$height] = \$full_height - \$TR->[\$height]-\$BR->[\$height];
+      \$t[\$width] = 0 if \$t[\$width]<0;
+      \$b[\$width] = 0 if \$b[\$width]<0;
+      \$l[\$height] = 0 if \$l[\$width]<0;
+      \$r[\$height] = 0 if \$r[\$width]<0;
 
-    # New Method: Repeat everything to fit image.
+      my (\$tl,\$t,\$tr,\$r,\$br,\$b,\$bl,\$l) =
+        map( Image_Array(\@\$_), (\$TL,\\\@t,\$TR,\\\@r,\$BR,\\\@b,\$BL,\\\@l));
+
+			# Unfortunately we have to put links on each piece or else they can't click..
+			my \$end = \$href ? "</a>" : "";
+
+      print <<OVERLAY8;
+					<div style="position: relative; width: \$full_width; height: \$full_height;">
+						<div style="position: absolute; z-index: 0; position: absolute; left: \$l_pad; top: \$r_pad;">
+							\$img
+						</div>
+						<div style="position: absolute; z-index: 2; top: 0px; left: 0px;">
+							\$href\$tl\$end
+						</div>
+						<div style="position: absolute; z-index: 2; top: 0px; right: 0px;">
+							\$href\$tr\$end
+						</div>
+						<div style="position: absolute; z-index: 2; bottom: 0px; left: 0px;">
+							\$href\$bl\$end
+						</div>
+						<div style="position: absolute; z-index: 2; bottom: 0px; right: 0px;">
+							\$href\$br\$end
+						</div>
+						<div style="position: absolute; z-index: 1; top: 0px; left: \$TL->[\$width];">
+							\$href\$t\$end
+						</div>
+						<div style="position: absolute; z-index: 1; bottom: 0px; left: \$BL->[\$width];">
+							\$href\$b\$end
+						</div>
+						<div style="position: absolute; z-index: 1; top: \$T->[\$height]; left: 0px;">
+							\$href\$l\$end
+						</div>
+						<div style="position: absolute; z-index: 1; top: \$T->[\$height]; right: 0px;">
+							\$href\$r\$end
+						</div>
+					</div>
+OVERLAY8
+      return;
+    }
+
+    # REGULAR 8 PIECE BORDERS
     my \$t = Image_Repeat_td(\$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width],0, \@\$T);
     my \$b = Image_Repeat_td(\$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width],0, \@\$B);
     my \$l = Image_Repeat_td(0,\$y, \@\$L);
@@ -3871,43 +3972,6 @@ BORDER8
     return Border(\$img,\$x,\$y,\$T,\$R,\$B,\$L) if \$border && !\$corners12;
     return Border(\$img,\$x,\$y) if !\$border && !\$corners12;
 
-#    # Old Method: Stretch top,bottom,sides to fit image
-#    my \@t = \@\$T; my \@b = \@\$B;
-#    my \@l = \@\$L; my \@r = \@\$R;
-#    # Just *try* to read this mess...
-#    \$t[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width];
-#    \$b[\$width] = \$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width];
-#    \$l[\$height] = \$y-\$LT->[\$height]-\$LB->[\$height];
-#    \$r[\$height] = \$y-\$RT->[\$height]-\$RB->[\$height];
-#
-#    my (\$tl,\$t,\$tr,\$rt,\$r,\$rb,\$br,\$b,\$bl,\$lb,\$l,\$lt) =
-#      map( Image_Array(\@\$_), 
-#        (\$TL,\\\@t,\$TR,\$RT,\\\@r,\$RB,\$BR,\\\@b,\$BL,\$LB,\\\@l,\$LT));
-#
-#    # Embedded stuff is aligned top in case there are controls, otherwise
-#    # align middle in case the thumbnail is very small and there's blank space.
-#    my \$align = \$img =~ /<embed/ ? 'top' : 'middle';
-#    print <<BORDER12;
-#					<table border='0' cellpadding='0' cellspacing='0'>
-#						<tr>
-#							<td colspan='3'>\$tl\$t\$tr</td>
-#						</tr> <tr>
-#							<td>\$lt</td>
-#							<td rowspan='3' valign=\$align>\$img</td>
-#							<td>\$rt</td>
-#						</tr> <tr>
-#							<td>\$l</td>
-#							<td>\$r</td>
-#						</tr> <tr>
-#							<td>\$lb</td>
-#							<td>\$rb</td>
-#						</tr> <tr>
-#							<td colspan='3'>\$bl\$b\$br</td>
-#						</tr>
-#					</table>
-#BORDER12
-
-    # New Method: Repeat everything to fit image.
     my \$t = Image_Repeat_td(\$x+\$L->[\$width]+\$R->[\$width]-\$TL->[\$width]-\$TR->[\$width],0, \@\$T);
     my \$b = Image_Repeat_td(\$x+\$L->[\$width]+\$R->[\$width]-\$BL->[\$width]-\$BR->[\$width],0, \@\$B);
     my \$l = Image_Repeat_td(0,\$y-\$LT->[\$height]-\$LB->[\$height], \@\$L);
@@ -3985,8 +4049,12 @@ sub Credit {
   \$from =~ s/{mh}/\$mh.\$mh[int(rand(\$#mh+1))]/e;
   \$from =~ s/{tool}/\$tool.\$tool[int(rand(\$#tool+1))]/e;
 
-  print "\$start \$album \$from";
+  print "\$opt->{credit} \$start \$album \$from";
   \$${derc}=1;
+}
+
+sub Body_Tag {
+  print "\$data->{body_tag}";
 }
 
 # Meta tag needed for regenerating portions of the album tree.
@@ -4036,6 +4104,7 @@ PREV_NEXT
   } else {
     print "<link rel='up' title='Up' href='..'>";
   }
+  print "\$data->{head}";
   \$CALLED_META=1;
 }
 sub Album_End {
@@ -4076,13 +4145,16 @@ sub setup_output {
 }
 
 sub close_output {
-  my ($opt,$theme) = @_;
+  my ($opt,$out,$theme) = @_;
   close(ALBUM);
   my $ret = $?;
   return unless $theme;
   return unless $ret;
 
-  print STDERR "[$PROGNAME] album theme returned error [$?]\n" if ($?);
+  if ($?) {
+    print STDERR "[$PROGNAME] album theme returned error [$?]\n";
+    unlink $out;
+  }
   fatal($opt);
 }
 
@@ -4099,6 +4171,9 @@ sub header {
   my @names = @{$data->{paths}{parent_albums}};
   push(@names,$name) if $name;
   my $top = ($#names>0 || $image_page) ? 0 : 1;
+
+  my $body = $opt->{body};
+  $body =~ s/<body/<body $data->{body_tag}/i if $data->{body_tag};
 
   my $this = pop(@names);
   my $header = "";
@@ -4124,8 +4199,9 @@ sub header {
     <meta http-equiv='Content-Type' content='text/html; charset=$opt->{charset}' />
     <meta name='Generator' content='$GEN_STRING' />
     <meta name='Album_Path' content='$data->{paths}{album_path}' />
+    $data->{head}
   </head>
-  $opt->{body}
+  $body
   <table width='95%'>
     <tr>
       <td align='left'>
@@ -4152,6 +4228,7 @@ sub credit {
   my $date = localtime;
   return <<CREDIT;
     <font size='-1'>
+      $opt->{credit}
       Photo album generated by
       <a href='$ALBUM_URL'>$PROGNAME</a>
       from <a href='http://GetDave.com/'>Dave's</a>
@@ -4218,6 +4295,7 @@ sub new_element {
 sub caption {
   my ($obj,$image_page) = @_;
   print ALBUM $obj->{cap};
+  print ALBUM $image_page ? $obj->{cap_image} : $obj->{cap_album};
   print ALBUM $obj->{exif};
   print ALBUM $image_page ? $obj->{exif_image} : $obj->{exif_album};
   if (-f $obj->{capfile} && (open(CAP,"<$obj->{capfile}"))) {
@@ -4264,7 +4342,8 @@ sub write_index {
   my $dir = $data->{paths}{dir};
 
   # TOP
-  setup_output($opt,$data->{paths}{album_file});
+  my $out = $data->{paths}{album_file};
+  setup_output($opt,$out);
   header($opt,$data,0);
 
   # DIRECTORIES
@@ -4282,6 +4361,8 @@ sub write_index {
         print ALBUM " width='$obj->{thumb}{x}'" if $obj->{thumb}{x};
         print ALBUM " height='$obj->{thumb}{y}'" if $obj->{thumb}{y};
         print ALBUM " style='border:0' src=$obj->{URL}{album_page}{thumb}";
+        print ALBUM " $obj->{intag} " if $obj->{intag};
+        print ALBUM " $obj->{thumb}{intag} " if $obj->{thumb}{intag};
         print ALBUM " alt='$obj->{alt}'";
         print ALBUM " title='$obj->{alt}'" if $obj->{alt};
         print ALBUM " /><br />\n";
@@ -4316,6 +4397,8 @@ sub write_index {
       print ALBUM " width='$obj->{thumb}{x}'" if $obj->{thumb}{x};
       print ALBUM " height='$obj->{thumb}{y}'" if $obj->{thumb}{y};
       print ALBUM " style='border:0' src=$obj->{URL}{album_page}{thumb}";
+      print ALBUM " $obj->{intag} " if $obj->{intag};
+      print ALBUM " $obj->{thumb}{intag} " if $obj->{thumb}{intag};
       print ALBUM " alt='$obj->{alt}'";
       print ALBUM " title='$obj->{alt}'" if $obj->{alt};
       print ALBUM " /><br />\n";
@@ -4348,7 +4431,7 @@ sub write_index {
   print ALBUM "<hr />\n" if @{$data->{pics}};
   footer($opt,$data);
 
-  close_output($opt,0);
+  close_output($opt,$out,0);
 }
 
 #########################
@@ -4358,6 +4441,9 @@ sub write_img_indexes {
   my ($opt,$data) = @_;
 
   my $dir = $data->{paths}{dir};
+
+	# A bit kludgy.
+	my $full_or_medium = $opt->{medium} ? 'medium' : 'full';
 
   # Init the previous info
   my $last_pic = $data->{pics}[-1];
@@ -4403,6 +4489,8 @@ PREV_NEXT
     print ALBUM "<a href=$obj->{URL}{image_page}{image}>\n";
     print ALBUM "<$obj->{full}{tag} style='border:0'";
     print ALBUM " src=$obj->{URL}{image_page}{image_src}";
+    print ALBUM " $obj->{intag} " if $obj->{intag};
+    print ALBUM " $obj->{$full_or_medium}{intag} " if $obj->{$full_or_medium}{intag};
     print ALBUM " alt='$obj->{alt}'";
     print ALBUM " title='$obj->{alt}'" if $obj->{alt};
     print ALBUM " /></a><br />\n";
@@ -4415,7 +4503,7 @@ PREV_NEXT
 
     footer($opt,$data);
 
-    close_output($opt,0);
+    close_output($opt,"$dir/$file",0);
 
     $prev = "<h3><a href=$obj->{URL}{image_page}{image_page}>$name</a></h3>";
 
@@ -4431,7 +4519,8 @@ PREV_NEXT
 sub write_theme {
   my ($opt,$data) = @_;
 
-  setup_output($opt,$data->{paths}{album_file},1);
+  my $out = $data->{paths}{album_file};
+  setup_output($opt,$out,1);
 
   # Write the support data/functions
   eperl_set_file("album theme initialization",1);
@@ -4443,7 +4532,7 @@ sub write_theme {
     @{$opt->{_theme}{'album.th'}},
     @{$data->{end_eperl}});
 
-  close_output($opt,1);
+  close_output($opt,$out,1);
 }
 
 # Is this worth it?
@@ -4513,6 +4602,11 @@ sub write_img_themes {
       option_changed($opt,'just_medium') ||
       option_changed($opt,'caption_edit') ||
       option_changed($opt,'theme_url') ||
+      option_changed($opt,'credit') ||
+      option_changed($opt,'slideshow') ||
+      option_changed($opt,'sort') ||
+      option_changed($opt,'reverse_sort') ||
+      option_changed($opt,'case_sort') ||
       option_changed($opt,'burn') ||
       $data->{_changed}{$pic} ||
       dependency_changed("$dir/$file",
@@ -4560,7 +4654,7 @@ sub write_img_themes {
       @{$opt->{_theme}{"image.th"}},
       @{$data->{end_eperl}});
 
-    close_output($opt,1);
+    close_output($opt,"$dir/$file",1);
     show_hashes($opt, 2+$i+1, 2 + $#{$data->{pics}}+1);
   }
 }
@@ -4647,11 +4741,11 @@ sub handle_file {
 
   # Paths
   my $dir = $data->{paths}{dir};
-  my $path = "$dir/$pic";
   my $obj = $data->{obj}{$pic};
+  my $path = $obj->{full}{path};
 
   # Figure out type
-  $obj->{is_movie} = is_movie($opt,$pic);
+  $obj->{is_movie} = is_movie($opt,$path);
   my $can_embed = $obj->{is_movie};
   $can_embed = 1 if $pic =~ /\.(pdf|ps)$/i;
   my $tag = 'img';
@@ -4686,7 +4780,7 @@ sub handle_file {
   # Get rid of any object size hashes that are empty
   #Bah:#map { undef $obj->{$_} unless keys %{$obj->{$_}} } qw(full medium thumb);
 
-  $obj->{capfile} = $obj->{full}{path};
+  $obj->{capfile} = $path;
   $obj->{capfile} =~ s/(\.[^\.]+)?$/.txt/;
 
   #########################
@@ -4724,12 +4818,15 @@ sub handle_file {
   # -no_embed USED to mean that movie pages didn't have image pages..
   #$use_image_pages = 0 if $obj->{is_movie} && !$opt->{embed};
 
+  my $image_dir = "$opt->{dir}/" if $opt->{dir};
+  my $image_path = "$dir/$image_dir";
   if ($use_image_pages) {
     my $image_page = "$pic$data->{paths}{page_post_url}";
-    $obj->{URL}{album_page}{image} = url_quote($opt, "$opt->{dir}/$image_page");
+    $obj->{URL}{album_page}{image} = url_quote($opt, "$image_dir$image_page");
 # Kludge - the number of ".." should be equal to the pathsize of $opt->{dir}
     my $image = ($opt->{just_medium} && $obj->{thumb})
-      ? $obj->{medium}{file} : "../$pic";
+      ? $obj->{medium}{path} : $obj->{full}{path};
+    $image = diff_path($opt, $image_path, $image);
     $obj->{URL}{image_page}{image} = url_quote($opt, $image);
     $obj->{URL}{image_page}{image_page} = url_quote($opt, $image_page);
 
@@ -4737,28 +4834,35 @@ sub handle_file {
     # -embed: pic or medium, but pic if movie (../$pic)
     # -noembed and -medium:	medium
     # -noembed and -nomedium:	snapshot
-    my $image_src = $obj->{medium}{file} || "../$pic";
+    my $image_src = $obj->{medium}{path} || $obj->{full}{path};
     if ($obj->{snapshot}{file}) {
-      $image_src = $opt->{embed} ? "../$pic" :
-        ($obj->{medium}{file} || $obj->{snapshot}{file});
+      $image_src = $opt->{embed} ? $obj->{full}{path} :
+        ($obj->{medium}{path} || $obj->{snapshot}{path});
     }
+    $image_src = diff_path($opt, $image_path, $image_src);
     $obj->{URL}{image_page}{image_src} = url_quote($opt, $image_src);
 
     # Thumbnail
-    $obj->{URL}{album_page}{thumb} = url_quote($opt, "$opt->{dir}/$obj->{thumb}{file}");
-    $obj->{URL}{image_page}{thumb} = url_quote($opt, $obj->{thumb}{file});
+    $obj->{URL}{album_page}{thumb} =
+      url_quote($opt, diff_path($opt, $dir, $obj->{thumb}{path}));
+    $obj->{URL}{image_page}{thumb} =
+      url_quote($opt, diff_path($opt, $image_path, $obj->{thumb}{path}));
   } else {
-    $obj->{URL}{album_page}{image} = url_quote($opt, $pic);
-    $obj->{URL}{album_page}{thumb} = url_quote($opt, "$opt->{dir}/$obj->{thumb}{file}");
+    $obj->{URL}{album_page}{image} =
+      url_quote($opt, diff_path($opt, $dir, $obj->{full}{path}));
+    $obj->{URL}{album_page}{thumb} =
+      url_quote($opt, diff_path($opt, $dir, $obj->{thumb}{path}));
     # We might normally have image pages, just not for this non-image
-    $obj->{URL}{image_page}{image_page} = url_quote($opt, "../$pic")
+    $obj->{URL}{image_page}{image_page} =
+      url_quote($opt, diff_path($opt, $image_path, $obj->{full}{path}))
       if $opt->{image_pages};
   }
 
   # -transform_url
   if ($opt->{transform_url}) {
     $obj->{URL}{album_page}{image} = $opt->{transform_url};
-    $obj->{URL}{album_page}{image} =~ s/%S/$pic/g;
+    my $pic_path = diff_path($opt, $dir, $obj->{full}{path});
+    $obj->{URL}{album_page}{image} =~ s/%S/$pic_path/g;
     my $s = $pic;  $s =~ s/\.[^\.]+$//;
     $obj->{URL}{album_page}{image} =~ s/%s/$s/g;
   }
@@ -4767,32 +4871,24 @@ sub handle_file {
 #  print "URL image image: $obj->{URL}{image_page}{image}\n";
 #  print "URL image imagepage: $obj->{URL}{image_page}{image_page}\n";
 
+
+  my $skip = do_hooks($opt,$data, 'end_handle_file', $dir, $pic, $obj, $path);
+  # Description:  Add to final handling of a file/image.
+  # Description:  Passes: directory, picture/filename, object hash, full path.
+  # Returns: 1 if we should skip this file.
+	return if $skip;
+
   push(@{$data->{pics}}, $pic);
 }
 
 # Pick an image to use for the directory thumbnail
 # Returns:  thumbnail path, full path to image, local path to image, image filename.
 # (See hook below for more info)
-sub dir_image {
+sub dir_info {
   my ($opt,$data,$child) = @_;
 
-  return undef unless $opt->{dir_thumbs};
-
-  my @ret = do_hook($opt,$data, 'dir_image', $child);
-  # Description: Picks the image for a directory thumbnail
-  # Returns: thumb path, full path to image, local path to image, image filename
-  # Returns: Thumb path:  Where the tn/ directory and the thumbnail gets created
-  # Returns: = (local path from the current working directory)
-  # Returns: Full path to image:  Path to full size image from current working directory
-  # Returns: Local path:  Thumbnail path, but from the current album directory.
-  # Returns: Image filename:  Just the image part of the filename.
-  # Returns:
-  # Returns: The thumbnail path and the path used in the full path to the image
-  # Returns: don't have to be the same, but they probably will be.
-  # Returns:
-  # Returns: Example:  (album/dir/, dir/, album/dir/image.gif, image.gif)
-  return @ret if defined $ret[0];
-
+  # First count the number of images and directories
+  #########################
   $data->{obj}{$child}{num_pics} = 0;
   $data->{obj}{$child}{num_dirs} = 0;
 
@@ -4806,12 +4902,36 @@ sub dir_image {
   gather_contents($opt,$child_data);
   $data->{obj}{$child}{num_dirs} = @{$child_data->{dirs}} if $child_data->{dirs};
 
-  return undef unless $child_data->{pics};
-  get_captions($opt,$child_data);	# For sorting
-  sort_info($opt,$child_data);
-  my @images = grep is_image($opt,$_), @{$child_data->{pics}};
+  my @images = undef;
+  if ($child_data->{pics}) {
+    # BUG: Technically we should read the album.conf to see if
+		#      settings like $opt->{captions} have changed..
+    get_captions($opt,$child_data);	# For sorting
+    sort_info($opt,$child_data);
+    @images = grep is_image($opt,$_), @{$child_data->{pics}};
+    $data->{obj}{$child}{num_pics} = scalar @images;
+  }
 
-  $data->{obj}{$child}{num_pics} = scalar @images;
+  # Now we can actually get the directory thumb
+  #########################
+  return undef unless $opt->{dir_thumbs};
+
+  my @ret = do_hook($opt,$data, 'dir_thumb', $child, $child_data, @images);
+  # Description: Picks the image for a directory thumbnail
+  # Description: Passes the child directory, the child_data object, and
+  # Description: an array of the images as ordered in the album.
+  # Returns: thumb path, full path to image, local path to image, image filename
+  # Returns: Thumb path:  Where the tn/ directory and the thumbnail gets created
+  # Returns: = (local path from the current working directory)
+  # Returns: Full path to image:  Path to full size image from current working directory
+  # Returns: Local path:  Thumbnail path, but from the current album directory.
+  # Returns: Image filename:  Just the image part of the filename.
+  # Returns:
+  # Returns: The thumbnail path and the path used in the full path to the image
+  # Returns: don't have to be the same, but they probably will be.
+  # Returns:
+  # Returns: Example:  (album/dir/, dir/, album/dir/image.gif, image.gif)
+  return @ret if defined $ret[0];
 
   return undef unless @images;
   ($child_path,$child,"$child_path/$images[0]",$images[0]);
@@ -4820,12 +4940,10 @@ sub dir_image {
 sub handle_child {
   my ($opt,$data,$child) = @_;
 
-# What if we don't want a thumbnail?
-
   my $obj = $data->{obj}{$child};
 
-  # Pick an image for thumbnail?
-  my ($tn_path,$url,$full_path,$file) = dir_image($opt,$data,$child);
+  # Get directory info, possibly pick an image for thumbnail?
+  my ($tn_path,$url,$full_path,$file) = dir_info($opt,$data,$child);
   if ($full_path) {
     ($obj->{full}{path},$obj->{full}{file}) = ($full_path,$file);
 
@@ -4839,7 +4957,8 @@ sub handle_child {
     get_size($opt,'thumb',$obj);
 
     # URL to find the thumbnail
-    $obj->{URL}{album_page}{thumb} = url_quote($opt, "$url/$opt->{dir}/$obj->{thumb}{file}");
+    my $thumb_path = diff_path($opt, $data->{paths}{dir}, $obj->{thumb}{path});
+    $obj->{URL}{album_page}{thumb} = url_quote($opt, $thumb_path);
   }
 
 # Should caption be done here?
@@ -4922,6 +5041,8 @@ sub figure_depth {
 sub do_album {
   my ($opt,$dir,@dir_pieces) = @_;
 
+	return if -l $dir && !$opt->{follow_symlinks};
+
   my $data = new_album_data($opt,$dir);
   
   # How deep?
@@ -4938,11 +5059,11 @@ sub do_album {
   #########################
   return if $data->{start} && do_hook($opt,$data, 'do_album_top', $dir, $album);
   # Description: Start of an album (top only, no sub-albums)
-  # Returns: Return false to skip album
+  # Returns: Return TRUE to skip album
 
   return if do_hook($opt,$data, 'do_album', $dir, $album);
   # Description: Start of an album or sub-album
-  # Returns: Return false to skip album
+  # Returns: Return TRUE to skip album
 
   # Print some info
   my $w = $opt->{hash_width} - $opt->{num_hashes} - 3 - 8;
@@ -5111,7 +5232,7 @@ sub get_xy {
 
   # Try to use identify if we have it
   if ($opt->{identify}) {
-    my $size = open_pipe($opt,$opt->{identify},"-ping $qimg");
+    my $size = open_pipe($opt,$opt->{identify},"-ping",$qimg);
     if ($size) {
       while(<$size>) {
         print STDERR "get_xy(): $_" if $opt->{d};
@@ -5134,7 +5255,7 @@ sub get_xy {
   }
 
   # Kludgy way to get size, but works with all images that convert reads
-  my $size=open_pipe($opt,$opt->{convert},"-verbose $qimg $opt->{dev_null}");
+  my $size=open_pipe($opt,$opt->{convert},$qimg,"-verbose",$opt->{dev_null});
   $size || fatal($opt,"Couldn't run convert!  [$opt->{convert}]\n");
   while(<$size>) {
     print STDERR "get_xy(): $_" if $opt->{d};
@@ -5195,22 +5316,20 @@ sub scale {
   my $qimg = file_quote($opt,$img);
 # This works only on some systems with some versions of convert  :(
   $qimg .= "\[0]" if $opt->{animated_gifs};
-  my $args = "-verbose $qimg $scale ";
+  my @args = ($qimg,'-verbose',$scale);
 
   # Scale options
-  $args .= "@{$opt->{scale_opts}} " if $opt->{scale_opts};
-  $args .= "@{$opt->{medium_scale_opts}} " if $medium && $opt->{medium_scale_opts};
-  $args .= "@{$opt->{thumb_scale_opts}} " if !$medium && $opt->{thumb_scale_opts};
+  push(@args, @{$opt->{scale_opts}}) if $opt->{scale_opts};
+  push(@args, @{$opt->{medium_scale_opts}}) if $medium && $opt->{medium_scale_opts};
+  push(@args, @{$opt->{thumb_scale_opts}}) if !$medium && $opt->{thumb_scale_opts};
 
   # Sharpen?
-  $args .= "-sharpen $opt->{sharpen} " if $opt->{sharpen};
+  push(@args, "-sharpen", $opt->{sharpen}) if $opt->{sharpen};
 
   # Destination image
-  my $qnew = file_quote($opt,$new);
-  $args .= " $qnew";
-#composite -quality 95 -gravity south -compose difference \.album/copyright.jpg $qnew $qnew
+  push(@args, file_quote($opt,$new));
 
-  my $size = open_pipe($opt,$opt->{convert},$args);
+  my $size = open_pipe($opt,$opt->{convert},@args);
   $size || fatal($opt,"Couldn't run convert!  [$opt->{convert}]\n");
   my ($ax,$ay,$bx,$by);
   while(<$size>) {
@@ -5240,12 +5359,9 @@ sub crop {
 
   return hash_warn($opt,"Error cropping $img (image not found)")
     unless -f $img;
-  my $qimg = file_quote($opt,$img);
-  my $qnew = file_quote($opt,$new);
-  my $cmd = file_quote($opt,$opt->{convert});
-  $cmd .= " $qimg -crop ${x}x${y}+${off_x}+${off_y} $qnew";
-  print STDERR "crop() run: $cmd\n" if $opt->{d};
-  system($cmd);
+  my @cmd = ($opt->{convert}, $img,"-crop","${x}x${y}+${off_x}+${off_y}",$new);
+  print STDERR "crop() run: @cmd\n" if $opt->{d};
+  system(@cmd);
   return unless ($?);
   print STDERR "[$PROGNAME] Error cropping $img\n";
 }
@@ -5402,6 +5518,7 @@ sub thumbnail {
   return get_size($opt,'thumb',$obj)
     if (-f $obj->{thumb}{path} && !$opt->{force}
         && !option_changed($opt,'geometry')
+        && !option_changed($opt,'crop')
         && -M $obj->{thumb}{path} < -M $full_path);
 
   # In case we didn't get the size yet
@@ -5463,9 +5580,12 @@ sub main {
 
   virgin_check($opt);
 
-  do_hook($opt,undef, 'pre_do_albums');
+  return if do_hook($opt,undef, 'pre_do_albums');
   # Description: Called before doing any albums.
-  # Returns: No return value needed
+  # Description: WARNING!  This cannot be called unless the calling plugin
+  # Description:   is specified on the command-line.  This should only
+  # Description:   be used by one-time plugins!  (i.e.: utils/mv)
+  # Returns: 1 to stop here
 
   foreach my $dir ( @{$opt->{_albums}} ) {
     print "\n" unless $opt->{q};
@@ -5540,11 +5660,11 @@ Or clear all the array options with -clear_<option>:
 
 Boolean options:
 
-% album -q, -d, -D, -virgin_check, -save_conf, -configure, -image_pages, -dir_thumbs, -just_medium, -embed, -clean, -image_headers, -album_captions, -caption_edit, -file_sizes, -fix_urls, -known_images, -all, -hashes, -reverse_sort, -image_loop, -burn, -crop, -force, -force_html, -sample, -animated_gifs, -use_tcap
+% album -q, -d, -D, -virgin_check, -save_conf, -configure, -image_pages, -dir_thumbs, -just_medium, -slideshow, -embed, -clean, -image_headers, -album_captions, -caption_edit, -file_sizes, -fix_urls, -known_images, -all, -hashes, -reverse_sort, -case_sort, -image_loop, -burn, -crop, -force, -force_html, -sample, -animated_gifs, -use_tcap
 
 String/number options:
 
-% album -medium, -captions, -top, -sort, -body, -charset, -index, -default_index, -html, -type, -medium_type, -CROP, -dir, -sharpen, -plugin_post, -theme, -theme_url, -convert, -identify, -jhead, -ffmpeg, -conf_file, -dev_null, -windows, -cygwin, -tcap, -tcap_out, -cmdproxy, -header, -footer, -no_album, -hide_album, -not_img
+% album -medium, -captions, -top, -sort, -body, -charset, -index, -default_index, -html, -type, -medium_type, -CROP, -dir, -sharpen, -plugin_post, -theme, -theme_url, -convert, -identify, -jhead, -ffmpeg, -conf_file, -dev_null, -windows, -cygwin, -tcap, -tcap_out, -cmdproxy, -header, -footer, -credit, -no_album, -hide_album, -not_img
 
 Array options:
 
@@ -5599,6 +5719,14 @@ Setup initial album site configuration [Default OFF]
 
 Display program version info
 
+=item B<-mv>I<>
+
+Move images across albums (see 'album -plugin_info utils/mv')
+
+=item B<-create_plugin>I<>
+
+Create a new plugin (see 'album -plugin_info utils/create_plugin')
+
 =back
 
 =head2 Album Options:
@@ -5620,6 +5748,10 @@ Generate medium size images
 =item B<-just_medium>I<>
 
 Don't link to full-size images [Default OFF]
+
+=item B<-slideshow>I<>
+
+Slideshow capabilities (only with some themes) [Default OFF]
 
 =item B<-embed>I<>
 
@@ -5691,6 +5823,10 @@ Add a new directory to the album it's been placed in
 
 Depth to descend directories (default infinite) [Default -1]
 
+=item B<-follow_symlinks>I<>
+
+Dereference symbolic links [Default 1]
+
 =item B<-hashes>I<>
 
 Show hash marks while generating thumbnails [Default ON]
@@ -5706,6 +5842,10 @@ Sort type, captions, name or date [Default captions]
 =item B<-reverse_sort>I<>
 
 Sort in reverse [Default OFF]
+
+=item B<-case_sort>I<>
+
+Use case sensitive sorting when sorting names [Default OFF]
 
 =item B<-body>I<=I<string>>
 
@@ -5838,13 +5978,17 @@ Default postfix for plugins. [Default .alp]
 
 Print info for all known plugins.
 
+=item B<-list_plugins_crf>I<>
+
+Print info for all known plugins in computer readable format.
+
 =item B<-list_hooks>I<>
 
 Show all known plugin hooks (for developers).
 
 =item B<-hook_info>I<=I<hook>>
 
-Show all known plugin hooks (for developers).
+Show hook info for a specific hook (for developers).
 
 =item B<-theme>I<=I<dir>>
 
@@ -5923,6 +6067,10 @@ Path to header file [Default header.txt]
 =item B<-footer>I<=I<string>>
 
 Path to footer file [Default footer.txt]
+
+=item B<-credit>I<=I<string>>
+
+Credit line to add to the bottom of every album.
 
 =item B<-no_album>I<=I<string>>
 

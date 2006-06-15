@@ -292,10 +292,10 @@ to regenerate all your thumbnails.
 ITEM: Video
 
 album can generate snapshot thumbnails of many video formats if you
-install <a href='http://MarginalHacks.com/redir.cgi?http://ffmpeg.org/'>ffmpeg</a>
+install <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.org/'>ffmpeg</a>
 
 If you are running linux on an x86, then you can just grab the <a href='/bin/ffmpeg'>binary</a>,
-otherwise get the whole package from <a href='http://MarginalHacks.com/redir.cgi?http://ffmpeg.org/'>ffmpeg.org</a> (it's an easy install).
+otherwise get the whole package from <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.org/'>ffmpeg.org</a> (it's an easy install).
 
 ITEM: Burning CDs (using file://)
 
@@ -324,8 +324,8 @@ Then you can run:
 
 Then you can make a CD image from the myISO directory (or higher).
 
-You can also look at <a href='http://MarginalHacks.com/redir.cgi?http://www.squirrel.nl/people/jvromans/software/sw_shellrun.html'>shellrun</a> for windows users, you can have it
-automatically launch the album in a browser.  (Or see <a href='http://MarginalHacks.com/redir.cgi?http://duckware.com/winopen/'>winopen</a>)
+You can also look at <a href='http://MarginalHacks.com/redir.cgi?www.squirrel.nl/people/jvromans/software/sw_shellrun.html'>shellrun</a> for windows users, you can have it
+automatically launch the album in a browser.  (Or see <a href='http://MarginalHacks.com/redir.cgi?duckware.com/winopen/'>winopen</a>)
 
 ITEM: Indexing your entire album
 To navigate an entire album on one page use the <a href='http://MarginalHacks.com/Hacks/album/tools/caption_index'>caption_index</a> tool.

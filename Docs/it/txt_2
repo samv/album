@@ -1,0 +1,187 @@
+MINI HOW-TO
+
+<span lang="it">
+ITEM: Un semplice album
+
+Presupponendo che album sia stato installato correttamente,
+illustriamo qualche semplice esempio. Se dovessero prodursi
+errori o problemi si prega di consultare la documentazione
+d'installazione.
+
+&Egrave; necessaria una web directory dove mettere i temi e il vostro
+album. In questo esempio useremo /home/httpd/test. Questa directory
+dovr&agrave; essere visibile con un browser; in questo esempio assumiamo
+sia visibile tramite il seguente URL: http://myserver/test/
+
+Si prega di modificare gli esempi appropriatamente per riflettere la  
+propria configurazione.
+
+
+Per iniziare, create una directory (ad esempio /home/httpd/test/Foto )
+e aggiungeteci lcune immagini (ad esempio da "IMG_001.jpg" a  
+"IMG_004.jpg") ed eseguite
+
+<code>% album /home/httpd/test/Foto</code>
+
+Ora potete vedere il vostro album con un web browser all'indirizzo:
+   http://myserver/test/Foto
+
+ITEM: Aggiungere titoli
+
+Create un file /home/httpd/test/Foto/captions.txt con il seguente
+contenuto (usate il tasto tabulatore dove &egrave; specificato [tab])
+
+- -- captions.txt ---------
+IMG_001.jpg  [tab]  Nome della prima immagine
+IMG_002.jpg  [tab]  Seconda immagine
+IMG_003.jpg  [tab]  Terza immagine  [tab]   con un titolo!
+IMG_004.jpg  [tab]  Ultima immagine [tab]   con un altro titolo
+- -------------------------
+
+ed eseguite nuovamente album:
+
+<code>% album /home/httpd/test/Foto</code>
+
+A questo punto dovreste vedere titoli delle immagini sulle pagine  
+dell'album.
+
+Create un file /home/httpd/test/Foto/header.txt e scriveteci
+un'intestazione. Dopo aver nuovamente eseguito album potrete osservare
+la vostra intestazione all'inizio di ogni pagina dell'album appena
+generato.
+
+ITEM: Nascondere immagini
+
+Ci sono diversi modi per nascondere foto, file, e directory; per il
+momento raggiungeremo lo scopo usando il file con i titoli.  
+Aggiungete '#'
+all'inizio della riga corrispondente all'immagine da nascondere in
+captions.txt:
+
+- -- captions.txt ---------
+IMG_001.jpg  [tab]  Prima immagine
+#IMG_002.jpg  [tab]  Seconda immagine
+IMG_003.jpg  [tab]  Un altra immagine  [tab]   con un titolo!
+IMG_004.jpg  [tab]  Ultima immagine    [tab]   con un altro titolo
+- -------------------------
+
+Eseguite nuovamente album,  e osserverete che IMG_002.jpg
+non &egrave; pi&ugrave; inclusa nell'album.
+Dato che avevamo gi&agrave; eseguito album prima di
+nascondere l'immagine, la  directory con l'album conterr&agrave;
+ancora le immagini intermedie o i thumbnail. Per rimuoverli usate
+l'opzione -clean:
+
+<code>% album -clean /home/httpd/test/Foto</code>
+
+ITEM: Temi
+
+Se i temi sono stati istallati correttamente e sono nel vostro
+"theme_path", dovreste essere in grado di specificarli con
+l'opzione "-theme":
+
+<code>% album -theme Blue /home/httpd/test/Foto</code>
+
+In questo caso l'album verr&agrave; generato con il tema "Blue". Se  
+l'album
+dovesse presentarsi con delle immagini non leggibili, molto  
+probabilmente
+il tema specificato non &egrave; stato installato in una
+directory accessibile tramite web server. In questo caso si prega di
+consultare la documentazione d'installazione.
+
+Album salva automaticamente le opzioni specificate, cosicch&ecute;
+eseguendo:
+
+<code>% album /home/httpd/test/Foto</code>
+
+starete sempre usando il tema "Blue". Per disabilitare l'uso di un
+tema su pu&ograve; specificare:
+
+<code>% album -no_theme /home/httpd/test/Foto</code>
+
+ITEM: Immagini intermedie
+
+Le immagini a piena risoluzione sono solitamente troppo grandi per un
+album sul web. Per questo motivo &egrave; possibile generare delle
+immagini intermedie da presentare nelle pagine dell'album:
+
+<code>% album -medium 33% /home/httpd/test/Foto</code>
+
+Le immagini originali rimangono accessibili cliccando
+sull'immagine intermedia. L'opzione "-just_medium" invece sopprime il  
+collegamento tra l'immagine intermedia e l'originale:
+
+<code>% album -just_medium /home/httpd/test/Foto</code>
+
+ITEM: Aggiungere i metadati EXIF nei titoli
+
+Per aggiungere, ad esempio, i dati sull'apertura di ogni immagine al  
+titolo della stessa:
+
+<code>% album -exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/ 
+Foto</code>
+
+In questo modo, se l'informazione sull'apertura dell'obbiettivo
+&egrave; presente (specificando "Aperture" tra %), essa verr&agrave;
+inserita nel titolo dopo una fine riga (&lt;br&gt;)
+
+Per visualizzare anche la focale:
+
+<code>% album -exif "&lt;br&gt;focal: %FocalLength%" /home/httpd/test/ 
+Foto</code>
+
+In modo analog alla scelta del tema, album, memorizzando le opzioni  
+specificate
+precedentemente, generer&agrave; pagine con entrambe le informazioni
+(apertura e focale). Per rimuovere l'apertura:
+
+<code>% album -no_exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/ 
+test/Foto</code>
+
+L'opzione "-no_exif" deve essere identica all'opzione "-exif" che si
+desidera rimuovere. &Egrave; anche possibile modificare le opzioni
+modificando direttamente il file di configurazione:
+
+   /home/httpd/test/Foto/album.conf
+
+ITEM: Generare pi&ugrave; album
+
+Supponiamo di avere delle foto di un viaggio in Spagna a di metterle in:
+
+   /home/httpd/test/Foto/Spagna/
+
+Eseguendo album in
+
+<code>% album /home/httpd/test/Foto</code>
+
+album riorganizzer&agrave; "Foto" in modo da collegare la directory
+"Spagna" e generer&agrave; un album (con la stessa configurazione) per
+le foto del viaggio in Spagna.
+
+
+Supponiamo di fare in altro viaggio e di creare:
+
+   /home/httpd/test/Foto/Italia/
+
+Eseguendo album in
+
+<code>% album /home/httpd/test/Foto</code>,
+
+album rianalizzer&agrave; anche la directory "Spagna", la quale nel  
+frattempo non
+ha subito modifiche. Anche se album non rigenerer&agrave; le pagine o i
+thumbnail se non necessario, ricontrollare le immagini non
+modificate richiede diverso tempo. Per specificare che si
+&egrave; unicamente aggiunta una directory:
+
+<code>% album -add /home/httpd/test/Photos/Italia</code>
+
+In questo caso album aggiurner&agrave; la pagina di indice (in "Foto")
+e generer&agrave; l'album per le foto in "Italia".
+
+ITEM: Tradotto da
+
+Matteo Corti [http://matteocorti.ch/]
+
+</span>

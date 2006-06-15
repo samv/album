@@ -142,6 +142,8 @@ Body_Tag()                Called inside the actual <body> tag.
 
 <b>Paths and Options</b>
 Option($name)             Get the value of an option/configuration setting
+Version()                 Return the album version
+Version_Num()             Return the album version as just a number (i.e. "3.14")
 Path($type)               Returns path info for $type of:
   album_name                The name of this album
   dir                       Current working album directory

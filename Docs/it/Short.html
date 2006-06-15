@@ -1,67 +1,17 @@
-# Document conf file for 'make_faq'
-#
 
-New_Chunk = ITEM:
 
-# Name of the short index, just links to the chapters
-Short_Index = Short.html
-# Name of the long index, links to chapters and chunks/questions
-Long_Index = index.html
-
-# Our list of text files (can use glob characters)
-# Just make sure the filename ends with the section number.
-Text_Files = txt_*
-
-# Header
-Header = "conf(my_head_head)
-    SPACE_OUT($NUMBER -- $TOPIC)<br>
-conf(my_head_head2)
-"
-
-# Footer
-Footer		= "
-    </td>
-  </tr>
-</table>
-</div>
-
-</body>
-</html>
-"
-
-# Header for short index
-Short_Header	= "
-conf(my_head_head)
-        SPACE_OUT(Documentation)<br>
-conf(my_head_head2)
-
-<table width=100%><tr>
-  <td>
-    <h1>Table Of Contents:</h1>
-  </td>
-  <td align=right>
-    <i><a href=$OTHER_HTML>$OTHER Index</a></i>
-  </td>
-</tr></table>
-
-&nbsp;&nbsp;<i><font color=red>Not all sections have been translated.</font></i>
-"
-
-# Footer for short index
-Short_Footer	= conf(Footer)
-
-Long_Header	= conf(Short_Header)
-Long_Footer	= conf(Short_Footer)
-
-##################################################
-# Local variables for the conf file (used in conf(..) constructs)
-##################################################
-
-#<meta http-equiv='content-type' content='text/html;charset=ISO-8859-1'>
-
-my_head_head	= "
 <!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN'>
-include_file(langhtml)
+<html>
+<head>
+	<style>
+	<!--
+	:lang(it) { color: green; }
+	-->
+	</style>
+	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
+	<meta http-equiv='Content-Language' content='it'>
+	<link rel='alternate' type='text/html' href='../fr' hreflang='fr' lang='fr' title='album documentation'>
+
   <title>MarginalHacks album Documentation</title>
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -140,9 +90,10 @@ include_file(langhtml)
   </td>
   <td bgcolor=#000000 align=right>
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
-    SPACE_OUT(Album)<br>
-"
-my_head_head2 = "
+    A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
+
+        D&nbsp;o&nbsp;c&nbsp;u&nbsp;m&nbsp;e&nbsp;n&nbsp;t&nbsp;a&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp;<br>
+
   </font>
   </td></tr>
   <tr><td> &nbsp; </td></tr>
@@ -176,7 +127,10 @@ my_head_head2 = "
       <tr bgcolor=#BBBBBB><td>
         <h3>Documentation
           <font size='-1'>
-include_file(langmenu)
+<br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
+<br><span lang='it'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;italiano</span>
+<br><span lang='fr'>&nbsp;&nbsp; <img src="../fr/flag.png"> &nbsp;&nbsp;<a href="../fr">fran&ccedil;ais</a></span>
+
           </font>
 </h3>
         <p>
@@ -201,5 +155,41 @@ include_file(langmenu)
   </td>
   <td valign=top>
 
-"
 
+
+<table width=100%><tr>
+  <td>
+    <h1>Table Of Contents:</h1>
+  </td>
+  <td align=right>
+    <i><a href=index.html>Long Index</a></i>
+  </td>
+</tr></table>
+
+&nbsp;&nbsp;<i><font color=red>Not all sections have been translated.</font></i>
+<ol>
+<li value=1> <a href='Section_1.html'>Installation
+</a>
+<li value=2> <a href='Section_2.html'>MINI HOW-TO
+</a>
+<li value=3> <a href='Section_3.html'>Running album / Basic Options
+</a>
+<li value=4> <a href='Section_4.html'>Configuration Files
+</a>
+<li value=5> <a href='Section_5.html'>Feature Requests, Bugs, Patches and Troubleshooting
+</a>
+<li value=6> <a href='Section_6.html'>Creating Themes
+</a>
+<li value=7> <a href='Section_7.html'>Plugins, Usage, Creation,..
+</a>
+<li value=8> <a href='Section_8.html'>Language Support
+</a>
+</ol>
+<p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>
+    </td>
+  </tr>
+</table>
+</div>
+
+</body>
+</html>
