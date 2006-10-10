@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ALBUM 1"
-.TH ALBUM 1 "2006-06-14" "album v3.12" ""
+.TH ALBUM 1 "2006-10-10" "album v3.13" ""
 album \- Make a web photo album
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
@@ -184,7 +184,7 @@ String/number options:
 .PP
 Array options:
 .PP
-% album \-\-exif, \-\-exif_album, \-\-exif_image, \-\-add, \-\-scale_opts, \-\-medium_scale_opts, \-\-thumb_scale_opts, \-\-data_path, \-\-plugin_path, \-\-theme_path
+% album \-\-lang_path, \-\-exif, \-\-exif_album, \-\-exif_image, \-\-add, \-\-scale_opts, \-\-medium_scale_opts, \-\-thumb_scale_opts, \-\-data_path, \-\-plugin_path, \-\-theme_path
 .Sh "\s-1OPTION\s0 \s-1DESCRIPTIONS\s0"
 .IX Subsection "OPTION DESCRIPTIONS"
 .IP "\fB\-h\fR" 4
@@ -196,6 +196,15 @@ To show more options.
 .IP "\fB\-More\fR" 4
 .IX Item "-More"
 To show even more options.
+.IP "\fB\-lang\fR\fI=\fIlang\fI\fR" 4
+.IX Item "-lang=lang"
+Pick a language
+.IP "\fB\-make_lang\fR" 4
+.IX Item "-make_lang"
+Print out a new language file
+.IP "\fB\-\-lang_path\fR\fI=\fIstrings\fI\fR" 4
+.IX Item "--lang_path=strings"
+Add a path to search for language files [Default \f(CW@DATA_PATH\fR/lang]
 .IP "\fB\-q\fR" 4
 .IX Item "-q"
 Be quiet [Default \s-1OFF\s0]
@@ -319,7 +328,7 @@ Use case sensitive sorting when sorting names [Default \s-1OFF\s0]
 Specify <body> tags for non-theme output [Default <body>]
 .IP "\fB\-charset\fR\fI=\fIstr\fI\fR" 4
 .IX Item "-charset=str"
-Charset for non-theme output [Default iso\-8859\-1]
+Charset for non-theme and some theme output [Default iso\-8859\-1]
 .IP "\fB\-image_loop\fR" 4
 .IX Item "-image_loop"
 Do first and last image pages loop around? [Default \s-1ON\s0]

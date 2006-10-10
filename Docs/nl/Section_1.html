@@ -4,12 +4,13 @@
 <head>
 	<style>
 	<!--
-	:lang(fr) { color: green; }
+	:lang(nl) { color: green; }
 	-->
 	</style>
 	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
 	<link rel='alternate' type='text/html' href='../it' hreflang='it' lang='it' title='album documentation'>
-	<meta http-equiv='Content-Language' content='fr'>
+	<link rel='alternate' type='text/html' href='../fr' hreflang='fr' lang='fr' title='album documentation'>
+	<meta http-equiv='Content-Language' content='nl'>
 
   <title>MarginalHacks album Documentation</title>
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
@@ -129,7 +130,8 @@
           <font size='-1'>
 <br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
 <br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">italiano</a></span>
-<br><span lang='fr'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;fran&ccedil;ais</span>
+<br><span lang='fr'>&nbsp;&nbsp; <img src="../fr/flag.png"> &nbsp;&nbsp;<a href="../fr">fran&ccedil;ais</a></span>
+<br><span lang='nl'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;Dutch</span>
 
           </font>
 </h3>
@@ -159,164 +161,138 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href='#Configuration_minimale'><li>Configuration minimale</a>
- <a href='#Configuration_initiale'><li>Configuration initiale</a>
- <a href='#Installation_optionnelle'><li>Installation optionnelle</a>
- <a href='#Unix'><li>Unix</a>
- <a href='#Debian_Unix'><li>Debian Unix</a>
+<ol><a href='#Minimum_Requirements'><li>Minimum Requirements</a>
+ <a href='#Initial_Configuration'><li>Initial Configuration</a>
+ <a href='#Optional_Installation'><li>Optional Installation</a>
+ <a href='#UNIX'><li>UNIX</a>
+ <a href='#Debian_UNIX'><li>Debian UNIX</a>
  <a href='#Macintosh_OSX'><li>Macintosh OSX</a>
  <a href='#Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP'><li>Win95, Win98, Win2000/Win2k, WinNT, WinXP</a>
- <a href='#Comment_puis-je_éditer_la_variable_denvironnement_PATH_sous_Windows'><li>Comment puis-je éditer la variable d'environnement PATH sous Windows ?</a>
+ <a href='#How_do_I_edit_the_Windows_path'><li>How do I edit the Windows path?</a>
  <a href='#Macintosh_OS9'><li>Macintosh OS9</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<span lang="fr">
-<b><a name='Configuration_minimale'>1:</a>   Configuration minimale</b>
+<b><a name='Minimum_Requirements'>1:</a>   Minimum Requirements</b>
 
-1) Le script Perl <a href='/Hacks/album/'>album</a>
-2) Les outils <a href='/redir.cgi?http://imagemagick.org/'>ImageMagick</a> (et
-plus particulièrement 'convert')
+1) The <a href='http://MarginalHacks.com/Hacks/album/'>album</a> perl script
+2) <a href='http://MarginalHacks.com/redir.cgi?imagemagick.org/'>ImageMagick</a> tools (specifically 'convert')
 
-Mettez le script 'album' et les outils ImageMagick dans un répertoire
-accessible via votre variable d'environnement PATH ou appelez 'album' avec son
-chemin d'accès complet (en spécifiant également le chemin d'accès complet à
-'convert' soit dans le script 'album' soit dans les fichiers de configuration
-du script).
+Put the 'album' script and the ImageMagick tools somewhere in your PATH,
+or else call 'album' by it's full path (and specify the full path to
+convert either in the album script or in the album configuration files.
 
-<b><a name='Configuration_initiale'>2:</a>   Configuration initiale</b>
+<b><a name='Initial_Configuration'>2:</a>   Initial Configuration</b>
 
-La première fois que vous lancerez 'album', celui-ci vous posera quelques
-questions pour initialiser votre configuration.
-Si votre machine tourne sous Unix / OSX, alors passez en mode administrateur
-('root') et vous pourrez ainsi initialiser la configuration globale et les
-thèmes pour l'ensemble des utilisateurs et pas seulement l'utilisateur
-courant.
+The first time you run album it will ask you a few questions to
+setup the configuration for you.  If you're on UNIX/OSX, then you
+can run the first time as root so that it sets up the global configuration
+and themes for everyone instead of just the current user.
 
-<b><a name='Installation_optionnelle'>3:</a>   Installation optionnelle</b>
+<b><a name='Optional_Installation'>3:</a>   Optional Installation</b>
 
-1) <a href='/Hacks/album/Themes.html'>Themes</a>
-2) <a href='/redir.cgi?http://ffmpeg.sourceforge.net/'>ffmpeg</a> (pour les
-vignettes de films)
-3) <a href='/redir.cgi?http://www.sentex.net/~mwandel/jhead/'>jhead</a> (pour
-lire les informations EXIF)
-4) des plugins
-5) de nombreux <a href='/Hacks/album/Download.html'>outils</a> disponible sur
-MarginalHacks.com
+3) <a href='http://MarginalHacks.com/Hacks/album/Themes.html'>Themes</a>
+4) <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.sourceforge.net/'>ffmpeg</a> (for movie thumbnails)
+5) <a href='http://MarginalHacks.com/redir.cgi?www.sentex.net/~mwandel/jhead/'>jhead</a> (for reading EXIF info)
+6) plugins
+7) Various <a href='http://MarginalHacks.com/Hacks/album/Download.html'>tools</a> available at MarginalHacks.com
 
-<b><a name='Unix'>4:</a>   Unix</b>
+<b><a name='UNIX'>4:</a>   UNIX</b>
 
-La plupart des distributions Unix sont fournies avec ImageMagick et
-perl. Ainsi vous n'avez qu'à charger le script 'album' et les thèmes (voir les
-points #1 et #3 ci-dessus) et c'est tout.
-Pour tester votre installation, lancez le script dans un répertoire contenant
-des images :
+Most UNIX distros come with ImageMagick and perl, so just download
+the album script and themes (#1 and #3 above) and you're done.
+To test your install, run the script on a directory with images:
 
 <code>% album /path/to/my/photos/</code>
 
-<b><a name='Debian_Unix'>5:</a>   Debian Unix</b>
+<b><a name='Debian_UNIX'>5:</a>   Debian UNIX</b>
 
-Le script 'album' fait partie de la branche stable de la distribution Debian,
-même si en ce moment...
-Je recommande de télécharger la dernière version sur MarginalHacks. Sauvez le
-paquetage .deb et, en mode administrateur (root), tapez :
+album is in debian stable, though right now it's a bit stale.
+I recommend getting the latest version from MarginalHacks.
+You can save the .deb package, and then, as root, run:
+
 <code>% dpkg -i album.deb</code>
 
 <b><a name='Macintosh_OSX'>6:</a>   Macintosh OSX</b>
 
-Ceci marche bien également sur OSX mais vous devez utiliser une fenêtre de
-programmation (console). Installez seulement le script 'album' et les outils
-ImageMagick puis tapez, depuis l'endroit où se trouve le script, le nom du
-script suivi des
-options du script que vous souhaitez et enfin le chemin d'accès au répertoire
-où sont vos photos (le tout séparé par des espaces) comme par exemple :
+It works fine on OSX, but you have to run it from a terminal window.  Just
+install the album script and ImageMagick tools, and type in the path to album,
+any album options you want, and then the path to the directory with the
+photos in them (all separated by spaces), such as:
+
 <code>% album -theme Blue /path/to/my/photos/</code>
 
 <b><a name='Win95,_Win98,_Win2000_Win2k,_WinNT,_WinXP'>7:</a>   Win95, Win98, Win2000/Win2k, WinNT, WinXP</b>
 (Windows 95, Windows 98, Windows 2000, Windows NT, Windows XP)
 
-Il y a deux façons pour exécuter un script perl depuis Windows : soit en
-utilisant ActivePerl ou Cygwin.
+There are two methods to run perl scripts on Windows, either using ActivePerl
+or Cygwin.
 
-ActivePerl est plus simple et vous permet de lancer 'album' depuis le prompt
-du DOS. Cygwin est un paquetage plus hermétique pour le profane mais plus
-robuste qui vous donne accès à tout un tas d'utilitaires "à la sauce Unix" :
-le script 'album' est lancé depuis un prompt bash (environnement Unix).
+ActivePerl is simpler and allows you to run album from a DOS prompt,
+Cygwin is a bulkier but more robust package that gives you access to
+a bunch of UNIX like utilities, and album is run from a bash (UNIX shell)
+prompt.
 
-
-<b>Méthode via Cygwin</b>
-------------------
-1) Installer Cygwin
-   Choisir les paquetages : perl, ImageMagick, bash
-   Ne pas utiliser directement l'installation normale d'ImageMagick !!! Vous devez
-   absolument utiliser les paquetages d'ImageMagick pour Cygwin !
-2) Installer 'album' dans le répertoire du bask ou l'appeler en utilisant un
-chemin d'accès complet :
-   <code>bash% album /some/path/to/photos</code>
-3) Si vous voulez afficher les informations exif dans vos légendes, vous avez
-besoin de la version Cygwin de jhead.
+<b>Cygwin method</b>
+-------------
+1) Install <a href='http://MarginalHacks.com/redir.cgi?sources.redhat.com/cygwin/'>Cygwin</a>
+   Choose packages:  perl, ImageMagick, bash
+   Do not use the normal ImageMagick install!  You must use the Cygwin ImageMagick packages!
+2) Install <a href='http://MarginalHacks.com/bin/album'>album</a> in bash path or call using absolute path:
+   <tt>bash% album /some/path/to/photos</tt>
+3) If you want exif info in your captions, you need the Cygwin version of <a href='http://MarginalHacks.com/Hacks/album/tools/jhead.exe'>jhead</a>
 
 
-<b>Méthode via ActivePerl</b>
-----------------------
-1) Installer ImageMagick pour Windows
-2) Installer ActivePerl, installation complète ou Full install (pas besoin
-d'un profil PPM)
-   Choisir : "Ajouter perl à PATH" ("Add perl to PATH") et "Créer une
-   association avec les fichiers d'extension perl" ("Create Perl file extension association")
-3) Pour Win98 : installer tcap dans le chemin d'accès général
-4) Sauvegarder le script 'album' sous le nom 'album.pl' dans le chemin d'accès
-général de Windows
-5) Utiliser une commande DOS pour taper :
-   <code>C:> album.pl C:\some\path\to\photos</code>
+<b>ActivePerl method</b>
+-----------------
+1) Install <a href='http://MarginalHacks.com/redir.cgi?ImageMagick.org/'>ImageMagick</a> for Windows
+2) Install <a href='http://MarginalHacks.com/redir.cgi?www.activestate.com/Products/ActivePerl/'>ActivePerl</a>, Full install (no need for PPM profile)
+   Choose: "Add perl to PATH" and "Create Perl file extension association"
+3) If Win98: Install <a href='http://MarginalHacks.com/redir.cgi?www.simtel.net/pub/pd/11141.html'>tcap</a> in path
+4) Save album as album.pl in windows path
+5) Use dos command prompt to run:
+   <tt>C:> album.pl C:\some\path\to\photos</tt>
 
-<b>Note</b> : certains versions de Windows (2000/NT au-moins) disposent de leur
-propre programme "convert.exe" localisé dans le répertoire c:\windows\system32
-directory (un utilitaire NTFS ?).
-Si vous avez un tel programme, alors vous avez besoin d'éditer votre variable
-d'environnement PATH ou de spécifier complètement le chemin d'accès à
-'convert' (celui d'ImageMagick) dans le script 'album'.
+<b><i>Note:</i></b> Some versions of Windows (2000/NT at least) have their
+own "convert.exe" in the c:\windows\system32 directory (an NTFS utility?).
+If you have this, then you either need to edit your path variable,
+or else just specify the full path to convert in your album script.
 
-<b><a name='Comment_puis-je_éditer_la_variable_denvironnement_PATH_sous_Windows'>8:</a>   Comment puis-je éditer la variable d'environnement PATH sous Windows ?</b>
+<b><a name='How_do_I_edit_the_Windows_path'>8:</a>   How do I edit the Windows path?</b>
 
-<b>Utilisateurs de Windows NT4</b>
-  Cliquer avec le bouton droit de la souris sur "Mon ordinateur" et
-  sélectionner Propriétés.
-  Sélectionner l'onglet "Environnement".
-  Dans la fenêtre "Variables du système", sélectionner la variable "Path".
-  Dans la fenêtre d'édition de la valeur de cette variable, ajouter les
-  nouveaux chemins d'accès séparés par des points virgules.
-  Presser le bouton "Ok / Mettre à jour" puis presser de nouveau "Ok"
+<b>Windows NT4 Users</b>
+  Right Click on My Computer, select Properties.
+  Select Environment tab.
+  In System Variables box select Path.
+  In Value edit box add the new paths separated by semicolons
+  Press OK/Set, press OK again.
 
-<b>Utilisateurs de Windows 2000</b>
-  Cliquer avec le bouton droit de la souris sur "Mon ordinateur" et
-  sélectionner "Propriétés".
-  Sélectionner l'onglet "Réglages avancés".
-  Cliquer sur les "variables d'environnement".
-  Dans la fenêtre de sélection des variables d'environnement, double-cliquer
-  sur la variable "Path".
-  Dans la fenêtre d'édition de la valeur de cette variable, ajouter les
-  nouveaux chemins d'accès séparés par des points virgules.
-  Presser le bouton "Ok / Mettre à jour" puis presser de nouveau "Ok"
+<b>Windows 2000 Users</b>
+  Right Click My Computer, select Properties.
+  Select Advanced tab.
+  Click Environment Variables.
+  In System Variables box select double-click Path
+  In Value edit box add the new paths separated by semicolons
+  Press OK/Set, press OK again.
 
-<b>Utilisateurs Windows XP</b>
-  Cliquer sur "Mon ordinateur" et sélectionner "Changer les propriétés".
-  Double-cliquer sur "Système".
-  Sélectionner l'onglet "Réglages avancés".
-  Cliquer sur les "variables d'environnement".
-  Dans la fenêtre de sélection des variables d'environnement, double-cliquer
-  sur la variable "Path".
-  Dans la fenêtre d'édition de la valeur de cette variable, ajouter les
-  nouveaux chemins d'accès séparés par des points virgules.
-  Presser le bouton "Ok"
+<b>Windows XP Users</b>
+  Click My Computer, select Change a Setting.
+  Double click System.
+  Select Advanced tab.
+  Select Environment Variables.
+  In System Variables box select double-click Path
+  In Value edit box add the new paths separated by semicolons
+  Press OK.
+
 
 <b><a name='Macintosh_OS9'>9:</a>   Macintosh OS9</b>
 
-Je n'ai pas de plans pour réaliser un portage sur OS9 (je ne connais pas quels
-sont les états des shells ni de perl pour les versions antérieures à OSX). If
-vous avez réussi à faire tourner 'album' sur OS9, faites-le moi savoir.
+I don't have any plans to port this to OS9 - I don't know what
+the state of shells and perl is for pre-OSX.  If you have it working
+on OS9, let me know.
+
 
 </pre>
 <p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>

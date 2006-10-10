@@ -10,6 +10,7 @@
 	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
 	<meta http-equiv='Content-Language' content='it'>
 	<link rel='alternate' type='text/html' href='../fr' hreflang='fr' lang='fr' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../nl' hreflang='nl' lang='nl' title='album documentation'>
 
   <title>MarginalHacks album Documentation</title>
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
@@ -130,6 +131,7 @@
 <br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
 <br><span lang='it'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;italiano</span>
 <br><span lang='fr'>&nbsp;&nbsp; <img src="../fr/flag.png"> &nbsp;&nbsp;<a href="../fr">fran&ccedil;ais</a></span>
+<br><span lang='nl'>&nbsp;&nbsp; <img src="../nl/flag.png"> &nbsp;&nbsp;<a href="../nl">Dutch</a></span>
 
           </font>
 </h3>
@@ -310,7 +312,7 @@ written plugin as a base to work off of.
 
 In our plugin we register the hook by calling the album::hook() function.
 To call functions in the album code, we use the <code>album</code> namespace.
-To register some code for the <code>clean_name</code> hook our plugin can call:
+As an example, to register code for the <code>clean_name</code> hook our plugin calls:
 
 <code>album::hook($opt,'clean_name',\&my_clean);</code>
 
@@ -405,16 +407,22 @@ there's a plugin already there that does essentially the same thing.
 
 If you want your plugin to accept command-line options, use 'add_option.'
 This <b>must</b> be done in the start_plugin code.  Some examples:
-
 <tt>
   album::add_option(1,"fast",album::OPTION_BOOL, usage=>"Do it fast");
   album::add_option(1,"name", album::OPTION_STR, usage=>"Your name");
   album::add_option(1,"colors",album::OPTION_ARR, usage=>"Color list");
 </tt>
-
 For more info, see the 'add_option' code in album and see all of the uses
 of it (at the top of album and in plugins that use 'add_option')
 
+To read an option that the user may have set, we use option():
+<tt>
+  my $fast = album::option($opt, "fast");
+</tt>
+If the user gave a bad value for an option, you can call usage():
+<tt>
+  album::usage("-colors array can only include values [red, green, blue]");
+</tt>
 If your plugin needs to load modules that are not part of the
 standard Perl distribution, please do this conditionally.  For
 an example of this, see plugins/extra/rss.alp.

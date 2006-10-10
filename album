@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '3.12';
+  my $VERSION=  '3.13';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -79,6 +79,9 @@ sub OPTION_ARR() { 5; }	# Array of strings
 add_option(1,'h',\&usage, usage=>"Show usage");
 add_option(1,'more',\&usage, usage=>"To show more options.");
 add_option(2,'More',\&usage, usage=>"To show even more options.");
+add_option(1,'lang',\&get_language, args=>'<lang>', usage=>"Pick a language");
+add_option(3,'make_lang',\&make_language, usage=>"Print out a new language file");
+add_option(10,'lang_path', OPTION_ARR, default=>['@DATA_PATH/lang'], usage=>"Add a path to search for language files");
 add_option(2,'q',OPTION_BOOL, one_time=>1, usage=>"Be quiet");
 add_option(2,'d',OPTION_BOOL, one_time=>1, usage=>"Set debug mode");
 add_option(3,'D',OPTION_BOOL, one_time=>1, usage=>"Heavy debug mode");
@@ -129,7 +132,7 @@ add_option(2,'sort',OPTION_STR, default=>'captions', usage=>"Sort type, captions
 add_option(2,'reverse_sort',OPTION_BOOL, usage=>"Sort in reverse");
 add_option(2,'case_sort',OPTION_BOOL, default=>0, usage=>"Use case sensitive sorting when sorting names");
 add_option(3,'body',OPTION_STR, default=>'<body>', usage=>"Specify <body> tags for non-theme output");
-add_option(3,'charset', OPTION_STR, args=>'<str>', default=>'iso-8859-1', usage=>"Charset for non-theme output");
+add_option(3,'charset', OPTION_STR, args=>'<str>', default=>'iso-8859-1', usage=>"Charset for non-theme and some theme output");
 add_option(2,'image_loop',OPTION_BOOL, default=>1, usage=>"Do first and last image pages loop around?");
 add_option(1,'burn', OPTION_BOOL, usage=>["Setup an album to burn to CD",
            "Implies '-index index.html' and '-no_theme_url'"]);
@@ -285,6 +288,8 @@ my $IMAGE_TYPES	=
 # $obj->{cap}		Image caption
 # $obj->{cap_image}	Caption to only show in image pages.  (For plugins)
 # $obj->{cap_album}	Caption to only show in album pages.
+# $obj->{exif}		Exif caption (also 'exif_image' and 'exif_album')
+# $obj->{_did_exif}	Have we done exif reading yet?
 # $obj->{capfile}	Optional caption file
 # $obj->{alt}		Alt tag
 # $obj->{intag}		Optional:  Add to the <img|embed> tag for this object
@@ -329,7 +334,6 @@ my $IMAGE_TYPES	=
 #   $opt->{_theme_line}{..}	The starting line
 #   $opt->{_theme_full}		Full theme path
 #   $opt->{_captions}{$dir}	Captions cache for a path
-#   $opt->{_done_exif}{$pic}	Have we run exif for a photo?
 #   $opt->{_read_conf}{$conf}	Avoid reading conf files multiple times
 # 				(in opt to survive multiple do_album calls)
 #   $opt->{_depth_diff}		Beginning depth of starting album
@@ -477,6 +481,9 @@ sub get_defaults {
 	$opt->{PROGNAME} = $PROGNAME;	# For plugins, mostly
 	$opt->{BASENAME} = $BASENAME;
 
+	# Languages
+	english($opt);
+
   # Windows defaults are slightly different (no .files)
   if ($opt->{windows}) {
     # These aren't that important because of search_path_win()
@@ -494,36 +501,39 @@ sub get_defaults {
 # COMMAND-LINE OPTIONS AND CONFIGURATIONS
 ##################################################
 sub fatal {
-  my ($opt,@msg) = @_;
-  print STDERR "\n[$PROGNAME] ",join("\n", @msg),"\n\n" if @msg;
-  exit -1;
+	my ($opt,@msg) = @_;
+	print STDERR "\n[$PROGNAME] ",join("\n", @msg),"\n\n" if @msg;
+	exit -1;
 }
 
 sub usage {
-  my (@msg) = @_;		# Called with error
-  my ($opt,$option,$val) = @_;	# Called from option
+	my (@msg) = @_;		# Called with error
+	my ($opt,$option,$val) = @_;	# Called from option
+	
+	version();
+	
+	my $plugin = $option =~ /plugin/ ? get_plugin($opt,$option,$val) : undef;
+	
+	# If it was called from -h, -more or -More
+	my $show=1;
+	if (ref $opt eq 'HASH') {
+		$show = 2 if $option eq "more";
+		$show = 3 if $option eq "More";
+		undef @msg;
+	}
 
-  version();
+	# Otherwise we have a usage error
+	if (@msg) {
+		map { print STDERR "\nERROR:  $_\n"; } @msg;
+		print STDERR "\nTry '$PROGNAME -h' for usage info.\n";
+		print STDERR "or: '$PROGNAME -plugin_usage $GLOBAL_OPT->{_curr_plugin}' for plugin usage info.\n"
+			if $GLOBAL_OPT->{_curr_plugin};
+		print STDERR "\n";
+		exit -1;
+	}
 
-  my $plugin = $option =~ /plugin/ ? get_plugin($opt,$option,$val) : undef;
-
-  # If it was called from -h, -more or -More
-  my $show=1;
-  if (ref $opt eq 'HASH') {
-    $show = 2 if $option eq "more";
-    $show = 3 if $option eq "More";
-    undef @msg;
-  }
-
-  # Otherwise we have a usage error
-  if (@msg) {
-    map { print STDERR "\nERROR:  $_\n"; } @msg;
-    print STDERR "\nTry '$PROGNAME -h' for usage info.\n\n";
-    exit -1;
-  }
-
-  # Print usage.
-  print STDERR <<USAGE;
+	# Print usage.
+	print STDERR <<USAGE;
 
 Usage:\t$PROGNAME [-d] [--scale_opts .. --] [options] <dir>
 \tMakes a photo album
@@ -533,53 +543,53 @@ Usage:\t$PROGNAME [-d] [--scale_opts .. --] [options] <dir>
 
 USAGE
 
-  # Calculate width of -arg string
-  my $maxw = 0;
-  map { $maxw=max($maxw,length($_)); } all_options($opt,$plugin);
-  $maxw-=1;
-  $maxw=min($maxw,17);
+	# Calculate width of -arg string
+	my $maxw = 0;
+	map { $maxw=max($maxw,length($_)); } all_options($opt,$plugin);
+	$maxw=min($maxw,17);	# Don't go overboard
 
-  print "Plugin Options [$plugin]:\n" if $plugin;
+	print "Plugin Options:\n  [Use -$plugin:<option> instead of -<option>]\n"
+		if $plugin;
 
-  # Show usage for each option
-  my $dashdash=0;
-  foreach my $option ( all_options($opt,$plugin) ) {
-    my $optinfo = get_option($opt,$option,$plugin);
-    my $type = $optinfo->{type};
-    my $default = $optinfo->{default};
-    next unless $optinfo->{lvl}<=$show;
-    if ($type==OPTION_SEP) {
-      print STDERR $option ? "\n$option\n" : "\n";
-      next;
-    }
-    my $def = $type==OPTION_BOOL ? ($default ? " [ON]" : " [OFF]") :
-              !defined($default) ? "" :
-              $type==OPTION_ARR ? " [@$default]" :
-              ($type==OPTION_STR && !$default) ? "" : " [$default]";
-    my $opt = $option;
-    $opt .= " $optinfo->{args}" if $optinfo->{args};
-    $opt = "-$opt" if $type==OPTION_ARR;
-    $dashdash++ if $type==OPTION_ARR;
-    my $usage = $optinfo->{usage};
-    my $usage_str = ref $usage eq 'ARRAY' ? join("\n      ",@$usage) : $usage;
-    printf STDERR "  -%-${maxw}s $usage_str$def\n", $opt;
-  }
+	# Show usage for each option
+	my $dashdash=0;
+	foreach my $option ( all_options($opt,$plugin) ) {
+		my $optinfo = get_option($opt,$option,$plugin);
+		my $type = $optinfo->{type};
+		my $default = $optinfo->{default};
+		next unless $optinfo->{lvl}<=$show;
+		if ($type==OPTION_SEP) {
+			print STDERR $option ? "\n$option\n" : "\n";
+			next;
+		}
+		my $def = $type==OPTION_BOOL ? ($default ? " [ON]" : " [OFF]") :
+		          !defined($default) ? "" :
+		          $type==OPTION_ARR ? " [@$default]" :
+		          ($type==OPTION_STR && !$default) ? "" : " [$default]";
+		my $opt = $option;
+		$opt .= " $optinfo->{args}" if $optinfo->{args};
+		$opt = "-$opt" if $type==OPTION_ARR;
+		$dashdash++ if $type==OPTION_ARR;
+		my $usage = $optinfo->{usage};
+		my $usage_str = ref $usage eq 'ARRAY' ? join("\n      ",@$usage) : $usage;
+		printf STDERR "  -%-${maxw}s $usage_str$def\n", $opt;
+	}
 
-  print STDERR <<DASHDASH_USAGE if $dashdash;
+	print STDERR <<DASHDASH_USAGE if $dashdash;
 
 Dashdash options (--opt) can be specified two ways:
   With one argument:       "-exif hi -exif there"
   With mult. arguments:    "--exif hi there --"
 DASHDASH_USAGE
 
-  copyright();
+	copyright();
 }
 
 sub gen_pod {
-  my ($opt,$option,$val) = @_;
-
-  my $eq = '=';	# Otherwise pod2man thinks the pod is up here
-  print <<START_POD;
+	my ($opt,$option,$val) = @_;
+	
+	my $eq = '=';	# Otherwise pod2man thinks the pod is up here
+	print <<START_POD;
 ${eq}head1 OPTIONS
 
 There are three types of options.  Boolean options, string/num options and
@@ -610,25 +620,25 @@ Or clear all the array options with -clear_<option>:
 
 START_POD
 
-  my (@bool_opts, @str_opts, @arr_opts);
-  foreach my $option ( all_options($opt) ) {
-    my $optinfo = get_option($opt,$option);
-    next unless $optinfo->{lvl}<=10;
-    push(@bool_opts, $option) if $optinfo->{type}==OPTION_BOOL;
-    push(@str_opts, $option) if $optinfo->{type}==OPTION_STR;
-    push(@arr_opts, $option) if $optinfo->{type}==OPTION_ARR;
-  }
-
-  print "Boolean options:\n\n";
-  print '% album -'.join(', -',@bool_opts),"\n\n";
-
-  print "String/number options:\n\n";
-  print '% album -'.join(', -',@str_opts),"\n\n";
-
-  print "Array options:\n\n";
-  print '% album --'.join(', --',@arr_opts),"\n\n";
-
-  print <<START_OPTS;
+	my (@bool_opts, @str_opts, @arr_opts);
+	foreach my $option ( all_options($opt) ) {
+		my $optinfo = get_option($opt,$option);
+		next unless $optinfo->{lvl}<=10;
+		push(@bool_opts, $option) if $optinfo->{type}==OPTION_BOOL;
+		push(@str_opts, $option) if $optinfo->{type}==OPTION_STR;
+		push(@arr_opts, $option) if $optinfo->{type}==OPTION_ARR;
+	}
+	
+	print "Boolean options:\n\n";
+	print '% album -'.join(', -',@bool_opts),"\n\n";
+	
+	print "String/number options:\n\n";
+	print '% album -'.join(', -',@str_opts),"\n\n";
+	
+	print "Array options:\n\n";
+	print '% album --'.join(', --',@arr_opts),"\n\n";
+	
+	print <<START_OPTS;
 
 ${eq}head2 OPTION DESCRIPTIONS
 
@@ -636,13 +646,13 @@ ${eq}over 4
 
 START_OPTS
 
-  foreach my $option ( all_options($opt) ) {
-    my $optinfo = get_option($opt,$option);
-    next unless $optinfo->{lvl}<=10;
-    my $type = $optinfo->{type};
-    my $default = $optinfo->{default};
-    if ($type==OPTION_SEP) {
-      print <<POD_SEP if $option;
+	foreach my $option ( all_options($opt) ) {
+		my $optinfo = get_option($opt,$option);
+		next unless $optinfo->{lvl}<=10;
+		my $type = $optinfo->{type};
+		my $default = $optinfo->{default};
+		if ($type==OPTION_SEP) {
+			print <<POD_SEP if $option;
 ${eq}back
 
 ${eq}head2 $option
@@ -650,53 +660,53 @@ ${eq}head2 $option
 ${eq}over 4
 
 POD_SEP
-      next;
-    }
-    my $def = $type==OPTION_BOOL ? ($default ? " [Default ON]" : " [Default OFF]") :
-              !defined($default) ? "" :
-              $type==OPTION_ARR ? " [Default @$default]" :
-              ($type==OPTION_STR && !$default) ? "" : " [Default $default]";
-    my $opt = $option;
-    $opt = "-$opt" if $type==OPTION_ARR;
-    my $args = $optinfo->{args};
-    $args = "string" if $type==OPTION_STR && !$args;
-    $args = "strings" if $type==OPTION_ARR && !$args;
-    unless ($args =~ s/^<([^<>]*)>$/$1/) {
-      $args =~ s/</E<lt>/g;
-      $args =~ s/(?<!E<lt)>/E<gt>/g;
-    }
-    $args = $args ? ($args =~ /^<.*>$/ ? "=I$args" : "=I<$args>") : "";
-    my $usage = $optinfo->{usage};
-    my $usage_str = ref $usage eq 'ARRAY' ? join("\n",@$usage) : $usage;
-    printf "=item B<-$opt>I<$args>\n\n$usage_str$def\n\n";
-  }
+			next;
+		}
+		my $def = $type==OPTION_BOOL ? ($default ? " [Default ON]" : " [Default OFF]") :
+		          !defined($default) ? "" :
+		          $type==OPTION_ARR ? " [Default @$default]" :
+		          ($type==OPTION_STR && !$default) ? "" : " [Default $default]";
+		my $opt = $option;
+		$opt = "-$opt" if $type==OPTION_ARR;
+		my $args = $optinfo->{args};
+		$args = "string" if $type==OPTION_STR && !$args;
+		$args = "strings" if $type==OPTION_ARR && !$args;
+		unless ($args =~ s/^<([^<>]*)>$/$1/) {
+			$args =~ s/</E<lt>/g;
+			$args =~ s/(?<!E<lt)>/E<gt>/g;
+		}
+		$args = $args ? ($args =~ /^<.*>$/ ? "=I$args" : "=I<$args>") : "";
+		my $usage = $optinfo->{usage};
+		my $usage_str = ref $usage eq 'ARRAY' ? join("\n",@$usage) : $usage;
+		printf "=item B<-$opt>I<$args>\n\n$usage_str$def\n\n";
+	}
 
-  print "\n\n=back\n\n";
-
-  exit 0;
+	print "\n\n=back\n\n";
+	
+	exit 0;
 }
 
 #########################
 # Version/Copyright Info
 #########################
 sub version {
-  my ($opt,$option,$val) = @_;
-  
-  unless ($opt->{q} || $MAIN::SHOWED_VERSION++) {
-    print STDERR "\nThis is $PROGNAME v$VERSION on $^O";
-    print STDERR "  ** BETA version.  DO NOT DISTRIBUTE. **"
-      if $VERSION =~ /b/;
-    print STDERR "\n\n";
-  }
-
-  return unless $option;	# Called from -version, do the whole thing
-
-  copyright();
-  exit 0;
+	my ($opt,$option,$val) = @_;
+	
+	unless ($opt->{q} || $MAIN::SHOWED_VERSION++) {
+		print STDERR "\nThis is $PROGNAME v$VERSION on $^O";
+		print STDERR "  ** BETA version.  DO NOT DISTRIBUTE. **"
+			if $VERSION =~ /b/;
+		print STDERR "\n\n";
+	}
+	
+	return unless $option;	# Called from -version, do the whole thing
+	
+	copyright();
+	exit 0;
 }
 
 sub copyright {
-  print STDERR <<COPYRIGHT;
+	print STDERR <<COPYRIGHT;
 
 Copyright:   (c) 2000-2004 David Ljung Madison
 Docs:        $ALBUM_URL
@@ -704,7 +714,7 @@ License:     ${HOME}License/
 Please see!  ${HOME}Pay/
 
 COPYRIGHT
-  exit 0;
+	exit 0;
 }
 
 #########################
@@ -2213,6 +2223,71 @@ sub hash_warn {
 
 ##################################################
 ##################################################
+# LANGUAGE SUPPORT
+##################################################
+##################################################
+sub english {
+	my ($opt) = @_;
+	$opt->{E} = {
+		NOTHING_TO_DO	=> "\nNothing to do.  Call album with your photo directory as an option.\n\n",
+	};
+}
+
+sub get_language {
+  my ($opt,$option,$lang) = @_;
+
+	my $warn = 0;
+
+  my ($path,$found) = search_path($opt,$lang, @{$opt->{lang_path}});
+	open(LANG,"<$path") || usage("Couldn't find language file [$lang]");
+	my $got_line=0;
+	while ($got_line || ($_ = scalar <LANG>)) {
+		$got_line=0;
+		chomp;
+		next if /^#.*/ || /^\s*$/;
+		unless (/^%([A-Z_]+)%(.*)/) {
+			print STDERR "[$PROGNAME] Can't understand line $. in language file [$lang]\n"
+				unless $warn++>2;
+			print STDERR "..Errors truncated..\n" if $warn==3;
+			next;
+		}
+		my ($key,$str) = ($1,$2);
+		while (<LANG>) {
+			chomp;
+			if (/^%([A-Z_]+)%(.*)/) {
+				$got_line = 1;
+				last;
+			}
+			$str .= "\n$_";
+		}
+
+		# Check the key/val
+print "CHECK $key\n";
+		unless ($opt->{E}{$key}) {
+			print STDERR "[$PROGNAME] Unknown language key [$key] in language file [$lang]\n";
+		}
+		print "$lang]] $key -- $str\n";
+	}
+	close LANG;
+
+exit;
+# Allow for usage statements in language
+}
+
+sub make_language {
+  my ($opt,$option,$val) = @_;
+print "MAKE LANGUAGE\n";
+
+# Allow for usage statements in language
+}
+
+sub err ($$) {
+	my ($opt, $err) = @_;
+	print STDERR $opt->{E}{$err};
+}
+
+##################################################
+##################################################
 # PLUGIN CODE
 ##################################################
 ##################################################
@@ -2295,7 +2370,8 @@ sub get_plugin {
 # Otherwise, we currently require the full plugin path the first time.
   # but if we don't require the full path, we can have namespace collisions..
 # Maybe a 'find_plugins' that would return an array of plugins without use_plugin?
-  print STDERR "[$PROGNAME] WARNING: Couldn't find 'plugin' [$plugin]\n";
+  print STDERR "\n[$PROGNAME] WARNING: Couldn't find plugin [$plugin]\n";
+	sleep 3;
   return 0;
 }
 
@@ -2469,16 +2545,18 @@ sub gather_hook_info {
   my %hooks;
   while (<A>) {
     if (/do_hook(|s|sR)\(([^,]+),([^,]+),\s*'([^']+)'\s*(,(.*)\))?/) {
-      my $hook = $4;
-      my @args = ($2,$3,"'$hook'",$6);
-      $hooks{$hook}{args} = ($args[1] =~ /^\s*undef\s*$/) ?
+      my $name = $4;
+      my @args = ($2,$3,"'$name'",$6);
+			my %hook;
+      $hook{args} = ($args[1] =~ /^\s*undef\s*$/) ?
         "($args[0], $args[2], $args[3])" :
         "($args[0],$args[1], $args[2], $args[3])";
       while (<A>) {
         chomp;
         last unless /^\s*#\s*(Description|Returns):\s*(\S.*)?/i;
-        push(@{$hooks{$hook}{lc($1)}}, $2);
+        push(@{$hook{lc($1)}}, $2);
       }
+			$hooks{$name} = \%hook;
     }
   }
   close A;
@@ -2713,6 +2791,7 @@ sub read_captions {
   # $dir may actually be $data, get $data->{paths}{$dir}
   $dir = $dir->{paths}{dir} if ref $dir eq "HASH";
 
+  # Cache the data
   return $opt->{_captions}{$dir} if $opt->{_captions}{$dir};
 
   my %caps;
@@ -2797,8 +2876,8 @@ sub get_exif_caption {
   my $dir = $data->{paths}{dir};
   my $path = "$dir/$pic";
 
-  # Only do it once per image (it will get saved in $opt->{_captions}{dir})
-  return if $opt->{_done_exif}{$path}++;
+  # Only do it once per image
+  return if $data->{obj}{$pic}{_did_exif}++;
 
   do_hooks($opt,$data, 'get_exif_caption', $pic, $dir);
   # Description: Creates EXIF captions for a picture.
@@ -3038,7 +3117,7 @@ sub calc_paths {
   foreach my $pic ( @{$data->{pics}} ) {
     $data->{obj}{$pic}{full}{file} = $pic unless $data->{obj}{$pic}{full}{file};
     $data->{obj}{$pic}{full}{path} = "$dir/$pic" unless $data->{obj}{$pic}{full}{path};
-		# We also store it in just obj->{file} to match directory objects.
+    # We also store it in just obj->{file} to match directory objects.
     $data->{obj}{$pic}{file} = $pic unless $data->{obj}{$pic}{file};
   }
 
@@ -3051,6 +3130,26 @@ sub calc_paths {
       $obj->{URL}{album_page}{dir} = url_quote($opt, index_page($opt,0,$child));
     }
   }
+
+  # Create static <meta> info in {head}
+  $data->{head} .= <<"HEAD";
+		<meta name='Generator' content='$GEN_STRING'>
+		<meta name='Album_Path' content='$data->{paths}{album_path}'>
+		<script type='text/javascript'>
+		<!--
+		// If plugins want to use 'onload' they can call 'AddOnload(func)'
+		var OnloadArr = new Array();
+		function AddOnload(func) {  // Call with function to add to 'onload' handler
+			OnloadArr[OnloadArr.length] = func;
+			window.onload = ArrayOnload;
+		}
+		function ArrayOnload() {
+			for(var i=0; i<OnloadArr.length; i++) OnloadArr[i]();
+		} 
+		//-->
+		</script>
+HEAD
+
 }
 
 ##################################################
@@ -3381,18 +3480,20 @@ sub pFooter {
 #########################
 # Object Iterators
 #########################
-sub num {
-  my (\$type) = \@_;
-  \$type='pics' unless \$type;
-  return \$#{Path('parent_albums')}+1 if \$type eq 'parent_albums';
-  \$#{\$data->{\$type}}+1;
-}
-
 # OBSOLETE:  Global counter variables
 my \$IMAGE_CNT;	# DEPRECATED
 my \$CHILD_ALBUM_CNT = 0;
 my \$PARENT_ALBUM_CNT = 0;
 # END OBSOLETE:  Global counter variables
+
+sub num {
+  my (\$type) = \@_;
+	return \$IMAGE_CNT+1 if \$type eq "This_Image";
+	return \$IMAGE_CNT+1 if ref \$type eq 'HASH' && \$type == This_Image();
+  \$type='pics' unless \$type;
+  return \$#{Path('parent_albums')}+1 if \$type eq 'parent_albums';
+  \$#{\$data->{\$type}}+1;
+}
 
 # There are three types of arguments for our image subs:
 # 1) No argument:  Use current image (IMAGE_CNT)
@@ -4059,52 +4160,40 @@ sub Body_Tag {
 
 # Meta tag needed for regenerating portions of the album tree.
 sub Meta {
-  print "<meta name='Generator' content='$GEN_STRING'>\\n";
-  print "<meta name='Album_Path' content='\$data->{paths}{album_path}'>\\n";
 # DEPRECATED: These two are unnecessary unless you want to switch back to v2.0
 # (But see prev_next_theme_path_changed)
   print "<meta name='Album_Theme' content='\$opt->{theme}'>\\n";
   print "<meta name='caption_edit' content='yes'>\\n" if $opt->{caption_edit};
+  print "\$data->{head}";
   if (Image_Page()) {
     my \$First_url = Get(First(),'URL','image_page','image_page');
     my \$Last_url = Get(Last(),'URL','image_page','image_page');
     my \$Prev = Prev(This_Image, \$opt->{image_loop});
-    my \$Prev_pic = Get(\$Prev,'full','file');
     my \$Prev_url = Get(\$Prev,'URL','image_page','image_page');
     my \$Prev_src = Get(\$Prev,'URL','image_page','image_src') || "''";
     my \$Next = Next(This_Image, \$opt->{image_loop});
-    my \$Next_pic = Get(\$Next,'full','file');
     my \$Next_url = Get(\$Next,'URL','image_page','image_page');
     my \$Next_src = Get(\$Next,'URL','image_page','image_src') || "''";
     print <<PREV_NEXT;
-<meta name='Prev_Image' content='\$Prev_pic'>
-<meta name='Next_Image' content='\$Next_pic'>
-<link rel='first' title='First Image' href=\$First_url>
-<link rel='last' title='Last Image' href=\$Last_url>
-<link rel='prev' title='Previous Image' href=\$Prev_url>
-<link rel='next' title='Next Image' href=\$Next_url>
-<link rel='up' title='Album' href='..'>
-<script type='text/javascript'>
-<!--
-if (document.images) {
-  Image1 = new Image(); Image1.src = \$Prev_src;
-  Image2 = new Image(); Image2.src = \$Next_src;
-}
-//-->
-</script>
+		<link rel='first' title='First Image' href=\$First_url>
+		<link rel='last' title='Last Image' href=\$Last_url>
+		<link rel='prev' title='Previous Image' href=\$Prev_url>
+		<link rel='next' title='Next Image' href=\$Next_url>
+		<link rel='up' title='Album' href='..'>
+		<script type='text/javascript'>
+		<!--
+		function preloadImages() {
+  		Image1 = new Image(); Image1.src = \$Prev_src;
+  		Image2 = new Image(); Image2.src = \$Next_src;
+		}
+		AddOnload(preloadImages);
+		//-->
+		</script>
 
 PREV_NEXT
-# Dominik Lamp <d_lamp at informatik uni-kl de> points out that
-# "document.images" above will eval true even before page is fully loaded.
-# To fix this we could put the above code into a function and then do:
-#   <body onloaded='javascript:preloadImages()'>
-# Problem is the <body> tag isn't controlled in themes..
-
-
   } else {
-    print "<link rel='up' title='Up' href='..'>";
+    print "\t\t<link rel='up' title='Up' href='..'>\n";
   }
-  print "\$data->{head}";
   \$CALLED_META=1;
 }
 sub Album_End {
@@ -4196,9 +4285,7 @@ sub header {
     <title> 
       Album: $this
     </title>
-    <meta http-equiv='Content-Type' content='text/html; charset=$opt->{charset}' />
-    <meta name='Generator' content='$GEN_STRING' />
-    <meta name='Album_Path' content='$data->{paths}{album_path}' />
+    <meta http-equiv='Content-Type' content='text/html; charset=$opt->{charset}'>
     $data->{head}
   </head>
   $body
@@ -4467,6 +4554,14 @@ sub write_img_indexes {
 
     my $file = "$opt->{dir}/$pic$data->{paths}{page_post_url}";
     setup_output($opt,"$dir/$file",0);
+
+  	next if do_hooks($opt,$data, 'write_image_page', $dir, $file, $i, $prev, $next);
+  	# Description: Called before an album image page is written
+  	# Description: $i is the image number as in: $data->{pics}[$i]
+  	# Description: $prev and $next are undefined on boundaries unless  -image_loop is used.
+  	# Description: This hook is too late for themes to get any $opt/$data changes!
+  	# Returns: 1 to skip this normal image page writing code
+
     header($opt,$data,1,$name);
 
     # Image and Previous/next
@@ -4630,9 +4725,11 @@ sub write_img_themes {
     # the prev/next images didn't have source changes (because
     # they might have a name change or some such..), *THEN* we
     # can skip generating this file, and save some time.
-    my $prev = $i ? $i-1 : $#{$data->{pics}};
-    my $next = $i==$#{$data->{pics}} ? 0 : $i+1;
-    my $depchanged = $changed[$i] || $changed[$prev] || $changed[$next];
+    my $prev = $i ? $i-1 : $opt->{image_loop} ? $#{$data->{pics}} : undef;
+    my $next = $i==$#{$data->{pics}} ? ($opt->{image_loop} ? 0 : undef) : $i+1;
+    my $depchanged = $changed[$i];
+    $depchanged ||= $changed[$prev] if defined $prev;
+    $depchanged ||= $changed[$next] if defined $next;
     my $pntp_changed = prev_next_theme_path_changed("$dir/$file",
       $data->{pics}[$prev],$data->{pics}[$next],$opt->{theme},$data->{paths}{album_path})
         unless $depchanged;	# we don't need to even check if we know we've changed
@@ -4641,6 +4738,13 @@ sub write_img_themes {
 
     (-d $dir) || mkdir($dir,0755) || fatal($opt,"Couldn't make directory [$dir]\n");
     setup_output($opt,"$dir/$file",1);
+
+  	next if do_hooks($opt,$data, 'write_image_page', $dir, $file, $i, $prev, $next);
+  	# Description: Called before an album image page is written
+  	# Description: $i is the image number as in: $data->{pics}[$i]
+  	# Description: $prev and $next are undefined on boundaries unless  -image_loop is used.
+  	# Description: This hook is too late for themes to get any $opt/$data changes!
+  	# Returns: 1 to skip this normal image page writing code
 
     # Write the support data/functions with IMAGE_NUM/THIS_IMAGE
     eperl_set_file("album theme initialization",1);
@@ -4665,10 +4769,16 @@ sub write_img_themes {
 ##################################################
 ##################################################
 sub is_image {
-  my ($opt,$pic) = @_;
-  return 0 if -f "${pic}$opt->{not_img}";
-  return 0 if $pic =~ /\.html?$/i;
-  return 0 if $pic !~ /\.($IMAGE_TYPES)$/i;
+  my ($opt,$file) = @_;
+
+  my $ret = do_hook($opt,undef,'is_image', $file);
+  # Description: Determine if a file is an image.
+  # Returns: 1 for image, 0 for not, undef for letting default code decide.
+	return $ret if defined $ret;
+
+  return 0 if -f "${file}$opt->{not_img}";
+  return 0 if $file =~ /\.html?$/i;
+  return 0 if $file !~ /\.($IMAGE_TYPES)$/i;
   1;
 }
 
@@ -5071,8 +5181,9 @@ sub do_album {
   start_hashes($opt, "Images:  $p");
   if ($noalb || $data->{unknown}) {
     hash_msg($opt,"<".($noalb ? $opt->{no_album} : "unknown").">");
-    print STDERR "\nNothing to do.  Call album with your photo directory as an option.\n\n"
-      if $data->{start};
+    err($opt, 'NOTHING_TO_DO')  if $data->{start};
+#    print STDERR "\nNothing to do.  Call album with your photo directory as an option.\n\n"
+#      if $data->{start};
     return;
   }
   return hash_msg($opt,"<unknown>") if $data->{unknown};
@@ -5122,12 +5233,13 @@ sub do_album {
   start_hashes($opt, "Indexes: $p");
   $hashes = 2 + $#pics+1;	# data conversion, album, then each picture index
 
-  data_to_eperl($opt,$data);
   show_hashes($opt, 1, $hashes);
 
   my $did_index = do_hooks($opt,$data, 'write_index', $dir, $album);
   # Description: Called before the album index page is written for a directory.
   # Returns: 1 to skip the normal index writing code
+
+  data_to_eperl($opt,$data);
 
   ($opt->{'album.th'}) ?
     write_theme($opt,$data) : write_index($opt,$data)
@@ -5136,6 +5248,8 @@ sub do_album {
 
   my $did_images = do_hooks($opt,$data, 'write_image_pages', $dir, $album);
   # Description: Called before the album image pages are written
+  # Description: This hook is too late for themes to get any $opt/$data changes!
+	# Description: Instead consider putting $opt/$data changes in write_index
   # Returns: 1 to skip the normal image page writing code
 
   ($opt->{'image.th'} ?
@@ -5476,7 +5590,7 @@ sub medium {
   $medium =~ s/\>/\\>/g unless $opt->{windows};
 
 
-  my ($fx,$fy,$mx,$my) = scale($opt,$full_path,$medium,$obj->{medium}{path});
+  my ($fx,$fy,$mx,$my) = scale($opt,$full_path,$medium,$obj->{medium}{path},1);
   ($obj->{full}{x},$obj->{full}{y}) = ($fx,$fy)
     if $base eq 'full' && $fx;
 
@@ -5585,6 +5699,7 @@ sub main {
   # Description: WARNING!  This cannot be called unless the calling plugin
   # Description:   is specified on the command-line.  This should only
   # Description:   be used by one-time plugins!  (i.e.: utils/mv)
+  # Description: Use 'do_album' or 'do_album_top' instead.
   # Returns: 1 to stop here
 
   foreach my $dir ( @{$opt->{_albums}} ) {
@@ -5668,7 +5783,7 @@ String/number options:
 
 Array options:
 
-% album --exif, --exif_album, --exif_image, --add, --scale_opts, --medium_scale_opts, --thumb_scale_opts, --data_path, --plugin_path, --theme_path
+% album --lang_path, --exif, --exif_album, --exif_image, --add, --scale_opts, --medium_scale_opts, --thumb_scale_opts, --data_path, --plugin_path, --theme_path
 
 
 =head2 OPTION DESCRIPTIONS
@@ -5686,6 +5801,18 @@ To show more options.
 =item B<-More>I<>
 
 To show even more options.
+
+=item B<-lang>I<=I<lang>>
+
+Pick a language
+
+=item B<-make_lang>I<>
+
+Print out a new language file
+
+=item B<--lang_path>I<=I<strings>>
+
+Add a path to search for language files [Default @DATA_PATH/lang]
 
 =item B<-q>I<>
 
@@ -5853,7 +5980,7 @@ Specify <body> tags for non-theme output [Default <body>]
 
 =item B<-charset>I<=I<str>>
 
-Charset for non-theme output [Default iso-8859-1]
+Charset for non-theme and some theme output [Default iso-8859-1]
 
 =item B<-image_loop>I<>
 

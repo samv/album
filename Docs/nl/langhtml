@@ -2,9 +2,10 @@
 <head>
 	<style>
 	<!--
-	:lang(fr) { color: green; }
+	:lang(nl) { color: green; }
 	-->
 	</style>
 	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
 	<link rel='alternate' type='text/html' href='../it' hreflang='it' lang='it' title='album documentation'>
-	<meta http-equiv='Content-Language' content='fr'>
+	<link rel='alternate' type='text/html' href='../fr' hreflang='fr' lang='fr' title='album documentation'>
+	<meta http-equiv='Content-Language' content='nl'>

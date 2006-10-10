@@ -10,6 +10,7 @@ my $langs = "/data/proj/album/Language/LIST";
 # Read the language codes
 #########################
 open(LANGS,"<$langs") || die("Couldn't read $langs");
+print "READING: $langs\n";
 while (<LANGS>) {
 	# iso-639-2
 	#$lang{$1} = $2 if /^(...); (.+?)(; |$)/;

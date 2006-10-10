@@ -1,181 +1,11 @@
+Creating Themes
 
-<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN'>
-<html>
-<head>
-	<style>
-	<!--
-	:lang(fr) { color: green; }
-	-->
-	</style>
-	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
-	<link rel='alternate' type='text/html' href='../it' hreflang='it' lang='it' title='album documentation'>
-	<meta http-equiv='Content-Language' content='fr'>
-
-  <title>MarginalHacks album Documentation</title>
-  <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <style>
-  <!--
-  code {color: red;}
-  tt {color: #ff6666;}
-  A:hover {background-color: yellow;}
-  -->
-  </style>
-  <script language='JavaScript'>
-  <!--
-  ver4 = (document.layers || document.all) ? 1 : 0;
-
-  if (document.images) {
-    ImageArray = new Array (
-      'http://DavePics.com/Domains/MarginalHacks.gif',
-      'http://DavePics.com/Domains/MarginalHacks_down.gif',
-      'http://DavePics.com/Domains/GetDave.gif',
-      'http://DavePics.com/Domains/GetDave_down.gif',
-      'http://DavePics.com/Domains/Daveola.gif',
-      'http://DavePics.com/Domains/Daveola_down.gif',
-      'http://DavePics.com/Domains/DaveSource.gif',
-      'http://DavePics.com/Domains/DaveSource_down.gif' )
-
-    ImageList = new Array ();
-    for (counter in ImageArray) {
-      ImageList[counter] = new Image();
-      ImageList[counter].src = ImageArray[counter];
-    }
-  };
-  defaultStatus = 'Marginal Hacks'
-
-  //-->
-  </script>
-</head>
-
-<body bgcolor=white link='#0000FF' alink='#0000FF' vlink='#5000FF' text='#000000'>
-
-<div lang='en'>
-<center>
-<table border=0 cellspacing=0 cellpadding=0 width=100%>
-  <tr> <td rowspan=2>
-      <a href='http://MarginalHacks.com/'
-         onMouseOver = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks_down.gif'
-          onMouseOut = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks.gif'
-         onMouseDown = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks_down.gif'
-           onMouseUp = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks.gif'>
-      <img name=MarginalHacks alt='MarginalHacks.com'
-           src='http://DavePics.com/Domains/MarginalHacks.gif'
-           width=69 height=60 border=0></a>
-      <a href='http://DaveSource.com/'
-         onMouseOver = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource_down.gif'
-          onMouseOut = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource.gif'
-         onMouseDown = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource_down.gif'
-           onMouseUp = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource.gif'>
-      <img name=DaveSource alt='DaveSource.com'
-           src='http://DavePics.com/Domains/DaveSource.gif'
-           width=69 height=60 border=0></a>
-      <a href='http://GetDave.com/'
-         onMouseOver = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave_down.gif'
-          onMouseOut = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave.gif'
-         onMouseDown = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave_down.gif'
-           onMouseUp = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave.gif'>
-      <img name=GetDave alt='GetDave.com - all the current Dave Pointers.'
-           src='http://DavePics.com/Domains/GetDave.gif'
-           width=69 height=60 border=0></a>
-      <a href='http://Daveola.com/'
-         onMouseOver = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola_down.gif'
-          onMouseOut = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola.gif'
-         onMouseDown = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola_down.gif'
-           onMouseUp = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola.gif'>
-      <img name=Daveola alt='Daveola.com - My home.'
-           src='http://DavePics.com/Domains/Daveola.gif'
-           width=69 height=60 border=0></a>
-  </td>
-  <td bgcolor=#000000 align=right>
-  <font size=+2 face='lucida, helvetica' color=#ccccc0>
-    A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
-
-    S&nbsp;i&nbsp;x&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;C&nbsp;r&nbsp;e&nbsp;a&nbsp;t&nbsp;i&nbsp;n&nbsp;g&nbsp; &nbsp;T&nbsp;h&nbsp;e&nbsp;m&nbsp;e&nbsp;s&nbsp;
-<br>
-
-  </font>
-  </td></tr>
-  <tr><td> &nbsp; </td></tr>
-</table>
-
-<a name=top>
-
-<table cellpadding=8 width='100%'> <tr>
-  <td valign=top>
-    <table>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href='http://MarginalHacks.com/Hacks/album/'>Home</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href='http://MarginalHacks.com/Hacks/album/Themes.html'>Themes/Examples</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href='http://MarginalHacks.com/Hacks/album/Plugins.html'>Plugins</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href='http://MarginalHacks.com/Hacks/album/License.html'>License</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href='http://MarginalHacks.com/Hacks/album/Download.html'>Download</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3>Documentation
-          <font size='-1'>
-<br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
-<br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">italiano</a></span>
-<br><span lang='fr'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;fran&ccedil;ais</span>
-
-          </font>
-</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href='http://MarginalHacks.com/Hacks/album/Mailing_List.html'>Mailing List</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href='http://MarginalHacks.com/Hacks/album/CHANGELOG.html'>CHANGELOG</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href='http://MarginalHacks.com/Hacks/album/Praises.html'>Praises</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-      <tr bgcolor=#BBBBBB><td>
-        <h3><a href=/Contact/>Contact</a>&nbsp;&nbsp;</h3>
-        <p>
-      </td></tr>
-    </table>
-  </td>
-  <td valign=top>
-
-
-
-<p><hr><p>
-<a href='.'>Table Of Contents</a>
-<ol><a href='#Methods'><li>Methods</a>
- <a href='#Editing_current_theme_HTML'><li>Editing current theme HTML</a>
- <a href='#The_easy_way,_simmer_theme_from_graphics.'><li>The easy way, simmer_theme from graphics.</a>
- <a href='#From_scratch,_Theme_API'><li>From scratch, Theme API</a>
- <a href='#Submitting_Themes'><li>Submitting Themes</a>
- <a href='#Converting_v2.0_Themes_to_v3.0_Themes'><li>Converting v2.0 Themes to v3.0 Themes</a>
-</ol><p><hr><p>
-
-
-<pre>
-
-<b><a name='Methods'>1:</a>   Methods</b>
+ITEM: Methods
 
 There are easy ways and complicated ways to create a custom theme,
 depending on what you want to be able to do.
 
-<b><a name='Editing_current_theme_HTML'>2:</a>   Editing current theme HTML</b>
+ITEM: Editing current theme HTML
 
 If you just want to slightly change the theme to match the output
 of your site, it might make sense to edit a current theme.
@@ -186,21 +16,35 @@ size images).  The files are very similar to HTML except for
 some embedded <: ePerl :> code.  Even if you don't know perl or
 ePerl you can still edit the HTML to make simple changes.
 
-<b><a name='The_easy_way,_simmer_theme_from_graphics.'>3:</a>   The easy way, simmer_theme from graphics.</b>
+Good starting themes:
+
+Any simmer_theme is going to be up to date and clean, such as "Blue" or
+"Maste."  If you only need 4 corner thumbnail borders then take a look
+at "Eddie Bauer."  If you want overlay/transparent borders, see FunLand.
+
+If you want something demonstrating a minimal amount of code, try "simple"
+but be warned that I haven't touched the theme in a long time.
+
+ITEM: The easy way, simmer_theme from graphics.
 
 Most themes have the same basic form, show a bunch of thumbnails
 for directories and then for images, with a graphic border, line and
 background.  If this is what you want, but you want to create new
 graphics, then there is a tool that will build your themes for you.
 
-If you create a directory with the images and Font and CREDIT file, then
-simmer_theme will create the *.th files to make the theme complete.
+If you create a directory with the images and a CREDIT file as well
+as a Font or Style.css file, then simmer_theme will create theme for you.
 
 Files:
 
-<b>Font</b>
-The font file sets the fonts used by the theme.  This will probably
-be replaced with CSS in the very near future.  An example Font file is:
+<b>Font/Style.css</b>
+This determines the fonts used by the theme.  The "Font" file is the
+older system, documented below.  Create a Style.css file and define
+styles for: body, title, main, credit and anything else you like.
+
+See FunLand for a simple example.
+
+Alternatively, use a font file.  An example Font file is:
 
 --------------------------------------------------
 $TITLE_FONT = "size='4' color='#ffffff' face='Times New Roman,Georgia,Times'";
@@ -212,16 +56,16 @@ $BODY = "background='$PATH/bkgrnd.gif' link='#0099FF'">
 <b>CREDIT</b>
 The credit file is two lines and is used for the theme index at MarginalHacks.
 If you're never submitting your theme to us, then you don't need this file.
-Otherwise the two lines are:
+(But please do!)  If so, the two lines (and only two lines) are:
 
-1) A short description of the theme
+1) A short description of the theme (keep it all on one line)
 2) Your name (can be inside a mailto: or href link)
 
 <b>Null.gif</b>
 Each simmer theme needs a spacer image, this is a 1x1 transparent gif.
 You can just copy this from another simmer theme.
 
-Optional files:
+Optional image files:
 
 <b>Bar Images</b>
 The bar is composed of Bar_L.gif, Bar_R.gif and Bar_M.gif in the middle.
@@ -265,7 +109,10 @@ the complexity of the border and how much you want to be able to stretch it:
     12 pieces allow stretching of borders that have more complex corners (such
     as Dominatrix6 or Ivy)
 
-Here's how the border pieces are laid out:
+  <b>Overlay Borders</b>  Can use transparent images that can be partially
+    overlaying your thumbnail.  See below.
+
+Here's how the normal border pieces are laid out:
 
    12 piece borders
       TL  T  TR          8 piece borders       4 piece borders
@@ -276,6 +123,7 @@ Here's how the border pieces are laid out:
 
 Note that every row of images must be the same height, though the
 widths do <b>not</b> have to line up.  (i.e., height TL = height T = height TR)
+(This is not true about overlay borders!)
 
 Once you've created these files, you can run the simmer_theme tool
 (an optional tool download at MarginalHacks.com) and your theme will
@@ -284,7 +132,25 @@ then be ready to use!
 If you need different borders for the image pages, then use the same
 filenames prefixed by 'I' - such as IBord_LT.gif, IBord_RT.gif,...
 
-<b><a name='From_scratch,_Theme_API'>4:</a>   From scratch, Theme API</b>
+Overlay borders allow for really fantastic effects with image borders.
+Currently there's no support for different overlay borders for images.
+
+For using Overlay borders, create images:
+      Over_TL.png   Over_T.png   Over_TR.png
+      Over_L.png                 Over_R.png
+      Over_BL.png   Over_B.png   Over_BR.png
+
+Then figure out how many pixels of the borders are padding (outside photo)
+Then put those values in files: Over_T.pad Over_R.pad Over_B.pad Over_L.pad
+See "Themes/FunLand" for a simple example
+
+ITEM: From scratch, Theme API
+
+This is a much heavier job - you need to have a very clear idea of
+how you want album to place the images on your page.  It might be
+a good idea to start with modifying existing themes first to get
+an idea of what most themes do.  Also look at existing themes
+for code examples (see suggestions above).
 
 Themes are directories that contain at the minimum an 'album.th' file.
 This is the album page theme template.  Often they also contain an 'image.th'
@@ -446,7 +312,11 @@ Border($str,$x,$y,@border)
                           Create the full bordered image.  See 'Borders' for
 
 
-<b><a name='Submitting_Themes'>5:</a>   Submitting Themes</b>
+If you're creating a theme from scratch, consider adding support for -slideshow.
+The easiest way to do this is to cut/paste the "slideshow" code out of an
+existing theme.
+
+ITEM: Submitting Themes
 
 Have a custom theme?  I'd love to see it, even if it's totally site-specific.
 
@@ -455,7 +325,7 @@ it to me and/or a URL where I can see how it looks.  Be sure to set the CREDIT
 file properly and let me know if you are donating it to MarginalHacks for
 everyone to use or if you want it under a specific license.
 
-<b><a name='Converting_v2.0_Themes_to_v3.0_Themes'>6:</a>   Converting v2.0 Themes to v3.0 Themes</b>
+ITEM: Converting v2.0 Themes to v3.0 Themes
 
 album v2.0 had a theme interface which has been rewritten.  Most 2.0 themes
 (especially those that don't use many of the global variables) will still
@@ -544,22 +414,3 @@ Child_Album_Name()            Name($alb)
 # Unchanged
 Meta()                        Meta()
 Credit()                      Credit()
-
-</pre>
-<p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>
-    </td>
-  </tr>
-</table>
-</div>
-
-</body>
-</html>
-	<center>
-	<br><br><br>
-	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
-	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
-	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
-	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
-	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
-	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
-	</center>

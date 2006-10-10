@@ -1,0 +1,179 @@
+MINI HOW-TO
+
+<span lang="nl">
+ITEM: Eenvouding album
+
+Er van uitgaand dat je album hebt geinstalleerd, kunnen we een paar 
+eenvoudige gevallen bekijken. Als je hier fouten tegenkomt of problemen 
+hebt, kijk dan in de installatiehandleiding.
+
+Je hebt een webmap nodig om thema's en je fotoalbum in op te slaan. We 
+zullen in dit document /home/httpd/test gebruiken. Die moet zichtbaar 
+zijn met een webserver. In dit voorbeeld zullen we de volgende URL 
+gebruiken:
+   http://myserver/test/
+
+Pas je commando's/URL's aan waar nodig.
+
+Maak eerst een map aan en stop er een paar plaatjes in. Deze noemen we:
+   /home/httpd/test/Photos
+
+en voeg er een paar plaatjes aan toe met de namen 'IMG_001.jpg' tot en 
+met 'IMG_004.jpg'.
+
+Voor het eenvoudigste geval, voer album uit:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Nu kun je het album bekijken in een webbrowser met zoiets als:
+   http://myserver/test/Photos
+
+ITEM: Bijschriften toevoegen
+
+Maak een tekstbestand /home/httpd/test/Photos/captions.txt aan met de 
+volgende inhoud (gebruik de 'tab'-toets waar "  [tab]  " staat)
+
+-- captions.txt ---------
+IMG_001.jpg  [tab]  Naam van het eerste plaatje
+IMG_002.jpg  [tab]  Tweede plaatje
+IMG_003.jpg  [tab]  Nog een plaatje  [tab]   met een bijschrift!
+IMG_004.jpg  [tab]  Laatste plaatje  [tab]   met een ander bijschrift.
+-------------------------
+
+Voer album opnieuw uit:
+
+<code>% album /home/httpd/test/Photos</code>
+
+en je zult zien dat de bijschriften zijn veranderd.
+
+Maak nu een bestand met tekst aan in:
+   /home/httpd/test/Photos/header.txt
+
+en voer album opnieuw uit. Je zult de tekst bovenaan de pagina zien.
+
+ITEM: Foto's verbergen
+
+Er zijn een paar manieren om foto's/bestanden/folders te verbergen, maar 
+  we zullen hier het bijschriftenbestand gebruiken.
+Verander een plaatje in commentaar met '#' in captions.txt:
+
+-- captions.txt ---------
+IMG_001.jpg  [tab]  Naam van het eerste plaatje
+#IMG_002.jpg  [tab]  Tweede plaatje
+IMG_003.jpg  [tab]  Nog een plaatje  [tab]   met een bijschrift!
+IMG_004.jpg  [tab]  Laatste plaatje  [tab]   met nog een bijschrift.
+-------------------------
+
+Voer album opnieuw uit, en je zult zien dat IMG_002.jpg nu ontbreekt.
+Als we dit hadden gedaan voordat we album de eerste keer hadden 
+uitgevoerd, dan hadden we nooit het middelgrote plaatje en het 
+postzegelplaatje aangemaakt.  Als je wilt, kun je ze nu verwijderen met 
+-clean:
+
+<code>% album -clean /home/httpd/test/Photos</code>
+
+ITEM: Een thema gebruiken
+
+Als de thema's correct zijn geinstalleerd en in het pad theme_path 
+staan, dan kun je een thema voor je album gebruiken:
+
+<code>% album -theme Blue /home/httpd/test/Photos</code>
+
+Het fotoalbum zou nu het thema Blue moeten gebruiken. Als er 
+afbeeldingen ontbreken in het album, dan is het thema waarschijnlijk 
+niet geinstalleerd in een map die bereikbaar is via het web; zie de 
+installatiehandleiding.
+
+Album bewaart de opties die je opgeeft, dus de volgende keer dat je 
+album uitvoert:
+
+<code>% album /home/httpd/test/Photos</code>
+
+zul je nog steeds het thema Blue gebruiken. Om een thema uit te zetten, 
+kun je het volgende doen:
+
+<code>% album -no_theme /home/httpd/test/Photos</code>
+
+ITEM: Tussenformaat plaatjes
+
+Plaatjes in volle resolutie zijn meestal te groot voor een webalbum, dus 
+gebruiken we middelgrote plaatjes op de plaatjespagina's:
+
+<code>% album -medium 33% /home/httpd/test/Photos</code>
+
+Je kunt nog steeds de plaatjes in volle resolutie opvragen door op het 
+middelgrote plaatje te klikken, of:
+
+<code>% album -just_medium /home/httpd/test/Photos</code>
+
+zorgt ervoor dat het plaatje in volle grootte niet langer opgevraagd kan 
+worden (aangenomen dat we album op enig moment uitvoeren met de -medium 
+optie).
+
+ITEM: EXIF-bijschriften toevoegen
+
+We kunnen de diafragma-instelling (aperture) toevoegen aan het 
+bijschrift van elk plaatje.
+
+<code>% album -exif "&lt;br&gt;aperture=%Aperture%" 
+/home/httpd/test/Photos</code>
+
+Dit voegt alleen diafragma-informatie toe voor plaatjes die 
+daadwerkelijk de EXIF-tag 'Aperture' (het gedeelte tussen de '%'-tekens) 
+bevatten.  We zetten er ook een &lt;br&gt;-tag in zodat de 
+EXIF-informatie op een nieuwe regel komt.
+
+We kunnen meer EXIF-informatie toevoegen:
+
+<code>% album -exif "&lt;br&gt;focal: %FocalLength%" 
+/home/httpd/test/Photos</code>
+
+Omdat album de eerdere opties heeft bewaard, krijgen we nu beide 
+EXIF-tags voor alle plaatjes waarin Aperture en FocalLength zijn opgegeven.
+
+We kunnen de diafragma-informatie weer weghalen met:
+
+<code>% album -no_exif "&lt;br&gt;aperture=%Aperture%" 
+/home/httpd/test/Photos</code>
+
+De '-no_exif'-optie moet precies overeenkomen met de eerder opgegeven 
+string, anders gebeurd er niets. Je kunt ook het configuratiebestand dat 
+album heeft aangemaakt veranderen:
+   /home/httpd/test/Photos/album.conf
+en verwijder de exif-regel daar.
+
+ITEM: Albums toevoegen
+
+Stel dat we op reis naar Spanje zijn geweest. We maken een aantal foto's 
+en zetten ze in:
+   /home/httpd/test/Photos/Spain/
+
+Voer album opnieuw uit op het bovenste niveau:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Dit zal Photos aanpassen zodat het nu ook naar Spanje verwijst, en zal 
+album ook uitvoeren in Spain/, met dezelfde instellingen/thema, etc..
+
+Nu gaan we nogmaals op reis, en we maken:
+   /home/httpd/test/Photos/Italy/
+
+We zouden album kunnen uitvoeren op het bovenste niveau:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Maar dan zou de map Spain/ opnieuw gescand worden, terwijl deze niet 
+veranderd is. Album zal geen HTML of postzegelplaatjes aanmaken als dat 
+niet noodzakelijk is, maar het kost nog steeds tijd, zeker als onze 
+albums groter worden. We kunnen dus opgeven dat we alleen de nieuwe map 
+willen toevoegen:
+
+<code>% album -add /home/httpd/test/Photos/Italy</code>
+
+Dit zal de bovenste index aanpassen (in Photos) en het album Italy aanmaken.
+
+ITEM: Vertaald door:
+
+Marco W. Beijersbergen [http://cosine.nl]
+</span>
+
