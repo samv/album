@@ -219,8 +219,15 @@ full script.  If you comment off the changes you make that'd be great too.
 
 <b><a name='Known_Bugs'>4:</a>   Known Bugs</b>
 
-v3.10:  Burning CDs doesn't quite work with theme absolute paths.
 v3.11:  -clear_* and -no_* doesn't clear out parent directory options.
+v3.10:  Burning CDs doesn't quite work with theme absolute paths.
+v3.00:  Array and code options are saved backwards, for example:
+        "album -lang aa .. ; album -lang bb .." will still use language 'aa'
+        Also, in some cases array/code options in sub-albums will not
+        be ordered right the first time album adds them and you may
+        need to rerun album.  For example:
+        "album -exif A photos/ ; album -exif B photos/sub"
+        Will have "B A" for the sub album, but "A B" after: "album photos/sub"
 
 <b><a name='PROBLEM:_My_index_pages_are_too_large'>5:</a>   PROBLEM: My index pages are too large!</b>
 

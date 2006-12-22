@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ALBUM 1"
-.TH ALBUM 1 "2006-10-10" "album v3.13" ""
+.TH ALBUM 1 "2006-12-21" "album v4.00" ""
 album \- Make a web photo album
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
@@ -176,11 +176,11 @@ Or clear all the array options with \-clear_<option>:
 .PP
 Boolean options:
 .PP
-% album \-q, \-d, \-D, \-virgin_check, \-save_conf, \-configure, \-image_pages, \-dir_thumbs, \-just_medium, \-slideshow, \-embed, \-clean, \-image_headers, \-album_captions, \-caption_edit, \-file_sizes, \-fix_urls, \-known_images, \-all, \-hashes, \-reverse_sort, \-case_sort, \-image_loop, \-burn, \-crop, \-force, \-force_html, \-sample, \-animated_gifs, \-use_tcap
+% album \-q, \-d, \-D, \-virgin_check, \-save_conf, \-configure, \-image_pages, \-thumbs, \-dir_thumbs, \-just_medium, \-slideshow, \-embed, \-clean, \-image_headers, \-album_captions, \-caption_edit, \-file_sizes, \-fix_urls, \-known_images, \-all, \-hashes, \-reverse_sort, \-case_sort, \-image_loop, \-burn, \-crop, \-force, \-force_html, \-sample, \-animated_gifs, \-use_tcap
 .PP
 String/number options:
 .PP
-% album \-medium, \-captions, \-top, \-sort, \-body, \-charset, \-index, \-default_index, \-html, \-type, \-medium_type, \-CROP, \-dir, \-sharpen, \-plugin_post, \-theme, \-theme_url, \-convert, \-identify, \-jhead, \-ffmpeg, \-conf_file, \-dev_null, \-windows, \-cygwin, \-tcap, \-tcap_out, \-cmdproxy, \-header, \-footer, \-credit, \-no_album, \-hide_album, \-not_img
+% album \-medium, \-captions, \-top, \-sort, \-body, \-charset, \-force_charset, \-index, \-default_index, \-html, \-type, \-medium_type, \-CROP, \-dir, \-sharpen, \-plugin_post, \-theme, \-theme_url, \-convert, \-identify, \-jhead, \-ffmpeg, \-conf_file, \-dev_null, \-windows, \-cygwin, \-tcap, \-tcap_out, \-cmdproxy, \-header, \-footer, \-credit, \-no_album, \-hide_album, \-not_img
 .PP
 Array options:
 .PP
@@ -198,13 +198,16 @@ To show more options.
 To show even more options.
 .IP "\fB\-lang\fR\fI=\fIlang\fI\fR" 4
 .IX Item "-lang=lang"
-Pick a language
-.IP "\fB\-make_lang\fR" 4
-.IX Item "-make_lang"
+Specify language(s)
+.IP "\fB\-list_langs\fR" 4
+.IX Item "-list_langs"
+List out full language information
+.IP "\fB\-make_lang\fR\fI=\fIlang\fI\fR" 4
+.IX Item "-make_lang=lang"
 Print out a new language file
 .IP "\fB\-\-lang_path\fR\fI=\fIstrings\fI\fR" 4
 .IX Item "--lang_path=strings"
-Add a path to search for language files [Default \f(CW@DATA_PATH\fR/lang]
+Add a path to search for language files [Default \f(CW@DATA_PATH\fR/lang /data/proj/album/lang/]
 .IP "\fB\-q\fR" 4
 .IX Item "-q"
 Be quiet [Default \s-1OFF\s0]
@@ -240,6 +243,9 @@ Create a new plugin (see 'album \-plugin_info utils/create_plugin')
 .IP "\fB\-image_pages\fR" 4
 .IX Item "-image_pages"
 Create a page for each image [Default \s-1ON\s0]
+.IP "\fB\-thumbs\fR" 4
+.IX Item "-thumbs"
+Images have thumbnails [Default \s-1ON\s0]
 .IP "\fB\-dir_thumbs\fR" 4
 .IX Item "-dir_thumbs"
 Directories have thumbnail (if supported by theme) [Default \s-1ON\s0]
@@ -328,7 +334,11 @@ Use case sensitive sorting when sorting names [Default \s-1OFF\s0]
 Specify <body> tags for non-theme output [Default <body>]
 .IP "\fB\-charset\fR\fI=\fIstr\fI\fR" 4
 .IX Item "-charset=str"
-Charset for non-theme and some theme output [Default iso\-8859\-1]
+Charset for non-theme and some theme output
+This is also set by using language files (with \-lang)
+.IP "\fB\-force_charset\fR\fI=\fIstr\fI\fR" 4
+.IX Item "-force_charset=str"
+Force charset (not overridden by languages)
 .IP "\fB\-image_loop\fR" 4
 .IX Item "-image_loop"
 Do first and last image pages loop around? [Default \s-1ON\s0]
