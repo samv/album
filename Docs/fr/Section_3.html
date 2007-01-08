@@ -9,10 +9,14 @@
 	</style>
 	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
 	<link rel='alternate' type='text/html' href='../it' hreflang='it' lang='it' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../de' hreflang='de' lang='de' title='album documentation'>
 	<meta http-equiv='Content-Language' content='fr'>
 	<link rel='alternate' type='text/html' href='../nl' hreflang='nl' lang='nl' title='album documentation'>
 
-  <title>MarginalHacks album Documentation</title>
+
+  <title>MarginalHacks album - Utiliser album / Options de base
+ - Documentation</title>
+
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <style>
@@ -92,7 +96,7 @@
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
     A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
 
-    T&nbsp;h&nbsp;r&nbsp;e&nbsp;e&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;R&nbsp;u&nbsp;n&nbsp;n&nbsp;i&nbsp;n&nbsp;g&nbsp; &nbsp;a&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp; &nbsp;/&nbsp; &nbsp;B&nbsp;a&nbsp;s&nbsp;i&nbsp;c&nbsp; &nbsp;O&nbsp;p&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp;s&nbsp;
+    T&nbsp;h&nbsp;r&nbsp;e&nbsp;e&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;U&nbsp;t&nbsp;i&nbsp;l&nbsp;i&nbsp;s&nbsp;e&nbsp;r&nbsp; &nbsp;a&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp; &nbsp;/&nbsp; &nbsp;O&nbsp;p&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp;s&nbsp; &nbsp;d&nbsp;e&nbsp; &nbsp;b&nbsp;a&nbsp;s&nbsp;e&nbsp;
 <br>
 
   </font>
@@ -129,9 +133,10 @@
         <h3>Documentation
           <font size='-1'>
 <br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
-<br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">italiano</a></span>
-<br><span lang='fr'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;fran&ccedil;ais</span>
-<br><span lang='nl'>&nbsp;&nbsp; <img src="../nl/flag.png"> &nbsp;&nbsp;<a href="../nl">Dutch</a></span>
+<br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">Italiano</a></span>
+<br><span lang='de'>&nbsp;&nbsp; <img src="../de/flag.png"> &nbsp;&nbsp;<a href="../de">Deutsch</a></span>
+<br><span lang='fr'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;Français</span>
+<br><span lang='nl'>&nbsp;&nbsp; <img src="../nl/flag.png"> &nbsp;&nbsp;<a href="../nl">Nederlands</a></span>
 
           </font>
 </h3>
@@ -161,389 +166,475 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href='#Basic_execution'><li>Basic execution</a>
+<ol><a href='#Exécution_basique'><li>Exécution basique</a>
  <a href='#Options'><li>Options</a>
- <a href='#Themes'><li>Themes</a>
- <a href='#Sub-albums'><li>Sub-albums</a>
- <a href='#Avoiding_Thumbnail_Regeneration'><li>Avoiding Thumbnail Regeneration</a>
- <a href='#Cleaning_Out_The_Thumbnails'><li>Cleaning Out The Thumbnails</a>
- <a href='#Medium_size_images'><li>Medium size images</a>
- <a href='#Captions'><li>Captions</a>
- <a href='#EXIF_Captions'><li>EXIF Captions</a>
- <a href='#Headers_and_Footers'><li>Headers and Footers</a>
- <a href='#Hiding_Files_Directories'><li>Hiding Files/Directories</a>
- <a href='#Cropping_Images'><li>Cropping Images</a>
- <a href='#Video'><li>Video</a>
- <a href='#Burning_CDs_(using_file:__)'><li>Burning CDs (using file://)</a>
- <a href='#Indexing_your_entire_album'><li>Indexing your entire album</a>
- <a href='#Updating_Albums_With_CGI'><li>Updating Albums With CGI</a>
+ <a href='#Thèmes'><li>Thèmes</a>
+ <a href='#Sous-albums'><li>Sous-albums</a>
+ <a href='#Eviter_la_regénération_des_vignettes'><li>Eviter la regénération des vignettes</a>
+ <a href='#Nettoyer_les_vignettes'><li>Nettoyer les vignettes</a>
+ <a href='#Taille_dimages_moyenne'><li>Taille d'images moyenne</a>
+ <a href='#Légendes'><li>Légendes</a>
+ <a href='#Légendes_EXIF'><li>Légendes EXIF</a>
+ <a href='#En-têtes_et_pieds-de-page'><li>En-têtes et pieds-de-page</a>
+ <a href='#Masquer_des_Fichiers___des_Répertoires'><li>Masquer des Fichiers / des Répertoires</a>
+ <a href='#Recadrer_les_images'><li>Recadrer les images</a>
+ <a href='#Film_vidéo'><li>Film vidéo</a>
+ <a href='#Graver_des_CDs_(en_utilisant_file:__)'><li>Graver des CDs (en utilisant file://)</a>
+ <a href='#Indexer_entièrement_votre_album'><li>Indexer entièrement votre album</a>
+ <a href='#Mettre_à_jour_des_albums_avec_CGI'><li>Mettre à jour des albums avec CGI</a>
+ <a href='#Traduit_par:'><li>Traduit par:</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name='Basic_execution'>1:</a>   Basic execution</b>
+<span lang="fr">
 
-Create a directory with nothing but images in it.  The album script and
-other tools should not go here.  Then run album specifying that directory:
+<b><a name='Exécution_basique'>1:</a>   Exécution basique</b>
 
-<code>% album /example/path/to/images/</code>
+Créez un répertoire contenant uniquement des images. Le script album et
+les autres outils ne doivent pas se trouver dans ce répertoire. Lancez
+la commande album en précisant ce répertoire :
 
-Or, if you're in the /example/path/to directory:
+<code>% album /exemple/chemin/vers/les/images</code>
+
+Ou, si vous êtes déjà dans le répertoire exemple/chemin/vers/les/images :
 
 <code>% album images/</code>
 
-When it's done, you'll have a photo album inside that directory starting
-with images/index.html.
+Quand l'opération est terminée, vous aurez un album photo à l'intérieur
+de ce répertoire avec comme fichier d'entrée index.html.
 
-If that path is in your web server, then you can view it with your
-browser.  If you can't find it, talk to your sysadmin.
+Si ce chemin fait partie de votre serveur web, alors vous pourrez
+visualiser votre album photos à partir de votre navigateur. Si vous
+ne le trouvez pas, contactez votre administrateur système.
+
 
 <b><a name='Options'>2:</a>   Options</b>
-There are three types of options.  Boolean options, string/num options
-and array options.  Boolean options can be turned off by prepending -no_:
+
+Il y a trois types d'options: options booléennes (vrai / faux), options
+acceptant des chaînes de caractères ou des numéros et options acceptant
+plusieurs arguments. Les options booléennes peuvent être désactivées en
+les préfixant avec -no_ :
 
 <code>% album -no_image_pages</code>
 
-String and number values are specified after a string option:
+Les chaînes de caractères et les nombres sont entrés après une option :
 
 <code>% album -type gif
 % album -columns 5</code>
 
-Array options can be specified two ways, with one argument at a time:
+Les options acceptant plusieurs arguments peuvent être utilisées de
+deux manières. La première avec un argument à la fois :
 
 <code>% album -exif hi -exif there</code>
 
-Or multiple arguments using the '--' form:
+ou avec plusieurs arguments en utilisant la syntaxe '--' :
 
 <code>% album --exif hi there --</code>
 
-You can remove specific array options with -no_&lt;option&gt;
-and clear all the array options with -clear_&lt;option&gt;.
-To clear out array options (say, from the previous album run):
+Vous pouvez supprimer une valeur particulière d'une option à plusieurs
+arguments avec -no_&lt;option&gt; suivi du nom de l'argument et effacer
+tous les arguments d'une telle option avec -clear_&lt;option&gt;.
+Pour effacer tous les arguments d'une option acceptant plusieurs arguments
+(provenant par exemple d'une précédente utilisation de la commande album) :
 
 <code>% album -clear_exif -exif "new exif"</code>
 
-(The -clear_exif will clear any previous exif settings and then the
- following -exif option will add a new exif comment)
+(l'option -clear_exif effacera les anciens arguments de l'option exif puis
+l'option -exif suivante permettra d'ajouter un nouveau commentaire dans 
+la section exif).
 
-And finally, you can remove specific array options with 'no_':
+Et pour terminer, vous pouvez supprimer un argument particulier d'une option
+à plusieurs arguments avec 'no_' :
 
 <code>% album -no_exif hi</code>
 
-Which could remove the 'hi' exif value and leave the 'there' value intact.
+supprimera la valeur 'hi' et laissera intacte la valeur 'there' de l'option
+exif.
 
-Also see the section on <a href='Section_4.html#Saving_Options'>Saving Options</a>.
 
-<b><a name='Themes'>3:</a>   Themes</b>
+Voir également la section sur <a href='Section_4.html#Saving_Options'>Sauvegarde des options</a>.
 
-Themes are an essential part of what makes album compelling.
-You can customize the look of your photo album by downloading a
-theme from MarginalHacks or even writing your own theme to match
-your website.
 
-To use a theme, download the theme .tar or .zip and unpack it.
+<b><a name='Thèmes'>3:</a>   Thèmes</b>
 
-Themes are found according to the -theme_path setting, which is
-a list of places to look for themes.  Those paths need to be somewhere
-under the top of your web directory, but not inside a photo album
-directory.  It needs to be accessible from a web browser.
+Les thèmes sont une composante essentielle qui rend album attrayant. Vous
+pouvez particulariser le look de votre album photo en téléchargeant un
+thème depuis le site MarginalHacks ou même écrire votre propre thème en
+phase avec votre site web.
 
-You can either move the theme into one of the theme_paths that album
-is already using, or make a new one and specify it with the -theme_path
-option.  (-theme_path should point to the directory the theme is in,
-not the actual theme directory itself)
+Pour utiliser un thème, téléchargez l'archive correspondante du thème au
+format .tar ou .zip et installez-là.
 
-Then call album with the -theme option, with or without -theme_path:
+Les thèmes sont spécifiés grâce à l'option -theme_path qui permet d'indiquer
+les endroits où sont stockées les thèmes. Ces chemins sont nécessairement
+quelque part sous la racine du répertoire de votre site web mais pas à
+l'intérieur même de votre album photo. De plus, ces chemins doivent être
+accessible depuis un navigateur.
 
-<code>% album -theme Dominatrix6 my_photos/
-% album -theme Dominatrix6 -theme_path /home/httpd/album/Themes/ my_photos/
+Vous pouvez rajouter un thème dans l'un des chemins spécifié par l'option
+theme_path et utilisé par album ou créer un nouveau thème et indiquer son
+chemin d'accès avec cette option (le répertoire indiqué par l'option
+-theme_path est celui où se trouve le thème et pas le répertoire du thème
+lui-même).
+
+Par la suite, appelez album avec l'option -theme accompagnée ou non de
+-theme_path:
+
+<code>% album -theme Dominatrix6 mes_photos/
+% album -theme Dominatrix6 -theme_path /home/httpd/album/Themes/ mes_photos/
 </code>
 
-You can also create your own themes pretty easily, this is covered
-later in this documentation.
+Vous pouvez également créer vos propres thèmes très facilement. Ce sujet est
+abordé un peu plus loin dans cette documentation.
 
-<b><a name='Sub-albums'>4:</a>   Sub-albums</b>
 
-Make directories inside your first directory and put images in that.
-Run album again, and it will run through all the child directories
-and create sub-albums of the first album.
+<b><a name='Sous-albums'>4:</a>   Sous-albums</b>
 
-If you make changes to just a sub-album, you can run album on that
-and it will keep track of all the parent links.
+Créez des répertoires dans votre répertoire créé précedemment et mettez-y
+des images. Lancez une nouvell fois album : vos sous-répertoires seront
+explorés et donneront naissance à des sous-albums du premier album.
 
-If you don't want to traverse down the tree of directories, you
-can limit it with the depth option.  Example:
+Si vous apportez des modifications dans un seul sous-album, vous pouvez
+exécuter album uniquement sur ce sous-album ; les liens avec l'album
+parent seront conservés.
+
+Si vous ne souhaitez pas descendre dans l'arborescence des répertoires,
+vous pouvez limiter la profondeur du niveau d'exploration avec l'option
+-depth. Exemple :
 
 <code>% album images/ -depth 1</code>
 
-Will only generate photo albums for the images directory.
+Cette commande ne générera qu'un album photo pour les images du
+répertoire courant.
 
-If you have many sub-albums, and you want to add a new sub-album
-without regenerating all the previous sub-albums, then you can use -add:
+Si vous avez plusieurs sous-albums et que vous voulez ajouter un nouveau
+sous-album sans regénérer les autres, alors utilisez l'option -add :
 
-<code>% album -add images/new_album/</code>
+<code>% album -add images/nouvel_album/</code>
 
-Which will add the new_album to the HTML for 'images/' and then
-generate the thumbs and HTML for everything inside 'images/new_album/'
+Ceci ajoutera nouvel_album à la page HTML pour 'images/' et créera
+ensuite les vignettes et les pages HTML pour toutes les données contenues
+dans 'images/nouvel_album'.
 
-<b><a name='Avoiding_Thumbnail_Regeneration'>5:</a>   Avoiding Thumbnail Regeneration</b>
 
-album tries to avoid unnecessary work.  It only creates thumbnails if
-they don't exist and haven't changed.  This speeds up successive runs
-of album.
+<b><a name='Eviter_la_regénération_des_vignettes'>5:</a>   Eviter la regénération des vignettes</b>
 
-This can cause a problem if you change the size or cropping of your
-thumbnails, because album won't realize that the thumbnails have changed.
-You can use the force option to force album to regenerate thumbnails:
+album essaie d'éviter au maximum le travail inutile. Il ne crée seulement
+des vignettes que si elles n'existent pas et n'ont pas été modifiées. Ceci
+permet d'accélérer les traitements successifs d'album.
+
+Cependant, cela peut provoquer un problème si vous changez la taille ou
+recadrer vos vignettes car album ne réalisera pas que ces dernières ont
+changées. Pour forcer la regénération des vignettes, utilisez l'option
+-force :
 
 <code>% album -force images/</code>
 
-But you shouldn't need to use -force every time.
+Mais vous ne devriez pas avoir besoin d'utiliser l'option -force à chaque
+fois.
 
-<b><a name='Cleaning_Out_The_Thumbnails'>6:</a>   Cleaning Out The Thumbnails</b>
 
-If you remove images from an album then you'll have leftover thumbs and HTML.
-You can remove them by running album once with the -clean option:
+<b><a name='Nettoyer_les_vignettes'>6:</a>   Nettoyer les vignettes</b>
+
+Si vous supprimez une image de votre album, alors vous laisserez des
+vignettes et des pages HTML. Pour les supprimer, lancer album avec
+l'option -clean :
 
 <code>% album -clean images/</code>
 
-<b><a name='Medium_size_images'>7:</a>   Medium size images</b>
 
-When you click on an album thumbnail you're taken to an 'image_page.'
-The image_page shows, by default, the full size image (as well as
-navigation buttons and captions and such).  When you click on the
-image on the image_page, you'll be taken to the URL for just the full
-size image.
+<b><a name='Taille_dimages_moyenne'>7:</a>   Taille d'images moyenne</b>
 
-If you want a medium size image on the image_page, use the -medium
-option and specify a geometry for the medium size image.  You can
-specify any geometry that ImageMagick can use (see their man page
-for more info).  Some examples:
+Quand vous cliquez sur la vignette d'un album, vous êtes dirigés vers
+une page spécifique à cette image. Par défaut, cette page affiche l'image
+en taille réelle ainsi que les boutons de navigation, les légendes et
+tout le toutim. Quand vous cliquez sur l'image de cette page, l'URL
+pointe alors uniquement sur l'image en taille réelle.
 
-# An image that is half the full size
+Si vous voulez avoir une image de taille réduite sur la page affichant
+cette image, utilisez l'option -medium en précisant la géométrie que vous
+souhaitez obtenir. Vous pouvez utiliser toutes les géométries supportées
+par ImageMagick (voir la page man de cet outil pour de plus amples détails).
+Par exemple :
+
+# Une image faisant la moitié de la taille réelle
 <code>% album -medium 50%</code>
 
-# An image that fits inside 640x480 (maximum size)
+# Une image qui s'insère dans 640x480 (taille maximale)
 <code>% album -medium 640x480</code>
 
-# An image that is shrunk to fit inside 640x480
-# (but won't be enlarged if it's smaller than 640x480)
+# Une image qui est réduite pour s'insérer dans 640x480
+# (mais qui ne sera pas élargie si elle est déjà plus petite que 640x480)
 <code>% album -medium '640x480>'</code>
 
-You need the 'quotes' on the last example with most shells because
-of the '>' character.
+Les caractères de 'quotation' du dernier exemple seront obligatoires sur
+la plupart des systèmes à cause de la présence du caractère '>'.
 
-<b><a name='Captions'>8:</a>   Captions</b>
 
-Images and thumbnails can have names and captions.  There are a number
-of ways to specify/change names and captions in your photo albums.
+<b><a name='Légendes'>8:</a>   Légendes</b>
 
-<img src='Pics/Caption.gif' alt='caption example' align='left'>The name is linked to the image or image_page,
-and the caption follows underneath.
+Les images et les vignettes peuvent avoir des noms et des légendes. Il y a
+plusieurs moyens de préciser / changer les noms et les légendes dans vos
+albums photo.
+
+
+<img src='../Pics/Caption.gif' alt='exemple de légende align='left'>Le nom est
+lié à l'image ou à la page qui l'héberge et la légende suit juste en dessous.
+
+Le nom par défaut est le fichier nettoyé :
 
 The default name is the filename cleaned up:
   "Kodi_Cow.gif"  =>  "Kodi Cow"
 
-One way to specify a caption is in a .txt file
-with the same name as the image.  For this example,
-"Kodi_Cow.txt" could contain <tt>"Kodi takes down a cow!"</tt>
+Un moyen de préciser une légende est d'utiliser un fichier texte avec le
+même nom que l'image mais l'extension .txt. Par exemple,
+"Kodi_Cow.txt" pourrait contenir <tt>"Kodi takes down a cow!</tt> ("Kodi
+maîtrise une vache !")
 
-You can rename your images and specify captions in bulk
-for an album directory with a <i>captions.txt</i> file.
+Vous pouvez renommer vos images et spécifier toutes les légendes d'un
+répertoire avec un fichier <i>captions.txt</i>.
 
-Each line of the file should be an image <b>or directory</b> filename,
-followed by <b>a tab</b>, followed by the new name.  You can also 
-specify (separated by tabs), an optional caption and then an optional 
-image ALT tag.  (To skip a field, use 'tab' 'space' 'tab')
+Chaque ligne du fichier doit être le nom d'une image <b>ou d'un
+répertoire</b>, suivi par <b>une tabulation</b>, suivi par le nouveau
+nom. Vous pouvez aussi spécifier (séparé par une tabulation), une légende
+optionnelle puis un tag ALT, optionnel également, pour l'image. Pour sauter
+un champ, utilisez 'tabulation' 'espace' 'tabulation'.
 
-Example:
+Exemple :
+<tt>001.gif	Ma première photo
+002.gif		Maman et Papa dans le grand canyon
+003.gif		Ani DiFranco  ma fiancée    Whaou !</tt>
 
-<tt>001.gif	My first photo
-002.gif	Mom and Dad My parents in the grand canyon
-003.gif	Ani DiFranco	My fiancee	Yowsers!</tt>
+Les images et les répertoires sont listés dans l'ordre dans lequel ils
+sont trouvés dans le fichier de légende. Vous pouvez modifier ce tri avec
+les options '-sort date' et '-sort name'.
 
-The images and directories will also be sorted in the order they are found
-in the caption file.  You can override this with '-sort date' and '-sort name'
+Si votre éditeur de texte ne gère pas très bien les tabulations, vous
+pouvez séparer les champs par un double deux-points mais .b/seulement</b>
+si votre légende ne contient aucune tabulation :
+ 
+<tt>003.gif :: Ani DiFranco :: Ma fiancée :: Whaou !</tt>
 
-If your editor doesn't handle tabs very well, then you can separate the
-fields by double-colons, but <b>only</b> if the caption line doesn't contain any
-tabs at all:
-
-<tt>003.gif :: Ani DiFranco :: My fiancee :: Yowsers!</tt>
-
-If you only want captions on image pages (not on album pages) use:
+Si vous ne souhaitez avoir des légendes que sur les pages contenant les
+images (et pas sur les pages affichant les albums), utilisez :
 
 <code>% album -no_album_captions</code>
 
-If you want web access to create/edit your captions, look at the
-<a href='http://MarginalHacks.com/Hacks/album/tools/cgi/caption_edit'>caption_edit.cgi</a> CGI script (but be sure to limit access to the
-script or anyone can change your captions!)
+Si vous voulez créer ou éditer vos légendes depuis un accès web, regardez
+le script CGI <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/caption_edit'>caption_edit.cgi</a> (mais soyez sûr de limiter l'accès à ce
+script sinon n'importe qui pourra modifier vos légendes).
 
-<b><a name='EXIF_Captions'>9:</a>   EXIF Captions</b>
 
-You can also specify captions that are based off of EXIF information
-(Exchangeable Image File Format) which most digital cameras add to images.
+<b><a name='Légendes_EXIF'>9:</a>   Légendes EXIF</b>
 
-First you need 'jhead' installed.  You should be able to run jhead
-on a JPG file and see the comments and information.
+Vous pouvez également préciser des légendes extraites des informations
+EXIF (Exchangeable Image File Format) ajoutées aux images par la plupart
+des appareils photo numériques.
 
-EXIF captions are added after the normal captions and are specified with -exif:
+Mais tout d'abord, vous avez besoin d'installer 'jhead'. Vous pouvez,
+par exemple, lancer jhead sur un fichier au format jpeg (.jpg ou .jpeg)
+et ainsi voir les commentaires et informations affichés.
 
-<code>% album -exif "&lt;br&gt;File: %File name% taken with %Camera make%"</code>
+Les légendes EXIF sont ajoutés à la suite des légendes normales et sont
+spécifiés à l'aide de l'option -exif :
 
-Any %tags% found will be replaced with EXIF information.  If any %tags%
-aren't found in the EXIF information, then that EXIF caption string is
-thrown out.  Because of this you can specify multiple -exif strings:
+<code>% album -exif "&lt;br&gt;Fichier: %File name% pris avec %Camera make%"</code>
 
-<code>% album -exif "&lt;br&gt;File: %File name% " -exif "taken with %Camera make%"</code>
+Tous les %tags% trouvés seront remplacées par les informations EXIF
+correspondantes. Si des %tags% ne sont pas trouvés dans les informations
+EXIF, alors la légende EXIF est ignorée. A cause de ce comportement, vous
+pouvez multiplier les arguments passés à l'option -exif :
 
-This way if the 'Camera make' isn't found you can still get the 'File name'
-caption.
+<code>% album -exif "&lt;br&gt;Fichier: %File name% " -exif "pris %Camera make%"</code>
 
-Like any of the array style options you can use --exif as well:
+De la sorte, si le tag 'Camera make' n'est pas trouvé, vous pourrez toujours
+avoir la légende relative au tag 'File name'.
 
-<code>% album --exif "&lt;br&gt;File: %File name% " "taken with %Camera make%" --</code>
+De la même façon que pour toutes les options acceptant plusieurs arguments,
+vous pouvez utiliser la syntaxe --exif :
 
-Note that, as above, you can include HTML in your EXIF tags:
+<code>% album --exif "&lt;br&gt;Fichier: %File name% " "pris avec %Camera make%" --</code>
 
-<code>% album -exif "&lt;br&gt;<font size='-1'>Aperture: %Aperture%</font>"</code>
+Comme montré dans l'exemple, il est possible d'inclure des balises HTML dans
+vos légendes EXIF :
 
-To see the possible EXIF tags (Resolution, Date/Time, Aperture, etc..)
-run a program like 'jhead' on an digital camera image.
+<code>% album -exif "&lt;br&gt;<font size='-1'>Ouverture: %Aperture%</font>"</code>
 
-You can also specify EXIF captions only for album or image pages, see
-the -exif_album and -exif_image options.
+Afin de voir la liste des tags EXIF possible (Résolution, Date / Heure,
+Ouverture, etc...), utilisez un programme comme 'jhead' sur une image issue
+d'un appareil photo numérique.
 
-<b><a name='Headers_and_Footers'>10:</a>  Headers and Footers</b>
+Vous pouvez également préciser des légendes EXIF uniquement pour les albums
+ou les pages affichant une image. Voir les options -exif_album et
+-exif_image.
 
-In each album directory you can have text files <tt>header.txt</tt> and <tt>footer.txt</tt>
-These will be copied verbatim into the header and footer of your album (if
-it's supported by the theme).
 
-<b><a name='Hiding_Files_Directories'>11:</a>  Hiding Files/Directories</b>
+<b><a name='En-têtes_et_pieds-de-page'>10:</a>  En-têtes et pieds-de-page</b>
 
-Any files that album does not recognize as image types are ignored.
-To display these files, use -no_known_images.  (-known_images is default)
+Dans chaque répertoire abritant un album, vous pouvez avoir des fichiers texte
+<tt>header.txt</tt> and <tt>footer.txt</tt>.
+Ces fichiers seront copiés tels quels dans l'en-tête et le pied-de-page
+de votre album (si cette fonctionnalité est supportée par votre thème).
 
-You can mark an image as a non-image by creating an empty file with
-the same name with <tt>.not_img</tt> added to the end.
 
-You can ignore a file completely by creating an empty file with
-the same name with <tt>.hide_album</tt> on the end.
+<b><a name='Masquer_des_Fichiers___des_Répertoires'>11:</a>  Masquer des Fichiers / des Répertoires</b>
 
-You can avoid running album on a directory (but still include it in your
-list of directories) by creating a file <tt>&lt;dir&gt;/.no_album</tt>
+Chaque fichier non reconnu par album comme étant une image est ignoré.
+Pour afficher ces fichiers, utilisez l'option -no_known_images (l'option
+par défaut est -known_images).
 
-You can ignore directories completely by creating a file <tt>&lt;dir&gt;/.hide_album</tt>
+Vous pouvez marquer une image comme n'étant pas une image en éditant un
+fichier vide avec le même et l'extension <tt>.not_img</tt> ajoutée à la fin.
 
-The Windows version of album doesn't use dots for <tt>no_album</tt>, <tt>hide_album</tt>
-and <tt>not_img</tt> because it's difficult to create <tt>.files</tt> in Windows.
+Vous pouvez ignorer complètement un fichier en créant un fichier vide avec
+le même nom et l'extension <tt>.hide_album</tt> ajoutée à la fin.
 
-<b><a name='Cropping_Images'>12:</a>  Cropping Images</b>
+Vous pouvez éviter de parcourir un répertoire complet (bien qu'étant
+toujours inclus dans la liste de vos répertoires) en créant un fichier
+<tt>&lt;dir&gt;/.no_album</tt>.
 
-If your images are of a large variety of aspect ratios (i.e., other than
-just landscape/portrait) or if your theme only allows one orientation,
-then you can have your thumbnails cropped so they all fit the same geometry:
+Vous pouvez ignorer complètement des répertoires créant un fichier
+<tt>&lt;dir&gt;/.hide_album</tt>
+
+La version pour Windows d'album n'utilise pas le . pour <tt>no_album</tt>,
+<tt>hide_album</tt> et <tt>not_img</tt> car il est difficile de créer des
+<tt>.fichiers</tt> dans Windows.
+
+
+<b><a name='Recadrer_les_images'>12:</a>  Recadrer les images</b>
+
+Si vos images comportent un large éventail de ratios (c'est-à-dire autres
+que les traditionnels ratios portrait / paysage) ou si votre thème ne
+supporte qu'une seule orientation, alors vos vignettes peuvent être
+recadrées afin qu'elles partagent toutes la même géométrie :
 
 <code>% album -crop</code>
 
-The default cropping is to crop the image to center.  If you don't 
-like the centered-cropping method that the album uses to generate 
-thumbnails, you can give directives to album to specify where to crop 
-specific images.  Just change the filename of the image so it has a 
-cropping directive before the filetype.  You can direct album to crop 
-the image at the top, bottom, left or right.  As an example, let's 
-say you have a portrait "Kodi.gif" that you want cropped on top for 
-the thumbnail.  Rename the file to "Kodi.CROPtop.gif" and this will 
-be done for you (you might want to -clean out the old thumbnail).  
-The "CROP" string will be removed from the name that is printed in 
-the HTML.
+Le recadrage par défaut est de recadrer l'image au centre. Si vous n'aimez
+pas le recadrage central utilisé par album pour générer les vignettes, vous
+pouvez donner des directives à album afin de spécifier où recadrer des
+images spécifiques. Pour cela, il suffit de changer le nom du fichier
+contenant l'image pour qu'il ait la directive de recadrage juste avant
+l'extension. Vous pouvez ainsi demander à album de recadrer l'image en haut,
+en bas, à droite ou à gauche. Par exemple, supposons que nous ayons un
+portrait "Kodi.gif" que vous voulez recadrer au sommet de votre vignette.
+Renommez le fichier en "Kodi.CROPtop.gif" et c'est tout (vous pouvez
+évenutellement utiliser l'option -clean pour supprimer l'ancienne
+vignette). La chaîne de caractères précisant le recadrage sera supprimée
+du nom affiché dans votre navigateur.
 
-The default geometry is 133x133.  This way landscape images will
-create 133x100 thumbnails and portrait images will create 100x133
-thumbnails.  If you are using cropping and you still want your
-thumbnails to have that digital photo aspect ratio, then try 133x100:
+La géométrie par défaut est 133x133. De cette façon, les images en position
+paysage auront des vignettes au format 133x100 et les images en position
+portrait auront des vignettes au format 100x133. Si vous utilisez le
+recadrage et souhaitez que vos vignettes aient toujours le même ratio que
+les photos numériques; alors essayez 133x100 :
 
 <code>% album -crop -geometry 133x100</code>
 
-Remember that if you change the -crop or -geometry settings on a
-previously generated album, you will need to specify -force once
-to regenerate all your thumbnails.
+Souvenez-vous que si vous recadrez ou changez la géométrie d'un album
+précédemment généré, vous devrez utiliser l'option -force une fois afin
+de regénérer complètement toutes vos vignettes.
 
-<b><a name='Video'>13:</a>  Video</b>
 
-album can generate snapshot thumbnails of many video formats if you
-install <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.org/'>ffmpeg</a>
+<b><a name='Film_vidéo'>13:</a>  Film vidéo</b>
 
-If you are running linux on an x86, then you can just grab the <a href='/bin/ffmpeg'>binary</a>,
-otherwise get the whole package from <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.org/'>ffmpeg.org</a> (it's an easy install).
+album peut générer des vignettes issues de prise instantanée pour de
+nombreux formats vidéo si vous installez <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.org/'>ffmpeg</a>.
 
-<b><a name='Burning_CDs_(using_file:__)'>14:</a>  Burning CDs (using file://)</b>
+Si vous êtes sur un système linux sur une architecture x86, vous n'avez qu'à
+télécharger le <a href='/bin/ffmpeg'>fichier exécutable</a>, ou autrement, télécharger le
+paquetage complet depuis <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.org/'>ffmpeg.org</a> (c'est très facile d'installation).
 
-If you are using album to burn CDs or you want to access your albums with
-file://, then you don't want album to assume "index.html" as the default
-index page since the browser probably won't.  Furthermore, if you use
-themes, you <b>must</b> use relative paths.  You can't use -theme_url because
-you don't know what the final URL will be.  On Windows the theme path
-could end up being "C:/Themes" or on UNIX or OSX it could be something
-like "/mnt/cd/Themes" - it all depends on where the CD is mounted.
-To deal with this, use the -burn option:
+
+<b><a name='Graver_des_CDs_(en_utilisant_file:__)'>14:</a>  Graver des CDs (en utilisant file://)</b>
+
+Si vous utilisez album pour graver des CDs ou si vous souhaitez accèder
+à vos albums depuis votre navigateur avec le protocole file://, alors
+vous ne voulez pas qu'album suppose que le fichier "index.html" soit
+la page principale puisque votre navigateur ne le saura probablement pas.
+De plus, si vous utilisez des thèmes, vous <b>devez</b> utiliser des
+chemins d'accès relatifs. Vous ne pouvez pas utiliser l'option
+-theme_url car vous ne savez pas où sera l'URL final. Sur Windows, le
+chemin d'accès aux thèmes pourrait être "C:/Themes" ou sous UNIX ou OSX,
+il pourrait être quelque chose comme "/mnt/cd/Themes", tout dépendant
+de la façon dont le CD a été monté.
+Pour résoudre ces cas de figure, utilisez l'option -burn :
 
   % album -burn ...
 
-This requires that the paths from the album to the theme don't change.
-The best way to do this is take the top directory that you're going to
-burn and put the themes and the album in that directory, then specify
-the full path to the theme.  For example, create the directories:
+Ceci implique que les chemins d'accès de l'album vers les thèmes ne
+change pas. Le meilleur moyen de faire ceci consiste à prendre le
+répertoire racine que vous allez graver et d'y mettre vos thèmes et votre
+album puis de spécifier le chemin complet vers le thème. Par exemple,
+créez les répertoires :
 
-  myISO/Photos/
-  myISO/Themes/Blue
+  monISO/Photos/
+  monISO/Themes/Blue
 
-Then you can run:
+Puis vous lancez :
 
-  % album -burn -theme myISO/Themes/Blue myISO/Photos
+  % album -burn -theme monISO/Themes/Blue monISO/Photos
 
-Then you can make a CD image from the myISO directory (or higher).
+Ensuite, vous pouvez créer une image ISO depuis le répertoire mon ISO (ou
+plus haut).
 
-You can also look at <a href='http://MarginalHacks.com/redir.cgi?www.squirrel.nl/people/jvromans/software/sw_shellrun.html'>shellrun</a> for windows users, you can have it
-automatically launch the album in a browser.  (Or see <a href='http://MarginalHacks.com/redir.cgi?duckware.com/winopen/'>winopen</a>)
+Les utilisateurs Windows peuvent également jeter un oeil sur <a href='http://MarginalHacks.com/redir.cgi?www.squirrel.nl/people/jvromans/software/sw_shellrun.html'>shellrun</a>
+qui permet de lancer automatiquement l'album dans le navigateur. (Ou 
+voyez aussi <a href='http://MarginalHacks.com/redir.cgi?duckware.com/winopen/'>winopen</a>).
 
-<b><a name='Indexing_your_entire_album'>15:</a>  Indexing your entire album</b>
-To navigate an entire album on one page use the <a href='http://MarginalHacks.com/Hacks/album/tools/caption_index'>caption_index</a> tool.
-It uses the same options as album (though it ignores many
-of them) so you can just replace your call to "album" with "caption_index"
 
-The output is the HTML for a full album index.
+<b><a name='Indexer_entièrement_votre_album'>15:</a>  Indexer entièrement votre album</b>
 
-See an <a href='http://DavePics.com/Examples/Blue_Index.html'>example index</a>
-for one of my <a href='http://DavePics.com/Examples/Blue.html'>example photo albums</a>
+Pour naviguer sur un album entièrement compris sur une page, utilisez l'outil
+<a href='http://MarginalHacks.com/Hacks/album/tools/caption_index'>caption_index</a>.
+Il utilise les mêmes options qu'album (bien qu'il en ignore la plupart) de
+telle sorte que vous pouvez remplacer l'appel à "album" par "caption_index".
 
-<b><a name='Updating_Albums_With_CGI'>16:</a>  Updating Albums With CGI</b>
+La sortie est la page HTML de l'index de l'album complet.
 
-First you need to be able to upload the photo to the album directory.
-I suggest using ftp for this.  You could also write a javascript that
-can upload files, if someone could show me how to do this I'd love to know.
+Regardez <a href='http://DavePics.com/Examples/Blue_Index.html'>l'index d'exemple</a> réalisé à partir d'un de mes <a href='http://DavePics.com/Examples/Blue.html'>albums photo d'exemple</a>
 
-Then you need to be able to remotely run album.  To avoid abuse, I
-suggest setting up a CGI script that touches a file (or they can just
-ftp this file in), and then have a cron job that checks for that
-file every few minutes, and if it finds it it removes it and runs album.
-[unix only]  (You will probably need to set $PATH or use absolute paths
-in the script for convert)
 
-If you want immediate gratification, you can run album from a CGI script
-such as this <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/run_album'>one.</a>
+<b><a name='Mettre_à_jour_des_albums_avec_CGI'>16:</a>  Mettre à jour des albums avec CGI</b>
 
-If your photos are not owned by the webserver user, then you
-need to run through a setud script which you run from a CGI [unix only].
-Put the setuid script in a secure place, change it's ownership to be the
-same as the photos, and then run "chmod ug+s" on it.  Here are example
-<a href='http://MarginalHacks.com/Hacks/album/tools/cgi/run_setuid_album'>setuid</a> and <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/setuid_album'>CGI</a> scripts.  Be sure to edit them.
+Premièrement, vous avez besoin de charger vos photos dans le répertoire
+de l'album. Je vous suggère d'utiliser ftp pour faire cette manipulation.
+Vous pouvez aussi écrire un script java qui chargerait les fichiers. Si
+quelqu'un pouvait me montrer comment faire, j'apprécierais beaucoup.
 
-Also look at <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/caption_edit'>caption_edit.cgi</a> which allows you (or others) to edit
-captions/names/headers/footers through the web.
 
+Ensuite, vous avez besoin de pouvoir exécuter album à distance. Pour éviter
+les abus, je vous conseille de mettre en place un script CGI qui crée
+un fichier bidon (ou qui transfère ce fichier via ftp) et d'avoir un 
+cron job (process tournant en arrière plan) qui teste régulièrement
+à quelques minutes d'intervalle si ce fichier est présent et, s'il l'est,
+de le supprimer et de lancer album. Cette méthode ne fonctionne que sous
+unix et vous aurez sûrement besoin de modifier votre variable
+d'environnement $PATH ou d'utiliser des chemins absolus dans le script
+pour la conversion).
+
+Si vous souhaitez une gratification immédiate, vous pouvez lancer album
+depuis un script CGI comme <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/run_album'>celui-ci.</a>
+
+Si l'utilisateur du serveur web n'est pas le propriétaire des photos, vous
+aurez besoin d'utiliser un script setuid via CGI [toujours pour unix
+seulement].
+Mettez ce script setuid dans un emplacement protégé, changez son propriétaire
+pour qu'il soit le même que celui de vos photos et lancez la commande 
+"chmod ug+s" sur le script. Vous trouverez ici des exemples de scripts 
+<a href='http://MarginalHacks.com/Hacks/album/tools/cgi/run_setuid_album'>setui</a> et <a href='http://MarginalHacks.com/Hacks/album/tools/cgi/setuid_album'>CGI</a>.  N'oubliez pas de les éditer.
+
+Regardez également <a
+href='http://MarginalHacks.com/Hacks/album/tools/cgi/caption_edit'>caption_edit.cgi</a>
+qui vous permet (ou une autre personne) d'éditer les légendes / noms /
+en-têtes / pieds-de-pages à travers le web.
+
+<b><a name='Traduit_par:'>17:</a>  Traduit par:</b>
+
+Jean-Marc [jean-marc.bouche AT 9online.fr]
+</span>
 
 </pre>
 <p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>

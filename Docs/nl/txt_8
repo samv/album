@@ -67,9 +67,18 @@ instead of "French"
 I am open to suggestions for what charset to use.  Current options are:
 
 1) HTML characters such as [&amp;eacute;]] (though they only work in browsers)
-2) Unicode (UTF) such as [é] (though again, only in browsers)
+2) Unicode (UTF-8) such as [é] (only in browsers and some terminals)
 3) ASCII code, where possible, such as [�] (works in text editors, though
    not currently in this page because it's set to unicode)
+4) Language specific iso such as iso-8859-8-I for Hebrew.
+
+Currently Unicode (utf-8) seems best for languages that aren't covered
+by iso-8859-1, because it covers all languages and helps us deal with
+incomplete translations (which would otherwise require multiple charsets,
+which is a disaster).  Any iso code that is a subset of utf-8 can be used.
+
+If the main terminal software for a given language is in an iso charset
+instead of utf, then that could be a good exception to use non-utf.
 
 ITEM: Album messages
 

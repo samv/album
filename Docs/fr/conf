@@ -13,7 +13,9 @@ Long_Index = index.html
 Text_Files = txt_*
 
 # Header
-Header = "conf(my_head_head)
+Header = "conf(my_doctype)
+  <title>MarginalHacks album - $TOPIC - Documentation</title>
+conf(my_head_head)
     SPACE_OUT($NUMBER -- $TOPIC)<br>
 conf(my_head_head2)
 "
@@ -30,7 +32,8 @@ Footer		= "
 "
 
 # Header for short index
-Short_Header	= "
+Short_Header	= "conf(my_doctype)
+  <title>MarginalHacks album - Documentation</title>
 conf(my_head_head)
         SPACE_OUT(Documentation)<br>
 conf(my_head_head2)
@@ -59,10 +62,12 @@ Long_Footer	= conf(Short_Footer)
 
 #<meta http-equiv='content-type' content='text/html;charset=ISO-8859-1'>
 
-my_head_head	= "
+my_doctype	= "
 <!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN'>
 include_file(langhtml)
-  <title>MarginalHacks album Documentation</title>
+"
+
+my_head_head	= "
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <style>

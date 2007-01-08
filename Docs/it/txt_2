@@ -4,11 +4,11 @@ MINI HOW-TO
 ITEM: Un semplice album
 
 Presupponendo che album sia stato installato correttamente,
-illustriamo qualche semplice esempio. Se dovessero prodursi
+illustriamo qualche semplice esempio. Se dovessero verificarsi degli
 errori o problemi si prega di consultare la documentazione
 d'installazione.
 
-&Egrave; necessaria una web directory dove mettere i temi e il vostro
+&Egrave; necessaria una directory web dove mettere i temi e il vostro
 album. In questo esempio useremo /home/httpd/test. Questa directory
 dovr&agrave; essere visibile con un browser; in questo esempio assumiamo
 sia visibile tramite il seguente URL: http://myserver/test/
@@ -18,7 +18,7 @@ propria configurazione.
 
 
 Per iniziare, create una directory (ad esempio /home/httpd/test/Foto )
-e aggiungeteci lcune immagini (ad esempio da "IMG_001.jpg" a  
+e aggiungeteci alcune immagini (ad esempio da "IMG_001.jpg" a  
 "IMG_004.jpg") ed eseguite
 
 <code>% album /home/httpd/test/Foto</code>
@@ -42,7 +42,7 @@ ed eseguite nuovamente album:
 
 <code>% album /home/httpd/test/Foto</code>
 
-A questo punto dovreste vedere titoli delle immagini sulle pagine  
+A questo punto dovreste vedere i titoli delle immagini sulle pagine  
 dell'album.
 
 Create un file /home/httpd/test/Foto/header.txt e scriveteci
@@ -87,10 +87,10 @@ l'album
 dovesse presentarsi con delle immagini non leggibili, molto  
 probabilmente
 il tema specificato non &egrave; stato installato in una
-directory accessibile tramite web server. In questo caso si prega di
+directory accessibile tramite il server web. In questo caso si prega di
 consultare la documentazione d'installazione.
 
-Album salva automaticamente le opzioni specificate, cosicch&ecute;
+Album salva automaticamente le opzioni specificate, per cui
 eseguendo:
 
 <code>% album /home/httpd/test/Foto</code>
@@ -122,7 +122,7 @@ titolo della stessa:
 <code>% album -exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/ 
 Foto</code>
 
-In questo modo, se l'informazione sull'apertura dell'obbiettivo
+In questo modo, se l'informazione sull'apertura dell'obiettivo
 &egrave; presente (specificando "Aperture" tra %), essa verr&agrave;
 inserita nel titolo dopo una fine riga (&lt;br&gt;)
 
@@ -131,7 +131,7 @@ Per visualizzare anche la focale:
 <code>% album -exif "&lt;br&gt;focal: %FocalLength%" /home/httpd/test/ 
 Foto</code>
 
-In modo analog alla scelta del tema, album, memorizzando le opzioni  
+In modo analogo alla scelta del tema, album, memorizzando le opzioni  
 specificate
 precedentemente, generer&agrave; pagine con entrambe le informazioni
 (apertura e focale). Per rimuovere l'apertura:
@@ -160,7 +160,7 @@ album riorganizzer&agrave; "Foto" in modo da collegare la directory
 le foto del viaggio in Spagna.
 
 
-Supponiamo di fare in altro viaggio e di creare:
+Supponiamo di fare un altro viaggio e di creare:
 
    /home/httpd/test/Foto/Italia/
 
@@ -183,5 +183,7 @@ e generer&agrave; l'album per le foto in "Italia".
 ITEM: Tradotto da
 
 Matteo Corti [http://matteocorti.ch/]
+
+Proofread by: Antonio Vilei [http://www.bytetranslation.com/]
 
 </span>

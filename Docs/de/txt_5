@@ -1,0 +1,108 @@
+Feature Requests, Bugs, Patches and Troubleshooting
+
+ITEM: Feature Requests
+
+If there's something you want added to album, first make sure
+it doesn't already exist!  Check the man page or the usage:
+
+<code>% man album</code>
+<code>% album -h</code>
+
+Also see -more and -More options.
+
+If you don't see it there, consider writing a patch or a plugin.
+
+ITEM: Bug reports
+
+Before you submit a bug, please make sure you have the most current release of album!
+
+When submitting a bug, I need to know <b>at least</b>:
+
+1) Your operating system
+2) The exact problem and the exact error messages
+
+I'd also like to know, if possible:
+1) The exact album command you ran
+2) The output from the command
+
+And I generally also need the debug output of album:
+
+<code>% album -d</code>
+
+Finally, make sure that you've got the most current
+version of album, and the most current themes as well.
+
+ITEM: Writing Patches, Modifying album
+
+If you want to modify album, you might want to check with me
+first to make sure it's not already on my development plate.
+
+If not, then consider writing it as a plugin instead of patching
+the album source.  This avoids adding complexity to album for
+features that may not be globally used.
+
+If it needs to go into album (for example, if it's a bug), then
+please make sure to first download the most <a href='http://MarginalHacks.com/bin/album'>recent copy of album</a>
+first, then patch that and send me either a diff, a patch, or the
+full script.  If you comment off the changes you make that'd be great too.
+
+ITEM: Known Bugs
+
+v3.11:  -clear_* and -no_* doesn't clear out parent directory options.
+v3.10:  Burning CDs doesn't quite work with theme absolute paths.
+v3.00:  Array and code options are saved backwards, for example:
+        "album -lang aa .. ; album -lang bb .." will still use language 'aa'
+        Also, in some cases array/code options in sub-albums will not
+        be ordered right the first time album adds them and you may
+        need to rerun album.  For example:
+        "album -exif A photos/ ; album -exif B photos/sub"
+        Will have "B A" for the sub album, but "A B" after: "album photos/sub"
+
+ITEM: PROBLEM: My index pages are too large!
+
+I get many requests to break up the index pages after reaching a certain
+threshold of images.
+
+The problem is that this is hard to manage - unless the index pages are
+treated just like sub-albums, then you now have three major components
+on a page, more indexes, more albums, and thumbnails.  And not only is
+that cumbersome, but it would require updating all the themes.
+
+Hopefully the next major release of album will do this, but until then
+there is another, easier solution - just break the images up into
+subdirectories before running album.
+
+I have a tool that will move new images into subdirectories for you and
+then runs album:
+  <a href='http://MarginalHacks.com/Hacks/album/tools/in_album'>in_album</a>
+
+ITEM: <b>ERROR:</b> no delegate for this image format (./album)
+
+You have the album script in your photo directory and it can't make
+a thumbnail of itself!  Either:
+1) Move album out of the photo directory (suggested)
+2) Run album with -known_images
+
+ITEM: <b>ERROR:</b> no delegate for this image format (some_non_image_file)
+
+Don't put non-images in your photo directory, or else run with -known_images.
+
+ITEM: <b>ERROR:</b> no delegate for this image format (some.jpg)
+ITEM: <b>ERROR:</b> identify: JPEG library is not available (some.jpg)
+
+Your ImageMagick installation isn't complete and doesn't know how
+to handle the given image type.
+
+ITEM: <b>ERROR:</b> Can't get [some_image] size from -verbose output.
+
+ImageMagick doesn't know the size of the image specified.  Either:
+1) Your ImageMagick installation isn't complete and can't handle the image type.
+2) You are running album on a directory with non-images in it without
+   using the -known_images option.
+
+If you're a <a href='http://MarginalHacks.com/redir.cgi?Gentoo.org/'>gentoo linux</a> user and you see this error, then run this command
+as root (thanks Alex Pientka):
+
+  USE="avi gif jpeg mpeg png quicktime tiff" emerge imagemagick
+
+

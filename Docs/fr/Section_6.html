@@ -9,10 +9,14 @@
 	</style>
 	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
 	<link rel='alternate' type='text/html' href='../it' hreflang='it' lang='it' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../de' hreflang='de' lang='de' title='album documentation'>
 	<meta http-equiv='Content-Language' content='fr'>
 	<link rel='alternate' type='text/html' href='../nl' hreflang='nl' lang='nl' title='album documentation'>
 
-  <title>MarginalHacks album Documentation</title>
+
+  <title>MarginalHacks album - Creating Themes
+ - Documentation</title>
+
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <style>
@@ -129,9 +133,10 @@
         <h3>Documentation
           <font size='-1'>
 <br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
-<br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">italiano</a></span>
-<br><span lang='fr'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;fran&ccedil;ais</span>
-<br><span lang='nl'>&nbsp;&nbsp; <img src="../nl/flag.png"> &nbsp;&nbsp;<a href="../nl">Dutch</a></span>
+<br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">Italiano</a></span>
+<br><span lang='de'>&nbsp;&nbsp; <img src="../de/flag.png"> &nbsp;&nbsp;<a href="../de">Deutsch</a></span>
+<br><span lang='fr'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;Français</span>
+<br><span lang='nl'>&nbsp;&nbsp; <img src="../nl/flag.png"> &nbsp;&nbsp;<a href="../nl">Nederlands</a></span>
 
           </font>
 </h3>
@@ -316,6 +321,29 @@ Then figure out how many pixels of the borders are padding (outside photo)
 Then put those values in files: Over_T.pad Over_R.pad Over_B.pad Over_L.pad
 See "Themes/FunLand" for a simple example
 
+<b>Multi-lingual Images</b>
+If your images have text, you can translate them into other languages
+so that albums can be generated in other languages.  For example, you
+can create a Dutch "More.gif" image and put it in 'lang/nl/More.gif'
+in the theme (nl is the language code for Dutch).
+When the user runs album in Dutch (album -lang nl) then the theme
+will use the Dutch image if found.  Themes/Blue has a simple example.
+The currently "translated" images are:
+  More, Back, Next, Prev and Icon
+
+You can create an HTML table that shows the translations immediately
+available to themes with -list_html_trans:
+
+<code>% album -list_html_trans > trans.html</code>
+
+Then view trans.html in a browser.  Unfortunately different languages
+have different charsets, and an HTML page can only have one.  The
+output is in utf-8, but you can edit the "charset=utf-8" to properly
+view language characters in different charsets (such as hebrew).
+
+If you need more words translated for themes, let me know, and if you
+create any new language images for a theme, please send them to me!
+
 <b><a name='From_scratch,_Theme_API'>4:</a>   From scratch, Theme API</b>
 
 This is a much heavier job - you need to have a very clear idea of
@@ -479,6 +507,10 @@ New_Row($obj,$cols,$off)  Should we start a new row after this object?
                           Use $off if the first object is offset from 1
 Image_Array($src,$x,$y,$also,$alt)
                           Returns an &lt;img&gt; tag given $src, $x,...
+Image_Ref($ref,$also,$alt)
+                          Like Image_Array, but $ref can be a hash of
+                          Image_Arrays keyed by language ('_' is default).
+                          album picks the Image_Array by what languages are set.
 Border($img,$type,$href,@border)
 Border($str,$x,$y,@border)
                           Create the full bordered image.  See 'Borders' for

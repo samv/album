@@ -4,13 +4,15 @@ my $proj = "/data/proj/languages";
 my $flags = "$proj/flags";
 #my $langs = "$proj/iso-639-1";
 #my $langs = "$proj/iso-639-2";
-my $langs = "/data/proj/album/Language/LIST";
+#my $langs = "/data/proj/album/Language/LIST";
+my $langs = "$proj/all_languages";
 
 #########################
 # Read the language codes
 #########################
 open(LANGS,"<$langs") || die("Couldn't read $langs");
 print "READING: $langs\n";
+my $curr;
 while (<LANGS>) {
 	# iso-639-2
 	#$lang{$1} = $2 if /^(...); (.+?)(; |$)/;
@@ -20,7 +22,12 @@ while (<LANGS>) {
 
 	# Language/LIST
 	$lang{$1} = $2 if /^(..)=(.+)/;
+
+	# all_languages";
+	$curr=$1 if /^\[(\S+)\]$/;
+	$lang{$curr}=$1 if /^Name\[$curr\]=(.*)/;
 }
+$lang{en} = "English";
 close LANGS;
 
 #########################

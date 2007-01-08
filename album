@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '4.00';
+  my $VERSION=  '4.01';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -82,7 +82,11 @@ add_option(2,'More',\&usage, usage=>"To show even more options.");
 add_option(1,'lang',\&get_language, args=>'<lang>', emptyarg_okay=>1, usage=>"Specify language(s)");
 add_option(2,'list_langs',\&list_languages, usage=>"List out full language information");
 add_option(3,'make_lang',\&make_language, args=>'<lang>', usage=>"Print out a new language file");
-add_option(99,'make_lang_check',\&make_language, usage=>"Make sure that output/translations are okay for -make_lang");
+add_option(10,'list_html_trans',\&list_languages, usage=>["List HTML translations for each language",
+	"Useful for creating multi-lingual images for themes",
+	"Output is in HTML and utf-8, change charset as needed"]);
+add_option(99,'check_langs',\&check_languages, usage=>"Check installed languages");
+add_option(99,'make_lang_check',\&make_language, usage=>"Make sure that program output/translations are okay for -make_lang");
 add_option(10,'lang_path', OPTION_ARR, default=>['@DATA_PATH/lang'], usage=>"Add a path to search for language files");
 add_option(2,'q',OPTION_BOOL, one_time=>1, usage=>"Be quiet");
 add_option(2,'d',OPTION_BOOL, one_time=>1, usage=>"Set debug mode");
@@ -225,7 +229,7 @@ add_option(10,'not_img',OPTION_STR, default=>'.not_img', usage=>"Don't treat the
 # <meta name='Album_Path' content='...'>
 add_option(99,'path',OPTION_STR, usage=>"Path of album so far");
 # Hacky kludge stuff for internal/my purposes
-add_option(99,'transform_url',OPTION_STR, usage=>"Transform image URL");
+add_option(99,'transform_url',OPTION_STR, usage=>"Transform image URL (make sure to quote it)");
 add_option(99,'enter_eperl',OPTION_STR, default=>'<:', usage=>"Enter code region in theme");
 add_option(99,'leave_eperl',OPTION_STR, default=>':>', usage=>"Leave code region in theme");
 add_option(99,'num_hashes',OPTION_NUM, default=>25, one_time=>1, usage=>"How many hashes to print");
@@ -258,7 +262,7 @@ my $IMAGE_TYPES	=
 # Also:
 # $opt->{image.th}	The image.th file
 # $opt->{album.th}	The album.th file
-# $opt->{topdir}		The path to the top album.
+# $opt->{topdir}	The path to the top album.
 #
 # $data
 # -----
@@ -302,6 +306,8 @@ my $IMAGE_TYPES	=
 # $obj->{intag}		Optional:  Add to the <img|embed> tag for this object
 # $obj->{num_pics}	[directories only] Num of pics in directory
 # $obj->{num_dirs}	[directories only] Num of dirs in directory
+# $obj->{num_pics_str}	Translation of num_pics: 1 image, 2 images, 3 images..
+# $obj->{num_dirs_str}	Translation of num_dirs: 1 folder, 2 folders, 3 folders..
 #
 # There are three sizes of images for each pic: full, medium, thumb.
 # For each of these sizes, we have:
@@ -342,6 +348,8 @@ my $IMAGE_TYPES	=
 #   $opt->{_theme_full}		Full theme path
 #   $opt->{_lang}		Language data
 #   @{$opt->{_languages}}	List of language_info hashes loaded (in order of load)
+#   @{$opt->{languages}}	List of languages
+#   $opt->{trans}{$str}		Translations for HTML strings for themes.
 #   $opt->{_captions}{$dir}	Captions cache for a path
 #   $opt->{_read_conf}{$conf}	Avoid reading conf files multiple times
 # 				(in opt to survive multiple do_album calls)
@@ -351,10 +359,10 @@ my $IMAGE_TYPES	=
 #
 # Plugins:
 #   @{$opt->{_plugins}{loaded}}	List of all the plugins already loaded (by loaded name)
+#   $opt->{_plugins}{off}	Hash of plugins that are turned off
 #   $opt->{_plugin}{$plugin}	Plugin info hash
 #   @{$opt->{_plugin_hooks}{$name}}	List of hooks for a name [sub,plugin]
-#   $opt->{_curr_plugin}	For the plugin of the hook we are calling
-#   $opt->{_curr_hook}	The hook we are calling
+#   $opt->{_curr_plugin}	Current plugin/hook data (see curr_plugin())
 #
 # Args/confs:
 #   $opt->{_set}{$opt}		Options that were set by any method (so theme doesn't clobber)
@@ -384,7 +392,7 @@ my %DEFAULTS;
 my $GLOBAL_OPT;
 sub add_option {
   my ($lvl,$option,$type,%hash) = @_;
-  my $plugin = $GLOBAL_OPT->{_curr_plugin};
+  my $plugin = curr_plugin($GLOBAL_OPT);
   $hash{lvl}=$lvl;
   $hash{type}=$type;
   $hash{default}=0 unless $hash{default} || $type!=OPTION_BOOL;
@@ -526,7 +534,7 @@ sub usage {
 	if ($msg) {
 		perror($opt, $msg, @args);	#NOTRANS
 		prterr($opt, "\nTry '[_1] -h' for usage info.\n", $PROGNAME);
-		my $curr_plugin = $GLOBAL_OPT->{_curr_plugin};
+		my $curr_plugin = curr_plugin($GLOBAL_OPT);
 		prterr($opt, "or: '[_1] -plugin_usage [_2]' for plugin usage info.\n", $PROGNAME, $curr_plugin)
 			if $curr_plugin;
 		print STDERR "\n";
@@ -730,7 +738,7 @@ sub option {
   my ($opt,$option) = @_;
 
   # Plugin?
-  my $plugin = $opt->{_curr_plugin};
+  my $plugin = curr_plugin($opt);
   my $plugin_option = "$plugin:$option";
   my $optinfo = get_option($opt,$option,$plugin);
   return $opt->{$plugin_option} if $plugin && $optinfo;
@@ -753,7 +761,7 @@ sub deprecated_option {
 sub get_option {
   my ($opt,$option,$plugin) = @_;
 
-	#$option =~ s/(clear|no)[_-]?//;	# Doesn't quite work in save_conf
+  #$option =~ s/(clear|no)[_-]?//;	# Doesn't quite work in save_conf
 
   if ($plugin) {
     # Make sure we've loaded the plugin and get the full plugin name
@@ -761,6 +769,11 @@ sub get_option {
     return 0 unless $plugin;
     return $OPTIONS{plugin}{$plugin}{$option};
   }
+
+  # Could be a current plugin option
+	my $curr_plugin = curr_plugin($opt);
+  return $OPTIONS{plugin}{$curr_plugin}{$option}
+    if $curr_plugin && $OPTIONS{plugin}{$curr_plugin}{$option};
 
   return $OPTIONS{album}{$option} if $OPTIONS{album}{$option};
 
@@ -874,13 +887,11 @@ sub parse_arg {
 
     # Execute code unless $no
     if (($optinfo->{args} && !$no) || $val) {
-      my $save_curr_plugin = $opt->{_curr_plugin};
-      $opt->{_curr_plugin} = $optinfo->{plugin};
 
       # Call the routine
+			enter_plugin($opt, $optinfo->{plugin});
       $code->($opt,$option,$val);
-
-      $opt->{_curr_plugin} = $save_curr_plugin;
+			leave_plugin($opt);
 
       # Kind of kludgy, don't save deprecated options
       next if $code eq \&deprecated_option;
@@ -892,7 +903,7 @@ sub parse_arg {
     # If not $from, then we're parsing @ARGV, collect args to --
     if (!$from && $dashdash) {
       push(@vals, shift(@ARGV)) while (@ARGV && $ARGV[0] ne "--");
-      usage($opt,"Missing -- at end of [_1]",$option) unless shift(@ARGV);
+      usage($opt,"Missing '--' at end of [_1]",$option) unless shift(@ARGV);
     }
 
     usage($opt,"Missing value for option ",$Option) unless @vals;
@@ -908,7 +919,7 @@ sub parse_arg {
     } else {
       $val = shift @ARGV unless $from || defined $val;
       usage($opt,"-[_1] needs an argument",$option) unless $from || defined $val;
-      usage($opt,"Bad -[_1] number '[_2]'",$option,$val) if $val=~/[^\d\.]/ && $type==OPTION_NUM;
+      usage($opt,"Bad -[_1] number '[_2]'",$option,$val) if $val=~/[^\d\.]/ && $type==OPTION_NUM;	#EXPLANATION: As in: Bad number for a given -option
       $opt->{$option} = $val;
     }
   }
@@ -940,7 +951,16 @@ sub parse_arg {
 # Did an option 'change' on the ARGV?  (Used by plugins and others)
 sub option_changed {
   my ($opt,$option) = @_;
-  my $full_option = full_option($opt,$option);
+
+  my $optinfo = get_option($opt,$option);
+  unless ($optinfo) {
+    my $culprit = curr_plugin($opt) || $PROGNAME;
+    hash_warn($opt,"option_changed() called on unknown option '[_1]'\n\tThis is an error in [_2].",$option,$culprit)
+      unless $MAIN::WARN_OPTION_CHANGED{$option}++;
+    return 0;
+  }
+
+  my $full_option = full_option($opt,$optinfo);
 
   # We use {_changed} for non multival,
   return $opt->{_changed}{$full_option}
@@ -1028,13 +1048,13 @@ sub add_album_dir {
 # can edit the album params.  Is this a big issue?  If someone else is
 # running album, then by changing paths and whatnot this could be an issue..
 unless ($option eq 'path' || $option eq 'theme') {
-  hash_warn($opt,"Can't handle option <[_1]> in [_2]",$option,$file);
+  hash_out($opt,"Can't handle option <[_1]> in [_2]",$option,$file);
   next;
 }
 
 # We might not know the -theme_path yet..
 #      if ($option eq 'theme' && ! -d search_path($opt,$val,@{$opt->{theme_path}})) {
-#        hash_warn($opt,"Couldn't find theme <[_1]> - ignoring",$theme);
+#        hash_out($opt,"Couldn't find theme <[_1]> - ignoring",$theme);
 #        next;
 #      }
 
@@ -1473,7 +1493,7 @@ sub get_themes {
   my $theme = $opt->{theme};
 
   # -theme_url needs -theme
-  hash_warn($opt,"WARNING: [_1] still requires [_2] option, it doesn't replace it",'-theme_url','-theme')
+  hash_warn($opt,"[_1] still requires [_2] option, it doesn't replace it",'-theme_url','-theme')
     if option_changed($opt,'theme_url') && $opt->{theme_url} && !$theme && !$MAIN::WARNED_THEME_URL++;
 
   # -no_theme
@@ -1497,7 +1517,7 @@ sub get_themes {
   }
 
   # If it's a directory, look for "image.th" and "album.th"
-  return hash_warn($opt,"Couldn't find [_1] directory ~[[_2]~] (ignoring)\n\t(Try specifying [_3] with [_1])",'-theme',$dir,'-theme_path')
+  return hash_out($opt,"Couldn't find [_1] directory ~[[_2]~] (ignoring)\n\t(Try specifying [_3] with [_1])",'-theme',$dir,'-theme_path')
     unless -d $dir;
 
   $dir = port_abs_path($opt,$dir);
@@ -1737,7 +1757,7 @@ sub install_language {
 	return if $opt->{_virgin}{set}{lang};
 
 	# Have they already set a language?
-	return unless $#{$opt->{_languages}} == -1;
+	return unless $#{$opt->{languages}} == -1;
 
 	# Can we find any languages yet?
 	my @langs = list_languages($opt,'install_language', undef, 1);
@@ -1894,7 +1914,7 @@ sub install_find_current_data {
 			}
 			return $what unless $? || !-d $what;
 			$? ? prterr($opt,"\nError untarring: [_1]\n\n",$!) :	#LVL=100
-				prterr($opt,"\nError: Untarring didn't create expected directory '[_1]'\n\n",$what);	#LVL=100
+				nlperror($opt,"Untarring didn't create expected directory '[_1]'\n\n",$what);	#LVL=100
 		}
 	}
 	
@@ -1905,7 +1925,7 @@ sub install_find_current_data {
 			system("unzip",$zip);
 			return $what unless $? || !-d $what;
 			$? ? prterr($opt,"\nError unzipping: [_1]\n\n",$!) :	#LVL=100
-				prterr($opt,"\nError: Unzipping didn't create expected directory '[_1]'\n\n",$what);	#LVL=100
+				nlperror($opt,"Unzipping didn't create expected directory '[_1]'\n\n",$what);	#LVL=100
 		}
 	}
 	
@@ -2008,8 +2028,7 @@ sub install_get_text {
 	prterr($opt,"Finish typing text by entering a line with only '.' on it.\n");	#LVL=100
 	my $num = 0;
 	while (1) {
-		prterr($opt,"Enter ") unless defined $ret;	#LVL=100
-		prterr($opt,$question);	#NOTRANS
+		prterr($opt,"Enter [_1]",$question) unless defined $ret;	#LVL=100	#EXPLANATION: As in: "Enter a default path"
 		print STDERR "> ";
 		my $line = scalar <STDIN>;
 		return $ret if ($line eq ".\n");
@@ -2294,14 +2313,18 @@ sub hash_msg {
   printf STDERR "%".$opt->{num_hashes}."s]\n",$str;
   undef $_hashes_start;
 }
-sub hash_warn {
-  my ($opt,$str,@args) = @_;
 
+sub _hash_out {
+  my ($opt,$pre,$str,@args) = @_;
+
+  $pre = trans($opt,$pre) if $pre;	#NOTRANS
   my $msg = trans($opt,$str,@args);	#NOTRANS
 
-  my $val = do_hook($opt,undef, 'hash_warn', $msg);
+  $msg = "$pre$msg" if $pre;
+
+  my $val = do_hook($opt,undef, 'hash_out', $msg);
   # Description: Show a warning/error message over a progress meter
-  # Returns: 1 if you don't want the normal hash_warn code to be used.
+  # Returns: 1 if you don't want the normal hash_out code to be used.
   return $val if defined $val;
 
   print STDERR "\n" if $_hashes_start;
@@ -2310,6 +2333,16 @@ sub hash_warn {
   start_hashes($opt,$_hashes_start);	#NOTRANS
   print STDERR "X"x$_hashes_done;
   undef;
+}
+
+sub hash_out {
+  my ($opt,$str,@args) = @_;
+  _hash_out($opt,undef,$str,@args);
+}
+
+sub hash_warn {
+  my ($opt,$str,@args) = @_;
+  _hash_out($opt,"WARNING: ",$str,@args);
 }
 
 ##################################################
@@ -2578,24 +2611,64 @@ sub list_languages {
 	my %short;
 	map { $short{$_->[3]} = 1; } @langs;
 	my @short = sort keys %short;
-	unshift(@short,'en');
+	unshift(@short,'en');	# Add english to the list
 
 	return @short if $just_return;
+
+	# Handle -list_html_trans
+	if ($option eq 'list_html_trans') {
+		my @t = theme_trans($opt);
+		print <<TRANS_HEADER;
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN'
+	'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml'>
+  <head><meta http-equiv='Content-Type' content='text/html; charset=utf-8' /></head>
+	<body>
+	<h1>HTML Translations</h1>
+	<h2>Shown in 'utf-8' (most iso-8859-1 works)<br>Edit to see other charsets</h2>
+TRANS_HEADER
+		print "<table border><tr><th>Lang:</th><th>charset</th><th>";
+		print join("</th><th>",@t),"</th></tr>\n";
+
+		foreach my $lang ( @short ) {
+			next if $lang eq 'banner';	# Because that's just silly.
+			clear_langs($opt);
+			next unless install_language($opt,$lang);
+			@t = theme_trans($opt);
+			my $charset = $opt->{_languages}[-1]{charset};
+			$charset = "<font color=red>$charset</font>"
+				if $charset && $charset ne 'iso-8859-1' && $charset ne 'utf-8';
+			print "<tr><td>$lang</td><td>$charset</td>";
+			print map { "<td>$opt->{trans}{$_}</span></td>" } @t;
+			print "</tr>\n";
+			next;
+		}
+		print "</table></body></html>\n";
+		exit 0;
+	}
 
 	prtout($opt, "Available languages:\n");
 	# Just list languages quickly
 	unless ($option) {
-		unless (@short) {
-			prtout($opt, "No languages found.\n");
-			exit;
-		}
 		print wrap($opt, "  ".join(', ',@short)."\n");
 		exit 0;
 	}
 
+	# First find out expected language strings
+	my (%expect,$expect_tot,$expect_html, $expect_char);
+	my $ml = get_language_strings($opt);
+	foreach my $lvl ( sort {$a<=>$b} keys %$ml ) {
+		foreach my $line ( @{$ml->{$lvl}} ) {
+			$expect_tot++;
+			$expect{$line->{line}} = $line;
+			$expect_html++ if $line->{lvl}<=1;
+			$expect_char += length($line->{line});
+		}
+	}
+
 	# Similar to get_language..
 	foreach my $lang ( @short ) {
-		my ($info,$language) = include_language($opt,$lang);
+		my ($info,$language) = load_language($opt,$lang);
 
 		# en is special case
 		if ($lang eq 'en' && !$info) {
@@ -2612,14 +2685,25 @@ sub list_languages {
 
 		# How much complete?
 		# (assume that all keys are present whether translated or not)
-		my ($trans,$tot) = (0,0);
-		foreach my $key ( keys %$language ) {
-			$tot++;
-			$trans++ if $language->{$key};
+		my ($trans,$html,$char) = (0,0,0,0);
+		if ($language->{_} || $language->{_post}) {
+			($trans,$html,$char) = ($expect_tot,$expect_html,$expect_char);
+		} else {
+			foreach my $key ( keys %$language ) {
+				next unless $expect{$key};	# Only if it's used.
+				next unless $language->{$key};	# Only if there's a translation
+				$trans++;
+				$char += length($key);
+				$html++ if $expect{$key}{lvl}<=1;
+			}
 		}
-		my $percent = $tot ? 100*$trans/$tot : 0;
-		$percent = int($percent*10)/10;
-		prtout($opt, "    Complete: [_1]%\n", $percent);
+		my $percent = $expect_tot ? int(1000*$trans/$expect_tot)/10 : 0;
+		my $char_percent = $expect_char ? int(1000*$char/$expect_char)/10 : 0;
+		my $html_percent = $expect_html ? int(1000*$html/$expect_html)/10 : 0;
+# Do I need all this info??
+		#prtout($opt, "    Complete: [_1]%   (character count: [_2]%, HTML translations: [_3]%)\n", $percent, $char_percent, $html_percent);
+		# What about just?
+		prtout($opt, "    Complete: [_1]%   HTML: [_2]%\n", $char_percent, $html_percent);
 
 		# Credit
 		foreach my $trans ( @{$info->{translators}} ) {
@@ -2631,6 +2715,100 @@ sub list_languages {
 	exit 0;
 }
 
+sub check_languages {
+	my ($opt,$option,$val) = @_;
+
+	my @langs = list_languages($opt,'check_languages', undef, 1);
+
+	my $brack_re = '(?<!~)\[(.*?[^~])\]';
+	my $brack_sub_re = '\[(quant|\*|numf|\#),';
+
+	# First figure out all the language strings we expect
+	my $ml = get_language_strings($opt);
+	my %expect;
+	foreach my $lvl ( sort {$a<=>$b} keys %$ml ) {
+		foreach my $line ( @{$ml->{$lvl}} ) {
+			$expect{$line->{line}} = $line;
+		}
+	}
+
+	my $total;
+	foreach my $lang ( @langs ) {
+		print "Checking language: $lang\n";
+		my $errors;
+		my ($info,$language) = load_language($opt,$lang);
+		foreach my $line ( keys %$language ) {
+			my $trans = $language->{$line};
+			next unless $trans;
+			my @brack = grep(/$brack_re/, split(/($brack_re)/, $line));
+			my @trans_brack = grep(/$brack_re/, split(/($brack_re)/, $trans));
+			next unless $#brack >= 0;
+			my $off = 0;
+			foreach my $brack ( @brack ) {
+				next if grep($_ eq $brack, @trans_brack);
+				next if $brack =~ /$brack_sub_re/ && grep(/$brack_sub_re/, @trans_brack);
+				next if $brack =~ /${brack_sub_re}_(\d+)/ && grep(/\[_$2\]/, @trans_brack);	# [*,_1..] = [_1]
+				print "[$lang] Missing '$brack' in translation\n";
+				$off++;
+			}
+			foreach my $trans_brack ( @trans_brack ) {
+				next if grep($_ eq $trans_brack, @brack);
+				next if $trans_brack =~ /$brack_sub_re/ && grep(/$brack_sub_re/, @brack);
+				next if $trans_brack =~ /\[_(\d+)\]/ && grep(/${brack_sub_re}_$1/, @brack);	# [_1] = [*,_1..]
+				print "[$lang] Translation has '$trans_brack' not found in original\n";
+				$off++;
+			}
+			next unless $off;
+			$errors += $off;
+
+			my $short = length($line)>60 ? substr($line,0,58).'..' : $line;
+			print "\t$short\n";
+			my $short_trans = length($trans)>60 ? substr($trans,0,58).'..' : $trans;
+			print "\t$short_trans\n";
+		}
+
+		foreach my $line ( keys %$language ) {
+			next if $expect{$line};
+			next if $line eq '_' || $line eq '_post';
+			my $short = length($line)>60 ? substr($line,0,58).'..' : $line;
+			print "[$lang] Unused line: $short\n";
+		}
+
+		print "-> ", quant($errors,"error",undef,"No errors"), "\n" unless $opt->{q};
+		$total += $errors;
+	}
+
+	exit $total;
+}
+
+# Clear all installed languages
+sub clear_langs {
+	my ($opt) = @_;
+	undef %{$opt->{_lang}};
+	undef @{$opt->{_languages}};
+	undef @{$opt->{languages}};
+	return;
+}
+
+# Install a language into our current "dictionary"
+sub install_language {
+	my ($opt,$lang) = @_;
+
+	my ($language_info, $language) = load_language($opt,$lang);
+
+	return 0 unless $language_info && $language;
+
+	$opt->{charset} = $language_info->{charset}
+		if !$opt->{force_charset} && $language_info->{charset};
+
+	# Load it into the current language hash
+	map { $opt->{_lang}{$_} = $language->{$_} if $language->{$_} } keys %$language;
+
+	push(@{$opt->{_languages}}, $language_info);
+	push(@{$opt->{languages}}, $lang);
+	return 1;
+}
+
 # Load a language (and possibly it's superset)
 sub get_language {
 	my ($opt,$option,$lang, $quiet) = @_;
@@ -2640,17 +2818,15 @@ sub get_language {
 
 	# If loading language XX-xx, first load XX
 	my $XX = ($lang =~ /^(..)-..$/) ? $1 : undef;
-	my $load_XX = ($XX && load_language($opt,$XX)) ? 1 : 0;
-	my $load_XXxx = load_language($opt,$lang);
+	my $load_XX = ($XX && install_language($opt,$XX)) ? 1 : 0;
+	my $load_XXxx = install_language($opt,$lang);
 
 	return if $quiet;
 
 	# Special case - 'en' is the default, and it just means
 	# we should clear all languages (unless lang/en exists)
-	if ($lang eq 'en' && !$load_XX) {
-		%{$opt->{_lang}} = ();
-		return;
-	}
+	# This allows us to have english subalbums in non-english albums.
+	return clear_langs($opt) if $lang eq 'en' && !$load_XX;
 
 	prterr($opt, "Couldn't find language [_1], loaded parent language [_2]\n", $lang, $XX)
 		if $load_XX && !$load_XXxx;
@@ -2658,7 +2834,8 @@ sub get_language {
 		unless $load_XX || $load_XXxx;
 }
 
-sub include_language {
+# Load a language file (info and translations)
+sub load_language {
 	my ($opt,$lang) = @_;
 
 	my ($language_info, $language);
@@ -2686,24 +2863,6 @@ END_EVAL
 }
 
 
-# Load a language file
-sub load_language {
-	my ($opt,$lang) = @_;
-
-	my ($language_info, $language) = include_language($opt,$lang);
-
-	return 0 unless $language_info && $language;
-
-	$opt->{charset} = $language_info->{charset}
-		if !$opt->{force_charset} && $language_info->{charset};
-
-	# Load it into the current language hash
-	map { $opt->{_lang}{$_} = $language->{$_} if $language->{$_} } keys %$language;
-
-	push(@{$opt->{_languages}}, $language_info);
-	return 1;
-}
-
 sub lang_has_code {
 	my ($opt) = @_;
 	foreach my $k ( keys %{$opt->{_lang}} ) {
@@ -2725,7 +2884,7 @@ sub lang_has_code {
 # All functions that prototype as:  somefunc($opt,"some trans string", @args);
 my @TRANS_FUNCS = qw(trans fatal
 	prtout prterr perror pprog pperror ppwarn nlppwarn wraperr
-	start_hashes hash_warn usage);
+	start_hashes hash_out hash_warn hash_error usage);
 
 # Print out a language translation line
 my %SAW_LANGUAGE_LINE;
@@ -2738,16 +2897,15 @@ sub make_language_line {
 	my $lvl = ($post =~ s/\s*#LVL=(\d+)\s*//) ? $1 : 10;
 
 	# Kludge: Convert \n, \t, \\ and \"
-	$str =~ s/\\n/\n/g;
-	$str =~ s/\\t/\t/g;
-	# We don't actually need to convert \\ and \", but anything else is a problem
-	if ($str =~ /(?<!\\)\\[^"\\]/) {
+	if ($str =~ /(?<!\\)\\([^nt\\"])/) {
 		prterr($opt, "-make_lang saw unknown \\code [_1]:\n  [_2]\n", $., $str);	#NOTRANS
 		exit -1 if $opt->{make_lang_check};
 	}
-
-	my $num = 0;
-	my $tab = "\t";
+	$str =~ s/\\n/\n/g;	# A bit kludgy..  Quoting is more complicated than this.
+	$str =~ s/\\t/\t/g;
+	$str =~ s/\\\\/\\/g;
+	$str =~ s/\\"/"/g;
+	exit if $str =~ /"/;
 
 	# Breakup newlines
 	my @lines = split(/\n/, $str);
@@ -2766,41 +2924,70 @@ sub make_language_line {
 		prterr($opt, "-make_lang saw unknown \$var [_1]:\n  [_2]\n", $., $line) #NOTRANS
 			if $line =~ /\$/;
 
-		push(@{$ml->{$lvl}}, ($num||!$lvl) ? "\n" : "\n$tab# line $.\n");
+		my %line;
+		$line{lvl} = $lvl;
+		$line{num} = $.;
 
-		my $exp = ($post =~ /#EXPLANATION:\s+(.+)/) ? $1 : "";
-		if ($exp) {
-			my $Explanation = trans($opt,"Explanation:");
-			push(@{$ml->{$lvl}}, "$tab# $Explanation  $exp\n");
-		}
+		$line{exp} = ($post =~ /#EXPLANATION:\s+(.+)/) ? $1 : "";
 
 		# The translation key->val
 		# If it's CODE then we can't save it anyways..
 		my $curr_trans = lang_trans($opt,$line);	#NOTRANS
-		$line =~ s/'/\\'/g;
-		$curr_trans =~ s/'/\\'/g;
-		push(@{$ml->{$lvl}}, "$tab'$line'\n");
-		push(@{$ml->{$lvl}}, "$tab=> '$curr_trans',\n");
+		$line{line} = $line;
+		$line{curr_trans} = $curr_trans;
 
-		if (@args) {
-			my $args;
-			for (my $i=0; $i<=$#args; $i++) {
-				$args .= "  [_".($i+1)."]=$args[$i]";
+		$line{args} = \@args if @args;
+
+		push(@{$ml->{$lvl}}, \%line);
+	}
+}
+
+sub print_language_lines {
+	my ($opt, $ml) = @_;
+
+	my $Explanation = trans($opt,"Explanation:");
+	my $Args = trans($opt,"Args:");
+
+	my $last_line = -1;
+	my $tab = "\t";
+
+	foreach my $lvl ( sort {$a<=>$b} keys %$ml ) {
+		foreach my $line ( @{$ml->{$lvl}} ) {
+
+			print MAKELANG "\n";
+
+			print MAKELANG "$tab# line $line->{num}\n"
+				unless !$lvl || $line->{num}==$last_line;
+			$line->{num}=$last_line;
+
+			print MAKELANG "$tab# $Explanation  $line->{exp}\n" if $line->{exp};
+
+			my $curr_line = $line->{line};
+			my $curr_trans = $line->{curr_trans};
+
+			$curr_line =~ s/\\/\\\\/g;
+			$curr_trans =~ s/\\/\\\\/g;
+			$curr_line =~ s/'/\\'/g;
+			$curr_trans =~ s/'/\\'/g;
+			print MAKELANG "$tab'$curr_line'\n";
+			print MAKELANG "$tab=> '$curr_trans',\n";
+
+			if ($line->{args}) {
+				my $args;
+				for (my $i=0; $i<=$#{$line->{args}}; $i++) {
+					$args .= "  [_".($i+1)."]=$line->{args}[$i]";
+				}
+				print MAKELANG "$tab# $Args$args\n";
 			}
-			my $Args = trans($opt,"Args:");
-			push(@{$ml->{$lvl}}, "$tab# $Args$args\n");
 		}
 	}
 }
 
-sub make_language {
-	my ($opt,$option,$val) = @_;
+sub get_language_strings {
+	my ($opt, $check) = @_;
 
-	$opt->{make_lang_check} = 1 if $option eq 'make_lang_check';
+	$opt->{make_lang_check} = $check;
  
-	my $lang = $opt->{make_lang_check} ? undef : $val;
-	my $info;
-
 	my $trans_funcs = join("|",@TRANS_FUNCS);
 
 	#########################
@@ -2858,15 +3045,25 @@ sub make_language {
 		exit 0;
 	}
 
+	$ml;
+}
+
+sub make_language {
+	my ($opt,$option,$val) = @_;
+
+	my $ml = get_language_strings($opt, $option eq 'make_lang_check');
+
 	#########################
 	# Figure out where to save the output
 	#########################
-	my $out = $lang;
+	my $lang = $val;
+
 	# Any way to easily check if $lang is a legal language???
 	ppwarn($opt, "Language should only be two or three characters: [_1]", $lang)	#NOTRANS
-		unless $out =~ /^[a-z]{2,3}(-[a-z]{2})?$/i;	# Allow for sublanguage codes (xx-xx)
+		unless $lang =~ /^[a-z]{2,3}(-[a-z]{2})?$/i;	# Allow for sublanguage codes (xx-xx)
 
 	# Could we/should we have loaded the language first?
+	my $info;
 	my ($path,$found) = search_path($opt,$lang, @{$opt->{lang_path}});
 	if ($found) {
 		my @m = grep($_->{language_code} eq $lang, @{$opt->{_languages}});
@@ -2877,9 +3074,9 @@ sub make_language {
 	ppwarn($opt, "Current language has code references that won't be copied.\n")
 		if (lang_has_code($opt));
 
-	fatal($opt, "Language file [_1] already exists.  Refusing to overwrite.", $out)	#NOTRANS
-		if -f $out;
-	open(MAKELANG, ">$out") || fatal($opt, "Couldn't write language file [_1]", $out);	#NOTRANS
+	fatal($opt, "Language file [_1] already exists.  Refusing to overwrite.", $lang)	#NOTRANS
+		if -f $lang;
+	open(MAKELANG, ">$lang") || fatal($opt, "Couldn't write language file [_1]", $lang);	#NOTRANS
 
 	#########################
 	# Header
@@ -2910,7 +3107,7 @@ sub make_language {
 		my ($name,$url) = @$t;
 		$name =~ s/"/\\"/g;
 		$url =~ s/"/\\"/g;
-		$translators .= "\t\t\t[ \"$name\", \"$url\" ],\n";
+		$translators .= "\t\t\t[ '$name', '$url' ],\n";
 	}
 
 	print MAKELANG <<HEADER;
@@ -2927,13 +3124,13 @@ sub make_language {
 
 sub language_info {
 	return {
-		language_code => '$lang',
-		language => '$language',
-		language_english => '$language_english',
-		album_version	=> "$VERSION",
-		language_version => $language_version,
-		charset => "$charset",
-		translators => [		# List of:  ["name","email/url"],
+		language_code =>     '$lang',
+		language =>          '$language',
+		language_english =>  '$language_english',
+		album_version	=>     "$VERSION",
+		language_version =>  $language_version,
+		charset =>           "$charset",
+		translators => [		# List of:  ['name','email/url'],
 $translators		],
 	};
 }
@@ -2947,9 +3144,7 @@ HEADER
 	#########################
 
 	# The language lines
-	foreach my $lvl ( sort keys %$ml ) {
-		print MAKELANG @{$ml->{$lvl}};
-	}
+	print_language_lines($opt, $ml);
 
 	#########################
 	# Footer
@@ -2965,7 +3160,7 @@ FOOTER
 
 	close MAKELANG;
 
-	prterr($opt, "Successfully wrote language file: [_1]\n", $out);	#NOTRANS
+	prterr($opt, "Successfully wrote language file: [_1]\n", $lang);	#NOTRANS
 	exit 0;
 }
 
@@ -3022,6 +3217,12 @@ sub perror {
 	print_trans($opt, $msg, {error=>1,post=>"\n", args=>\@args});
 }
 
+# "\nERROR: " message
+sub nlperror {
+	my ($opt, $msg, @args) = @_;
+	print_trans($opt, $msg, {error=>1,pre=>"\n",post=>"\n", args=>\@args});
+}
+
 # "[album] " message
 sub pprog {
 	my ($opt, $msg, @args) = @_;
@@ -3062,9 +3263,9 @@ sub language_test {
 	print "\n";
 	exit(0);
 
-my $num_pics = 103030;
-$num_pics = $num_pics ? trans($opt,"[*,_1,image]",$num_pics) : 0;
-prterr($opt,"NUM: $num_pics\n");	#NOTRANS
+#my $num_pics = 103030;
+#$num_pics = $num_pics ? trans($opt,"[*,_1,image]",$num_pics) : 0;
+#prterr($opt,"NUM: $num_pics\n");	#NOTRANS
 
 	# Heres a good test for handling bracket code.
 	if (0) {
@@ -3193,7 +3394,7 @@ sub load_plugin {
   # Add '.' to @INC if it doesn't have it and plugin path is relative
   push(@INC,'.') unless $path =~ m|^/| || contains('.', @INC);
 
-  pprog($opt,"Using plugin: [_1]\n",$plugin) unless $opt->{q} || $quiet;
+  pprog($opt,"Using plugin: [_1]\n",$plugin) unless $opt->{q} || $quiet;	#LVL=2
   # Args to the require (this isn't kludgy, is it??  :)
   @_ = ($opt);		# Actually this is what @_ already was...
 
@@ -3207,15 +3408,14 @@ sub load_plugin {
   # So here's the eval version.
   my (undef,$package) = split_path($opt,$path);
   my $package = ($package =~ /^([a-z_]+)/i) ? $1 : "Album_Plugin";
-  my $save_curr_plugin = $opt->{_curr_plugin};
-  $opt->{_curr_plugin} = $plugin;
+  enter_plugin($opt, $plugin);
   eval <<END_EVAL;
     package $package;
     require "$path";
     \$opt->{_plugin}{\$plugin} = start_plugin(\$opt,\$plugin,\$path);
     #\$sym = \\\%${package}::;
 END_EVAL
-  $opt->{_curr_plugin} = $save_curr_plugin;
+  leave_plugin($opt);
 
   if ($@) {
     ppwarn($opt,"Problem with plugin '[_1]' - not using:\n$@",$plugin);
@@ -3266,15 +3466,61 @@ sub list_plugins {
     }
 
     print "$opt->{_plugin}{$plugin}{description}\n";
-    print "\n";
+    print ($option =~ /crf/ ? "END_PLUGIN: $plugin;;\n" : "\n");
   }
   exit;
 }
 
 # Register a hook for a given hook name
 sub hook {
-  my ($opt,$name,$sub) = @_;
-  push(@{$opt->{_plugin_hooks}{$name}}, [$sub,$opt->{_curr_plugin}]);
+	my ($opt,$name,$sub) = @_;
+	push(@{$opt->{_plugin_hooks}{$name}}, [$sub,curr_plugin($opt)]);
+}
+
+# Temp turn a plugin on/off.
+sub uncall_plugin {
+	my ($opt,$from) = @_;
+	$from ||= curr_plugin($opt);
+	push(@{$opt->{_plugins}{off}}, $from);
+}
+sub recall_plugin {
+	my ($opt) = @_;
+
+	pop(@{$opt->{_plugins}{off}});
+}
+sub cancall_plugin {
+	my ($opt,$from) = @_;
+
+	return 1 unless $opt->{_plugins}{off};
+
+	# Temp(?) hack - don't allow any plugins..  And here's why:
+	# Other plugins would get called twice - unless we turned this
+	# one off this time and others off next time??  But would that
+	# possibly create a weird stack if there were more to turn off?
+	# If you turn off the next time, how would you turn back on??
+	# maybe stacking plugins is too difficult here..
+	return @{$opt->{_plugins}{off}} ? 0 : 1;
+
+	grep($_ eq $from, @{$opt->{_plugins}{off}}) ? 0 : 1;
+}
+
+sub enter_plugin {
+	my ($opt, $plugin, $hook) = @_;
+	unshift(@{$opt->{_curr_plugin}}, [$plugin,$hook]);
+}
+
+sub leave_plugin {
+	my ($opt) = @_;
+	shift(@{$opt->{_curr_plugin}});
+}
+
+sub curr_plugin {
+	my ($opt) = @_;
+	$opt->{_curr_plugin} ? $opt->{_curr_plugin}[0][0] : undef;
+}
+sub curr_hook {
+	my ($opt) = @_;
+	$opt->{_curr_plugin} ? $opt->{_curr_plugin}[0][1] : undef;
 }
 
 # Call some hooks
@@ -3284,33 +3530,27 @@ sub hook {
 # Don't use this to define a specific hook, use one of the do_hook* subs below.
 sub do_hooks_loop {
   my ($opt,$data,$one,$reinject,$name,@args) = @_;
-  my $save_curr_hook = $opt->{_curr_hook};
-  my $save_curr_plugin = $opt->{_curr_plugin};
-  $opt->{_curr_hook} = $name;
   my $ret = 0;
   my @ret;
   my $got_something = undef;
   foreach my $hook ( @{$opt->{_plugin_hooks}{$name}} ) {
     my ($sub,$from) = @$hook;
-    $opt->{_curr_plugin} = $from;
+    next unless cancall_plugin($opt,$from);
     my @call_args = $data ? ($opt,$data,$name,@args) : ($opt,$name,@args);
+    enter_plugin($opt, $from, $name);
     my @got = $sub->(@call_args);	# Do the hook
+    leave_plugin($opt);
     if ($reinject) {
       $got_something = 1 if defined $got[0];
       $args[$reinject-1] = $got[0] if defined $got[0];
     } elsif ($one) {
-      if (defined $got[0]) {
-        $opt->{_curr_plugin} = $save_curr_plugin;
-        $opt->{_curr_hook} = $save_curr_hook;
-        return wantarray ? @got : $got[0];
-      }
+      return wantarray ? @got : $got[0]
+        if defined $got[0];
     } else {
       $ret |= $got[0];
       push(@ret,@got);	# Might be messy if we get arrays back..
     }
   }
-  $opt->{_curr_plugin} = $save_curr_plugin;
-  $opt->{_curr_hook} = $save_curr_hook;
   return $got_something ? $args[$reinject-1] : undef if $reinject;
   return undef if $one;
   wantarray ? @ret : $ret;
@@ -3390,7 +3630,7 @@ sub list_hooks {
 sub plugin_warn {
   my ($opt,$msg) = @_;
   my $warning = trans($opt,"WARNING:");
-  hash_warn($opt, "Plugin ~[[_1]~] hook ~[[_2]~]:\n\t[_3] [_4]", $opt->{_curr_plugin},$opt->{_curr_hook},$warning,$msg);
+  hash_out($opt, "Plugin ~[[_1]~] hook ~[[_2]~]:\n\t[_3] [_4]", curr_plugin($opt),curr_hook($opt),$warning,$msg);
 }
 
 # For plugins to call if they don't do album generation (such as plugin utils)
@@ -3473,7 +3713,7 @@ sub parse_index {
     last if defined $data->{paths}{album_path} && !$data->{unknown};
   }
   close(INDEX);
-  hash_warn($opt,"Skipping unknown HTML:\n  [_1]",$index) if $data->{unknown};
+  hash_out($opt,"Skipping unknown HTML:\n  [_1]",$index) if $data->{unknown};
 }
 
 #########################
@@ -3528,9 +3768,9 @@ sub clean_thumb_dir {
       $remove_type = "unknown file";
     }
     if ($remove_type) {
-      hash_warn($opt,"Remove [_1]: [_2]",$remove_type,"$dir/$file");
+      hash_out($opt,"Remove [_1]: [_2]",$remove_type,"$dir/$file");
 # This doesn't seem to work (or show error) under windows.  Bah.
-      hash_warn($opt,"Couldn't erase: [_1]",$file)
+      hash_out($opt,"Couldn't erase: [_1]",$file)
         unless unlink "$dir/$file";
     }
   }
@@ -3643,7 +3883,7 @@ sub get_exif_info {
   while(<$jhead>) {
     print STDERR "get_exif_info(): $_" if $opt->{D};
     if (/command not found/) {	# Kind of kludgy
-      hash_warn($opt,"[_1] specified but jhead not found ~[[_2]~]\n\tEither specify [_1], or use one of the EXIF replacement plugins.", '-exif',$opt->{jhead});
+      hash_out($opt,"[_1] specified but jhead not found ~[[_2]~]\n\tEither specify [_1], or use one of the EXIF replacement plugins.", '-exif',$opt->{jhead});
       undef $opt->{jhead};
       $jhead->close;
       return "";
@@ -4120,10 +4360,10 @@ sub dumper {
   return if $ignore;
 
   my $ref = ref($var);
-  return hash_warn($dmp->{opt},"Option or data <[_1]> was referenced multiple times?\n\t(Internal consistency problem - probably with a plugin?)", $name)
+  return hash_out($dmp->{opt},"Option or data <[_1]> was referenced multiple times?\n\t(Internal consistency problem - probably with a plugin?)", $name)
     if $ref && $dmp->{saw}{$var}++;
 
-  return hash_warn($dmp->{opt},"Variable with no name?") unless $dmp->{lvl} || defined $name;
+  return hash_out($dmp->{opt},"Variable with no name?") unless $dmp->{lvl} || defined $name;
   my $s = " "x$dmp->{lvl};
   my $qname = defined $name ? dumper_quote($name)." => " : "";
 
@@ -4178,10 +4418,31 @@ sub dumper_hash {
 # Put the 'data' structure into an input string for eperl,
 # and throw in some access functions
 # (Writing perl with perl is a bitch!  Quoting nightmare!)
+sub theme_trans {
+	my ($opt) = @_;
+	# Translations that we pass to themes
+	$opt->{trans}{'Album:'} = trans($opt,"Album:");	#LVL=1
+	$opt->{trans}{'Image:'} = trans($opt,"Image:");	#LVL=1
+	$opt->{trans}{'More albums:'} = trans($opt,"More albums:");	#LVL=1
+	$opt->{trans}{'Prev'} = trans($opt,"Prev");	#EXPLANATION: Short for 'previous'	#LVL=1
+	$opt->{trans}{'Next'} = trans($opt,"Next");	#LVL=1
+	$opt->{trans}{'Back'} = trans($opt,"Back");	#LVL=1
+	$opt->{trans}{'Up'} = trans($opt,"Up");	#LVL=1
+
+	my @trans = ('Album:', 'Image:', 'More albums:', 'Prev', 'Next', 'Back', 'Up');
+
+	return @trans;
+
+	# Sadly this doesn't work for -make_lang
+	#map { $opt->{trans}{$_} = trans($opt,$_) } @trans;
+}
+
 sub data_to_eperl {
   my ($opt,$data) = @_;
 
   return unless $opt->{'album.th'} || $opt->{'image.th'};
+
+	theme_trans($opt);
 
   # Data dump.  Convert $data to assignment statements
   my %dmp;
@@ -4273,6 +4534,11 @@ sub pFooter {
   print "<!--FOOTER name=".url_quote("FOOTER:\$opt->{footer}")."-->\\n" if \$opt->{caption_edit};
   print read_file("\$data->{paths}{dir}/\$opt->{footer}");
   print "<!--END_FOOTER-->\\n" if \$opt->{caption_edit};
+}
+
+sub Trans {
+  my (\$str) = \@_;
+  return \$opt->{trans}{\$str} || \$str;
 }
 
 #########################
@@ -4664,6 +4930,19 @@ sub Image_Array {
   \$str .= " />";
   \$str;
 }
+
+sub Image_Ref {
+	my (\$img,\$and,\$alt) = \@_;
+	return Image_Array(\@\$img,\$and,\$alt) if ref \$img eq 'ARRAY';
+	return '' unless ref \$img eq 'HASH';
+
+	# Go through languages in reverse, '_' is default
+	foreach my \$lang ( reverse(\@{\$opt->{languages}}), '_' ) {
+		return Image_Array(\@{\$img->{\$lang}},\$and,\$alt) if \$img->{\$lang};
+	}
+	'';
+}
+
 
 # Show an image using a repeating table background
 # This is an internal album function - don't use this as it may change
@@ -5258,6 +5537,7 @@ sub caption {
 
 # Split up all characters, but don't split '<html>' or '&chars;'
 # This is for the shortening algorithm
+#   Customers:  plugins/captions/format/hide_shorten.alp
 sub mysplit {
   my ($str) = @_;
   return split(//, $str) unless $str =~ /(<.*>|&.*;)/;
@@ -5298,7 +5578,8 @@ sub write_index {
   setup_output($opt,$out);
   header($opt,$data,0);
 
-	my $More_albums = trans($opt,"More albums:");	#LVL=1
+	theme_trans($opt);
+	my $More_albums = $opt->{trans}{"More albums:"}; #trans($opt,"More albums:");	#LVL=1
 
   # DIRECTORIES
   if (@{$data->{dirs}}) {
@@ -5323,13 +5604,9 @@ sub write_index {
       }
       print ALBUM "<font size='+1'>$obj->{name}</font></a>\n";
 
-      my $num_pics = $obj->{num_pics};
-      $num_pics = $num_pics ? trans($opt,"[*,_1,image]",$num_pics) : 0;	#EXPLANATION: 0 images, 1 image, 2 images, 3 images..	#LVL=1
-      print ALBUM "<font size='-1'><br />$num_pics</font>\n" if $num_pics;
+      print ALBUM "<font size='-1'><br />$obj->{num_pics_str}</font>\n" if $obj->{num_pics};
 
-      my $num_dirs = $obj->{num_dirs};
-      $num_dirs = $num_dirs ? trans($opt,"[*,_1,folder]",$num_dirs) : 0;	#EXPLANATION: 0 folders, 1 folder, 2 folders, 3 folders..	#LVL=1
-      print ALBUM "<font size='-1'><br />$num_dirs</font>\n" if $num_dirs;
+      print ALBUM "<font size='-1'><br />$obj->{num_dirs_str}</font>\n" if $obj->{num_dirs};
     }
     end_table();
     print ALBUM "<hr />\n";
@@ -5364,7 +5641,7 @@ sub write_index {
     # Not a picture?
     } else {
       my $type = ($pic =~ /\.([^\.]+)$/) ? $1 : "??";
-			my $Type = trans($opt,"[_1] file:", $type);	#LVL=1
+			my $Type = trans($opt,"[_1] file:", $type);	#LVL=1	#EXPLANATION: As in: "jpg file" "gif file" etc..
       print ALBUM "        <font size='+1'><b>$Type</b></font>\n";
       print ALBUM "        <p>\n";
       print ALBUM "        <a href=$obj->{URL}{album_page}{image}>\n";
@@ -5848,6 +6125,10 @@ sub handle_file {
     $obj->{URL}{album_page}{image} =~ s/%S/$pic_path/g;
     my $s = $pic;  $s =~ s/\.[^\.]+$//;
     $obj->{URL}{album_page}{image} =~ s/%s/$s/g;
+		# We could url_quote here, but that would screw up the
+		# ability to add info to the href tags (like rel=nofollow).
+		# (Which is important, for example, at http://DavePics.com/Theme_Album/)
+		# We'll assume if they use transform_url, they will quote.
   }
 
 #  print "\nURL album image: $obj->{URL}{album_page}{image}\n";
@@ -5883,16 +6164,20 @@ sub dir_info {
   #   we traverse the child - can we cache this somewhere??
   my $child_data = new_album_data($opt,$child_path);
   gather_contents($opt,$child_data);
-  $data->{obj}{$child}{num_dirs} = @{$child_data->{dirs}} if $child_data->{dirs};
+  my $num_dirs = $child_data->{dirs} ? @{$child_data->{dirs}} : 0;
+  $data->{obj}{$child}{num_dirs} = $num_dirs;
+  $data->{obj}{$child}{num_dirs_str} = $num_dirs ? trans($opt,"[*,_1,folder]",$num_dirs) : "";	#EXPLANATION: 0 folders, 1 folder, 2 folders, 3 folders..	#LVL=1
 
-  my @images = undef;
+  my @images = ();
   if ($child_data->{pics}) {
     # BUG: Technically we should read the album.conf to see if
-		#      settings like $opt->{captions} have changed..
+    #      settings like $opt->{captions} have changed..
     get_captions($opt,$child_data);	# For sorting
     sort_info($opt,$child_data);
     @images = grep is_image($opt,$_), @{$child_data->{pics}};
-    $data->{obj}{$child}{num_pics} = scalar @images;
+    my $num_pics = scalar @images;
+    $data->{obj}{$child}{num_pics} = $num_pics;
+    $data->{obj}{$child}{num_pics_str} = $num_pics ? trans($opt,"[*,_1,image]",$num_pics) : "";	#EXPLANATION: 0 images, 1 image, 2 images, 3 images..	#LVL=1
   }
 
   # Now we can actually get the directory thumb
@@ -6261,19 +6546,22 @@ sub get_xy {
   prterr($opt,"\tTry option:  [_1] to ignore garbage files\n",'-known_images')
     unless ($img =~ /\.$IMAGE_TYPES$/i);
   # Gentoo has this goofy thing, see:
-  prterr($opt,"\n\tGentoo users: make sure to run as root:\n[_1]\n% USE=\"avi gif jpeg mpeg png quicktime tiff\" emerge imagemagick\n")
+  prterr($opt,"\n\tGentoo users: make sure to run as root:\n[_1]","% USE=\"avi gif jpeg mpeg png quicktime tiff\" emerge imagemagick\n")
     if -f "/etc/gentoo-release";
   prterr($opt,"\tWindows users may have an easier time with Cygwin installed!\n")
     if $opt->{windows} && !$opt->{cygwin};
   fatal($opt);	#NOTRANS
 }
 
+# Get a size for an image or for an obj given a type (thumb, medium, full)
+# Sometimes there is no image for a given type, and that's fine.
 sub get_size {
   my ($opt,$img,$obj) = @_;
   return get_xy($opt,$img) unless $obj;
   # Use snapshot for full if available
   my $use = $img eq 'full' && $obj->{snapshot} ? 'snapshot' : $img;
   return ($obj->{$img}{x},$obj->{$img}{y}) if $obj->{$img}{x} && $obj->{$img}{y};
+	return (0,0) unless $obj->{$use}{path};
   my ($x,$y) = get_xy($opt,$obj->{$use}{path});
   return (0,0) unless $x && $y;
   ($obj->{$img}{x},$obj->{$img}{y}) = ($x,$y);
@@ -6350,7 +6638,7 @@ sub crop {
 
   my ($x,$y) = ($opt->{x},$opt->{y});
 
-  return hash_warn($opt,"Error cropping [_1] (image not found)",$img)
+  return hash_out($opt,"Error cropping [_1] (image not found)",$img)
     unless -f $img;
   my @cmd = ($opt->{convert}, $img,"-crop","${x}x${y}+${off_x}+${off_y}",$new);
   print STDERR "crop() run: @cmd\n" if $opt->{d};
@@ -6397,7 +6685,7 @@ sub movie_frame {
   system("$cmd > $opt->{dev_null} 2>&1");
   return $img unless $?;
 
-  hash_warn($opt,"Error extracting movie frame:\n\t[_1]\n\n\tDo you have ffmpeg installed?  http://ffmpeg.org/\n",$movie)
+  hash_out($opt,"Error extracting movie frame:\n\t[_1]\n\n\tDo you have ffmpeg installed?  http://ffmpeg.org/\n",$movie)
     unless $MAIN::MOVIE_FRAME_WARN++;
   return undef;
 }
@@ -6695,6 +6983,12 @@ List out full language information
 =item B<-make_lang>I<=I<lang>>
 
 Print out a new language file
+
+=item B<-list_html_trans>I<>
+
+List HTML translations for each language
+Useful for creating multi-lingual images for themes
+Output is in HTML and utf-8, change charset as needed
 
 =item B<--lang_path>I<=I<strings>>
 

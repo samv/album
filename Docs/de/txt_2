@@ -1,0 +1,164 @@
+MINI HOW-TO
+
+<span lang="de">
+ITEM: Einfaches Album
+
+Vorausgesetzt Sie haben album korrekt installiert, können wir mit
+einem einfachen Beispiel anfangen. Falls Sie hierbei irgendwelche 
+Probleme haben, lesen Sie bitte die Installationsdokumentation.
+
+Sie benötigen ein Webverzeichnis, in das Sie die Themes und das
+Fotoalbum speichern können. Wir werden in dieser Dokumentation
+/home/httpd/test verwenden. Dieses Verzeichnis muss für den Webserver 
+lesbar sein. In diesem Falls verwenden wir die URL:  http://meinserver/test/
+
+Passen Sie bitte Ihre Kommandos/URLs entsprechend an.
+
+Zuerst erstellen Sie ein Verzeichnis und legen ein paar Bilder darin ab.
+Wir nennen das Verzeichnis: /home/httpd/test/Fotos
+
+Nun fügen wir ein paar Bilder mit den Namen 'IMG_001.jpg' bis 'IMG_004.jpg' hinzu.
+
+Für das einfache Beispiel, lassen Sie einfach album laufen:
+
+<code>% album /home/httpd/test/Fotos</code>
+
+Nun können Sie Ihr Album mit einem Webbrowser unter einer URL wie dieser betrachten:
+  http://myserver/test/Fotos
+
+ITEM: Untertitel hinzufügen
+
+Erstellen Sie eine Datei /home/httpd/test/Fotos/captions.txt mit dem folgenden 
+Inhalt (verwenden Sie die Tab-Taste wo ein "  [tab]  " angegeben ist)
+
+-- captions.txt ---------
+IMG_001.jpg  [tab]  Erster Bildname
+IMG_002.jpg  [tab]  Zweites Bild
+IMG_003.jpg  [tab]  Noch ein Bild  [tab]   mit Untertitel!
+IMG_004.jpg  [tab]  Letztes Bild   [tab]   mit einem weiteren Untertitel.
+-------------------------
+
+Und lassen Sie album erneut laufen:
+
+<code>% album /home/httpd/test/Fotos</code>
+
+Und Sie sollten die Untertiteländerung sehen.
+
+Nun erstellen Sie eine Datei mit Text: /home/httpd/test/Fotos/header.txt
+
+Und lassen album erneut laufen. Sie werden diesen Text nun in der Kopfzeile 
+der Seite sehen.
+
+ITEM: Fotos verstecken
+
+Es gibt einige Wege, um Fotos/Dateien/Verzeichnisse zu versteken, aber wir 
+werden die Untertitel-Datei verwenden. Versuchen Sie, ein Bild mit einem '#' in der captions.txt auszukommentieren:
+
+-- captions.txt ---------
+IMG_001.jpg  [tab]  Erster Bildname
+#IMG_002.jpg  [tab]  Zweites Bild
+IMG_003.jpg  [tab]  Noch ein Bild  [tab]   mit einem Untertitel!
+IMG_004.jpg  [tab]  Letztes Bild   [tab]   mit einem weiteren Untertitel.
+-------------------------
+
+Lassen Sie album erneut laufen, und Sie werden sehen, dass IMG_002.jpg 
+nun fehlt.
+Wenn wir dies bereits vor dem ersten Durchlauf von album gemacht hätten, wäre nie 
+ein verkleinertes Bild oder ein Vorschaubild erzeugt worden.  
+Wenn Sie möchte, können Sie diese mit -clean entfernen:
+
+<code>% album -clean /home/httpd/test/Fotos</code>
+
+ITEM: Ein Thema verwenden
+
+Wenn Sie die Themen korrekt installiert haben und sie sich in Ihrem theme_path, 
+sollten Sie in der Lage sein, ein Thema mit album zu verwenden:
+
+<code>% album -theme Blue /home/httpd/test/Fotos</code>
+
+Das Fotoalbum sollte nun das Blue-Thema verwende. Wenn es eine Menge 
+kaputter Bilder anzeigt, ist Ihr Thema-Pfad vermutlich nicht innerhalb
+des vom Webserver erreichbaren Dateibaums installiert, sehen Sie
+bitte in der Installationsdokumentation nach.
+
+Album speichert die Optionen, wenn Sie also album erneut aufrufen:
+
+<code>% album /home/httpd/test/Fotos</code>
+
+werden Sie immer noch das Blue-Thema verwenden.  Um ein Thema zu deaktivieren, verwenden Sie:
+
+<code>% album -no_theme /home/httpd/test/Fotos</code>
+
+ITEM: Mittlere Bilder
+
+Bilder mit voller Auflösung sind meist zu groß für ein Webalbum,
+also verwenden wir mittlere Bilder für die Bilderseiten:
+
+<code>% album -medium 33% /home/httpd/test/Fotos</code>
+
+Sie können die Bilder in voller Auflösung durch Klicken auf die mittleren Bilder erreichen oder:
+
+<code>% album -just_medium /home/httpd/test/Fotos</code>
+
+unterdrückt das Verlinken der hochaufgelösten Bilder (vorausgesetzt, 
+wir verwenden den -medium Paramter an irgendeiner Stelle).
+
+ITEM: Ein paar EXIF-Untertitel hinzufügen
+
+Nun fügen wir Blendeninformationen zu jedem Bild hinzu.
+
+<code>% album -exif "&lt;br&gt;Blende=%Aperture%" /home/httpd/test/Fotos</code>
+
+Dies wird die Blende nur zu Bildern hinzufügen, die über den 'Aperture' EXIF-Tag
+verfügen (der Teil zwischen den '%'-Zeichen). Wir fügen außerdem einen &lt;br&gt;
+hinzu, so dass die EXIF-Informationen in einer neuen Zeile angezeigt werden.
+
+Wir können weitere EXIF-Informationen hinzufügen:
+
+<code>% album -exif "&lt;br&gt;Brennweite: %FocalLength%" /home/httpd/test/Fotos</code>
+
+Weil album die vorherigen Optionen wieder gespeichert hat, werden nun sowohl
+Blende als auch Brennweite für alle Bilder mit Aperture- und FocalLength-Informationen
+angezeigt.  Nun entfernen wir die Blende:
+
+<code>% album -no_exif "&lt;br&gt;Blende=%Aperture%" /home/httpd/test/Fotos</code>
+
+Die '-no_exif' Option muss exakt auf die vorherige EXIF-Option zutreffen, anderenfalls
+wird sie ignoriert.  Sie können die Konfigurationsdatei, die album erstellt, auch
+einfach bearbeiten:
+  /home/httpd/test/Fotos/album.conf
+und den Eintrag dort entfernen.
+
+ITEM: Weitere Alben hinzufügen
+
+Angenommen, wir machen einen Ausflug nach Spanien. Wir machen ein paar Fotos
+und legen sie nach:
+  /home/httpd/test/Fotos/Spanien/
+
+Nun lassen wir album im Hauptverzeichnis laufen:
+
+<code>% album /home/httpd/test/Fotos</code>
+
+Dies wird die Fotos aus Spanien einbinden und die Bilder in Spanien/
+erzeugen, mit den gleichen Einstellungen/Themen usw...
+
+Jetzt machen wir noch einen Ausflug und erstellen:
+  /home/httpd/test/Fotos/Italien/
+
+Wir könnten album jetzt wieder im Hauptverzeichnis laufen lassen:
+
+<code>% album /home/httpd/test/Fotos</code>
+
+Aber das würde auch das Spanien-Verzeichnis neu durchgehen, obwohl es sich 
+nicht geändert hat. Album erstellt normalerweise keine HTML-Seiten oder 
+Vorschaubilder, wenn diese bereits existieren. Aber es ist trotzdem eine Zeitverschwendung, besonders, wenn die Alben größer werden.
+Daher können wir album sagen, einfach nur das neue Verzeichnis zu durchsuchen:
+
+<code>% album -add /home/httpd/test/Fotos/Italien</code>
+
+Dies erzeugt eine neue Startseite (in Fotos) und generiert das Italien-Album.
+
+ITEM: Translated by:
+
+Fridtjof Busse  <!-- fbusse gmx de -->
+</span>
