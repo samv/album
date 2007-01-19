@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '4.01';
+  my $VERSION=  '4.02';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -1608,7 +1608,7 @@ sub virgin_check {
 		unless $opt->{_read_conf} && keys %{$opt->{_read_conf}};
 	prterr($opt,"I'm going to do some simple installations for you.\n\n");	#LVL=100
 	
-	install_language($opt);	# Check if they can choose a language for install
+	install_language_attempt($opt);	# Check if they can choose a language for install
 
 	# Figure out where the conf is going to go.
 	my $conf = !$< ? '/etc' : $ENV{HOME};
@@ -1665,7 +1665,7 @@ sub virgin_check {
 			}
 		}
 
-		install_language($opt);	# Check if they can now choose a language
+		install_language_attempt($opt);	# Check if they can now choose a language
 	}
 	
 	print STDERR "--------------------------------------------------\n\n";
@@ -1750,7 +1750,7 @@ sub virgin_save {
 
 
 # If we've found languages, then see if they want to specify an install lang
-sub install_language {
+sub install_language_attempt {
 	my ($opt) = @_;
 
 	# Only ask this once.
@@ -1760,7 +1760,7 @@ sub install_language {
 	return unless $#{$opt->{languages}} == -1;
 
 	# Can we find any languages yet?
-	my @langs = list_languages($opt,'install_language', undef, 1);
+	my @langs = list_languages($opt,'install_language_attempt', undef, 1);
 	return unless @langs;
 
 	$opt->{_virgin}{set}{lang} = 1;
@@ -1776,7 +1776,7 @@ sub install_language {
 
 	return unless $lang;
 
-	get_language($opt, 'install_language', $lang);
+	get_language($opt, 'install_language_attempt', $lang);
 	virgin_save($opt,'lang',$lang) unless $lang eq 'en';
 }
 
@@ -2659,6 +2659,7 @@ TRANS_HEADER
 	my $ml = get_language_strings($opt);
 	foreach my $lvl ( sort {$a<=>$b} keys %$ml ) {
 		foreach my $line ( @{$ml->{$lvl}} ) {
+			next if $expect{$line->{line}};
 			$expect_tot++;
 			$expect{$line->{line}} = $line;
 			$expect_html++ if $line->{lvl}<=1;
