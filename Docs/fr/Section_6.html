@@ -14,7 +14,7 @@
 	<link rel='alternate' type='text/html' href='../nl' hreflang='nl' lang='nl' title='album documentation'>
 
 
-  <title>MarginalHacks album - Creating Themes
+  <title>MarginalHacks album - Création de thèmes
  - Documentation</title>
 
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
@@ -96,7 +96,7 @@
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
     A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
 
-    S&nbsp;i&nbsp;x&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;C&nbsp;r&nbsp;e&nbsp;a&nbsp;t&nbsp;i&nbsp;n&nbsp;g&nbsp; &nbsp;T&nbsp;h&nbsp;e&nbsp;m&nbsp;e&nbsp;s&nbsp;
+    S&nbsp;i&nbsp;x&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;C&nbsp;r&nbsp;�&nbsp;�&nbsp;a&nbsp;t&nbsp;i&nbsp;o&nbsp;n&nbsp; &nbsp;d&nbsp;e&nbsp; &nbsp;t&nbsp;h&nbsp;�&nbsp;�&nbsp;m&nbsp;e&nbsp;s&nbsp;
 <br>
 
   </font>
@@ -166,62 +166,62 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href='#Methods'><li>Methods</a>
- <a href='#Editing_current_theme_HTML'><li>Editing current theme HTML</a>
- <a href='#The_easy_way,_simmer_theme_from_graphics.'><li>The easy way, simmer_theme from graphics.</a>
- <a href='#From_scratch,_Theme_API'><li>From scratch, Theme API</a>
- <a href='#Submitting_Themes'><li>Submitting Themes</a>
- <a href='#Converting_v2.0_Themes_to_v3.0_Themes'><li>Converting v2.0 Themes to v3.0 Themes</a>
+<ol><a href='#Métodes'><li>Métodes</a>
+ <a href='#Editer_le_code_HTML_dun_thème_existant'><li>Editer le code HTML d'un thème existant</a>
+ <a href='#Le_moyen_facile_:_simmer_theme_pour_les_graphiques'><li>Le moyen facile : simmer_theme pour les graphiques</a>
+ <a href='#Partir_de_zéro_:_lAPI_des_thèmes'><li>Partir de zéro : l'API des thèmes</a>
+ <a href='#Soumettre_des_thèmes'><li>Soumettre des thèmes</a>
+ <a href='#Conversion_des_thèmes_v2.0_aux_thèmes_v3.0'><li>Conversion des thèmes v2.0 aux thèmes v3.0</a>
+ <a href='#Traduit_par:'><li>Traduit par:</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<b><a name='Methods'>1:</a>   Methods</b>
+<span lang="fr">
+<b><a name='Métodes'>1:</a>   Métodes</b>
 
-There are easy ways and complicated ways to create a custom theme,
-depending on what you want to be able to do.
+Il y a des moyens faciles et d'autres compliqués pour créer un thème sur
+mesure en fonction de ce que vous voulez faire.
 
-<b><a name='Editing_current_theme_HTML'>2:</a>   Editing current theme HTML</b>
+<b><a name='Editer_le_code_HTML_dun_thème_existant'>2:</a>   Editer le code HTML d'un thème existant</b>
 
-If you just want to slightly change the theme to match the output
-of your site, it might make sense to edit a current theme.
-In the theme directory there are two *.th files.  album.th is
-the template for album pages (the thumbnail pages) and image.th
-is the template for image pages (where you can see medium or full
-size images).  The files are very similar to HTML except for
-some embedded <: ePerl :> code.  Even if you don't know perl or
-ePerl you can still edit the HTML to make simple changes.
+Si vous voulez juste modifier légèrement un thème afin qu'il corresponde à
+l'environnement de votre site, il semble opportun d'éditer un thème existant.
+Dans le répertoire du thème, il y a deux fichiers avec l'extension
+th. album.th est le patron pour les pages de l'album (les pages des vignettes)
+et image.th est le patron pour les pages des images (où vous voyez les images
+moyennement réduites ou en pleine taille). Ces fichiers sont très similaire à
+du code HTML excepté quelques rajouts de code <: ePerl :>. Même si vous ne
+connaissez ni Perl ni ePerl, vous pouvez néanmoins éditer le code HTML pour y
+apporter des changements basiques.
 
-Good starting themes:
+Des thèmes pour bien démarrer :
 
-Any simmer_theme is going to be up to date and clean, such as "Blue" or
-"Maste."  If you only need 4 corner thumbnail borders then take a look
-at "Eddie Bauer."  If you want overlay/transparent borders, see FunLand.
+N'importe quel thème dans simmer_theme peut servir comme "Blue" ou "Maste". Si
+vous avez seulement besoin de 4 bordures aux coins de vos vignettes, alors
+jetez un oeil sur "Eddie Bauer". Si vous voulez des bordures transparentes ou
+qui se recouvrent, regardez "FunLand".
 
-If you want something demonstrating a minimal amount of code, try "simple"
-but be warned that I haven't touched the theme in a long time.
+Si vous voulez quelque chose avec un minimum de code, essayez "simple" mais
+attention, je n'ai pas mis à jour ce thème depuis un bon bout de temps.
 
-<b><a name='The_easy_way,_simmer_theme_from_graphics.'>3:</a>   The easy way, simmer_theme from graphics.</b>
+<b><a name='Le_moyen_facile_:_simmer_theme_pour_les_graphiques'>3:</a>   Le moyen facile : simmer_theme pour les graphiques</b>
 
-Most themes have the same basic form, show a bunch of thumbnails
-for directories and then for images, with a graphic border, line and
-background.  If this is what you want, but you want to create new
-graphics, then there is a tool that will build your themes for you.
+La plupart des thèmes ont un même format basique, montrent une série de
+vignettes pour des répertoires puis pour des images avec une bordure et une
+ligne graphiques ainsi qu'un fond d'écran. Si c'est ce que vous voulez mais
+que vous souhaitez créer de nouveaux graphiques, il y a un outil qui vous
+permettra de construire des thèmes.
 
-If you create a directory with the images and a CREDIT file as well
-as a Font or Style.css file, then simmer_theme will create theme for you.
+Si vous créez un répertoire avec des images et un fichier CREDIT ainsi q'un
+fichier Font ou Style.css, alors l'utilitaire simmer_theme vous permettra de
+réaliser des thèmes.
 
-Files:
-
+Fichiers :
 <b>Font/Style.css</b>
-This determines the fonts used by the theme.  The "Font" file is the
-older system, documented below.  Create a Style.css file and define
-styles for: body, title, main, credit and anything else you like.
-
-See FunLand for a simple example.
-
-Alternatively, use a font file.  An example Font file is:
+Ce fichier détermine les fontes utilisées par le thème. Le fichier "Font" est
+le plus ancien système. Par exemple :
 
 --------------------------------------------------
 $TITLE_FONT = "size='4' color='#ffffff' face='Times New Roman,Georgia,Times'";
@@ -230,175 +230,207 @@ $CREDIT_FONT = "size='-1' face='Verdana' color='#ffffff'";
 $BODY = "background='$PATH/bkgrnd.gif' link='#0099FF'">
 --------------------------------------------------
 
-<b>CREDIT</b>
-The credit file is two lines and is used for the theme index at MarginalHacks.
-If you're never submitting your theme to us, then you don't need this file.
-(But please do!)  If so, the two lines (and only two lines) are:
 
-1) A short description of the theme (keep it all on one line)
-2) Your name (can be inside a mailto: or href link)
+Sinon, créez le fichier Style.css, puis définissez des styles pour : le corps,
+le titre, la page principale, le crédit et toute autre chose que vous voulez.
+Regardez FunLand comme exemple simple.
+
+<b>CREDIT</b>
+Le fichier de crédit comporte deux lignes et est utilisé pour l'index des
+thèmes à MarginalHacks. Si vous ne nous soumettez jamais votre thème, alors
+vous n'avez pas besoin de ce fichier (mais faites-le s'il vous plaît !). En
+tout cas, les deux lignes (et seulement deux lignes) sont :
+
+1) une courte description du thème (à faire tenir sur une seule ligne),
+2) Votre nom (qui peut être à l'intérieur d'un mailto: ou d'un lien internet).
 
 <b>Null.gif</b>
-Each simmer theme needs a spacer image, this is a 1x1 transparent gif.
-You can just copy this from another simmer theme.
+Chaque thème créé par simmer a besoin d'une image "espace" c'est-à-dire une
+image au format gif transparent de dimensions 1x1. Vous pouvez simplement la
+copier depuis un autre thème créé par simmer.
 
-Optional image files:
+Fichiers d'images optionnels :
 
-<b>Bar Images</b>
-The bar is composed of Bar_L.gif, Bar_R.gif and Bar_M.gif in the middle.
-The middle is stretched.  If you need a middle piece that isn't stretched, use:
+<b>Images de la barre</b>
+La barre est composée de Bar_L.gif (à gauche), Bar_R.gif (à droite) et
+Bar_M.gif au milieu. L'image de la barre du milieu est étirée. Si vous avez
+besoin d'une barre centrale qui ne soit pas étirée, utilisez :
   Bar_L.gif, Bar_ML.gif, Bar_M.gif, Bar_MR.gif, Bar_R.gif
-And then the Bar_ML.gif and Bar_MR.gif will be stretched.  (See the
-Craftsman theme for an example of this).
+Dans ce cas, Bar_ML.gif et Bar_MR.gif ne seront pas étirées (voir le thème
+"Craftsman" pour un exemple de cette technique).
 
 <b>Locked.gif</b>
-A lock image for any directories that have .htaccess
+Une image de cadenas pour tous les répertoires ayant un fichier nommé
+.htaccess.
 
-<b>Background image</b>
-If you want a background image, specify it in the Font file in the $BODY
-section, as in the example above.  The $PATH variable will be replaced
-with the path to the theme files:
+<b>Images de fond</b>
+Si vous voulez une image en fond d'écran, spécifiez-la dans le fichier Font
+dans la section $BODY comme dans l'exemple ci-dessus. La valeur de la variable
+$PATH sera remplacée par le chemin d'accès aux fichiers du thème.
 
 <b>More.gif</b>
-When an album page has sub-albums to list, it first shows the 'More.gif'
-image.
+Quand une page d'album comporte plusieurs sous-albums à lister, l'image
+'More.gif' est affichée en premier.
 
 <b>Next.gif, Prev.gif, Back.gif</b>
-For the next and previous arrows and the back button
+Ces images sont respectivement utilisées pour les boutons des flèches arrière
+et avant et pour le bouton pour remonter dans la hiérarchie des albums.
 
 <b>Icon.gif</b>
-Shown at the top left by the parent albums, this is often just the text "Photos"
+Cette image, affichée dans le coin supérieur gauche des albums parents, est
+souvent le texte "Photos" seulement.
 
-<b>Border Images</b>
-There are many ways to slice up a border, from simple to complex, depending on
-the complexity of the border and how much you want to be able to stretch it:
+<b>Images des bordures</b>
+Il y a plusieurs méthodes pour découper une bordure, de la plus simple à la
+plus complexe, l'ensemble dépendant de la complexité de la bordure et du
+nombre de sections que vous voulez pouvoir étirer :
 
-  <b>4 pieces</b>  Uses Bord_L.gif, Bord_R.gif, Bord_T.gif, Bord_B.gif
-    (The corners go with the left and right images)
-    4 piece borders usually don't stretch well so they don't work well on
-    image_pages.  Generally you can cut the corners out of the left and
-    right images to make:
+  <b>4 morceaux</b>  Utilisez  Bord_L.gif, Bord_R.gif, Bord_T.gif, Bord_B.gif
+    (les coins vont avec les images droites et gauches)
+    Les bordures en 4 morceaux ne s'étirent en général pas très bien et de
+    fait ne fonctionnent pas bien sur les pages d'images. En général, vous
+    pouvez couper les coins des images droites et gauches pour faire :
 
-  <b>8 pieces</b>  Also includes Bord_TL.gif, Bord_TR.gif, Bord_BL.gif, Bord_BR.gif
-    8 piece borders allow you to stretch to handle most sized images
+  <b>8 morceaux</b>  Incluez aussi Bord_TL.gif, Bord_TR.gif, Bord_BL.gif,
+    Bord_BR.gif
+    Les bordures en 8 morceaux vous permettez généralement d'étirer et de
+    gérer la plupart des images recadrées.
 
-  <b>12 pieces</b>  Also includes Bord_LT.gif, Bord_RT.gif, Bord_LB.gif, Bord_RB.gif
-    12 pieces allow stretching of borders that have more complex corners (such
-    as Dominatrix6 or Ivy)
+  <b>12 morceaux</b>  Incluez aussi Bord_LT.gif, Bord_RT.gif, Bord_LB.gif,
+    Bord_RB.gif
+    12 morceaux permettent d'étirer des bordures ayant des coins plus
+    complexes comme par exemple les thèmes Dominatrix ou Ivy.
 
-  <b>Overlay Borders</b>  Can use transparent images that can be partially
-    overlaying your thumbnail.  See below.
+  <b>Bordures chevauchantes</b>  Peuvent utiliser des images transparentes qui
+  peuvent partiellement chevaucher vos vignettes. Voir ci-dessous.
 
-Here's how the normal border pieces are laid out:
+Voici comment des morceaux pour des bordures normales sont disposés :
 
-   12 piece borders
-      TL  T  TR          8 piece borders       4 piece borders
+ bordure à 12 morceaux
+      TL  T  TR      bordure à 8 morceaux    bordure à 4 morceaux
       LT     RT            TL  T  TR            TTTTTTT
       L  IMG  R            L  IMG  R            L IMG R
       LB     RB            BL  B  BR            BBBBBBB
       BL  B  BR
 
-Note that every row of images must be the same height, though the
-widths do <b>not</b> have to line up.  (i.e., height TL = height T = height TR)
-(This is not true about overlay borders!)
+Notez que chaque rangée d'images doit avoir la même hauteur, alors que ce
+<b>n'est pas</b> le cas pour la largeur (c'est-à-dire hauteur TL = hauteur T =
+hauteur TR).
+Ceci n'est pas totalement vrai pour les bordures qui se chevauchent !
 
-Once you've created these files, you can run the simmer_theme tool
-(an optional tool download at MarginalHacks.com) and your theme will
-then be ready to use!
+Une fois que vous avez créé ces fichiers, vous pouvez lancer l'utilitaire
+simmer_theme (un outil téléchargeable depuis MarginalHacks.com) et votre thème
+deviendra prêt à être utilisé !
 
-If you need different borders for the image pages, then use the same
-filenames prefixed by 'I' - such as IBord_LT.gif, IBord_RT.gif,...
+Si vous avez besoin de bordures différentes pour les pages d'images, alors
+utilisez les mêmes noms de fichiers maix en les préfixant par 'I' comme par
+exemple IBord_LT.gif, IBord_RT.gif,...
 
-Overlay borders allow for really fantastic effects with image borders.
-Currently there's no support for different overlay borders for images.
+Les bordures chevauchantes autorisent des effets réellement fantastiques avec
+les bordures des images.  Actuellement, il n'y a pas de support pour des
+bordures chevauchantes différentes pour les images.
 
-For using Overlay borders, create images:
+Pour utiliser les bordures chevauchantes, créez les images :
       Over_TL.png   Over_T.png   Over_TR.png
       Over_L.png                 Over_R.png
       Over_BL.png   Over_B.png   Over_BR.png
 
-Then figure out how many pixels of the borders are padding (outside photo)
-Then put those values in files: Over_T.pad Over_R.pad Over_B.pad Over_L.pad
-See "Themes/FunLand" for a simple example
+Puis, déterminez combien de pixels des bordures vont déborder (en dehors de la
+photo). Mettez ces valeurs dans des fichiers: Over_T.pad Over_R.pad Over_B.pad
+Over_L.pad.
+Voir le thème "FunLand" pour un exemple simple.
 
-<b>Multi-lingual Images</b>
-If your images have text, you can translate them into other languages
-so that albums can be generated in other languages.  For example, you
-can create a Dutch "More.gif" image and put it in 'lang/nl/More.gif'
-in the theme (nl is the language code for Dutch).
-When the user runs album in Dutch (album -lang nl) then the theme
-will use the Dutch image if found.  Themes/Blue has a simple example.
-The currently "translated" images are:
+<b>Images polyglottes</b>
+Si vos images comportent du texte, vous pouvez les traduire dans d'autres
+langues et, ainsi, vos albums pourront être générés dans d'autres
+langages. Par exemple, vous pouvez créer une image "More.gif" hollandaise et
+mettre ce fichier dans le répertoire 'lang/nl' de votre thème (nl est le code
+de langage pour le hollandais).
+Quand l'utilisateur lancera album en hollandais (album -lang nl) alors le
+thème utilisera les images hollandaises s'il les trouve. Le thème "Blue"
+comporte un tel exemple simple. Les images actuellement traduites sont :
   More, Back, Next, Prev and Icon
 
-You can create an HTML table that shows the translations immediately
-available to themes with -list_html_trans:
+Vous pouvez créer une page HTML qui donne la liste des traductions
+immédiatement disponibles dans les thèmes avec l'option -list_html_trans :
 
 <code>% album -list_html_trans > trans.html</code>
 
-Then view trans.html in a browser.  Unfortunately different languages
-have different charsets, and an HTML page can only have one.  The
-output is in utf-8, but you can edit the "charset=utf-8" to properly
-view language characters in different charsets (such as hebrew).
+Puis, visualisez le fichier trans.html dans un navigateur. Malheureusement,
+plusieurs langages ont des tables d'encodage des caractères différents et une
+page HTML n'en dispose que d'une seule. La table d'encodage est utf-u mais
+vous pouvez éditer la ligne "charset=utf-8" pour visualiser correctement les
+différents caractères utilisés dans les langages en fonction des différentes
+tables d'encodage (comme par exemple l'hébreu).
 
-If you need more words translated for themes, let me know, and if you
-create any new language images for a theme, please send them to me!
+Si vous avez besoin de plus de mots traduits pour les thèmes, faites-le moi
+savoir et si vous créez des images dans une nouvelle langue pour un thème,
+envoyez-les moi s'il vous plaît !
 
-<b><a name='From_scratch,_Theme_API'>4:</a>   From scratch, Theme API</b>
 
-This is a much heavier job - you need to have a very clear idea of
-how you want album to place the images on your page.  It might be
-a good idea to start with modifying existing themes first to get
-an idea of what most themes do.  Also look at existing themes
-for code examples (see suggestions above).
+<b><a name='Partir_de_zéro_:_lAPI_des_thèmes'>4:</a>   Partir de zéro : l'API des thèmes</b>
 
-Themes are directories that contain at the minimum an 'album.th' file.
-This is the album page theme template.  Often they also contain an 'image.th'
-which is the image theme template, and any graphics/css used by the theme.
-Album pages contain thumbnails and image pages show full/medium sized images.
+Ceci est une autre paire de manches : vous avez besoin d'avoir une idée
+vraiment très claire de la façon dont vous voulez qu'album positionne vos
+images sur votre page. Ce serait peut-être une bonne idée de commencer en
+premier par modifier des thèmes existants afin de cerner ce que la plupart des
+thèmes fait. Regardez également les thèmes existants pour des exemples de code
+(voir les suggestions ci-dessus).
 
-The .th files are ePerl, which is perl embedded inside of HTML.  They
-end up looking a great deal like the actual album and image HTML themselves.
+Les thèmes sont des répertoires qui contiennent au minimum un fichier
+'album.th'. Ceci est le patron du thème pour les pages de l'album. Souvent,
+les répertoires contiennent aussi un fichier 'image.th' qui est un patron du
+thème pour les images ainsi que des fichiers graphiques / css utilisés par le
+thème. Les pages de l'album contiennent les vignettes et les pages des images
+montrent les images pleine page ou recadrées.
 
-To write a theme, you'll need to understand the ePerl syntax.  You can
-find more information from the actual ePerl tool available at MarginalHacks
-(though this tool is not needed to use themes in album).
+Les fichiers .th sont en ePerl qui est du perl encapsulé à l'intérieur
+d'HTML. Ils finissent par ressembler à ce que sera l'album et les images HTML
+eux-mêmes.
 
-There are a plethora of support routines available, but often only
-a fraction of these are necessary - it may help to look at other themes
-to see how they are generally constructed.
+Pour écrire un thème, vous aurez besoin de connaître la syntaxe ePerl. Vous
+pouvez trouver plus d'information sur l'outil ePerl en général à MarginalHacks
+(bien que cet outil ne soit pas nécessaire pour l'utilisation des thèmes dans album).
 
-Function table:
+Il y a une pléthore de routines de support disponibles mais souvent une
+fraction d'entre elles seulement est nécessaire (cela peut aider de regarder
+les autres thèmes afin de voir comment ils sont construits en général).
 
-<b>Required Functions</b>
-Meta()                    Must be called in the <head> section of HTML
-Credit()                  Gives credit ('this album created by..')
-                          Must be called in the <body> section of HTML
-Body_Tag()                Called inside the actual <body> tag.
+Table des fonctions:
 
-<b>Paths and Options</b>
-Option($name)             Get the value of an option/configuration setting
-Version()                 Return the album version
-Version_Num()             Return the album version as just a number (i.e. "3.14")
-Path($type)               Returns path info for $type of:
-  album_name                The name of this album
-  dir                       Current working album directory
-  album_file                Full path to the album index.html
-  album_path                The path of parent directories
-  theme                     Full path to the theme directory
-  img_theme                 Full path to the theme directory from image pages
-  page_post_url             The ".html" to add onto image pages
-  parent_albums             Array of parent albums (album_path split up)
-Image_Page()              1 if we're generating an image page, 0 for album page.
-Page_Type()               Either 'image_page' or 'album_page'
-Theme_Path()              The filesystem path to the theme files
-Theme_URL()               The URL path to the theme files
+<b>Fonctions nécessaires</b>
+Meta()                    Doit être appelée depuis la section <head> du HTML
+Credit()                  Affiche le crédit ('cet album a été créé par..')
+                          Doit être appelée depuis la section <body> du HTML
+Body_Tag()                Appelée depuis l'intérieur du tag <body>.
 
-<b>Header and Footer</b>
-isHeader(), pHeader()     Test for and print the header
-isFooter(), pFooter()     Same for the footer
+<b>Chemins et options</b>
+Option($name)             Retourne la valeur d'une option / configuration
+Version()                 Retourne la version d'album
+Version_Num()             Retourne le numéro de la version d'album en chiffres
+                            uniquement (c'est-à-dire. "3.14")
+Path($type)               Retourne l'information du chemin pour le $type de :
+  album_name                Nom de l'album
+  dir                       Répertoire courant de travail d'album
+  album_file                Chemin complet au fichier d'album index.html
+  album_path                Chemin des répertoires parent
+  theme                     Chemin complet du répertoire du thème
+  img_theme                 Chemin complet du répertoire du thème depuis les
+                              pages des images
+  page_post_url             Le ".html" à ajouter sur les pages des images
+  parent_albums             Tableau des albums parents (segmentation par album_path)
+Image_Page()              1 si on est en train de générer une page d'image, 0
+                            si c'est une page de vignettes
+Page_Type()               Soit 'image_page' ou 'album_page'
+Theme_Path()              Le chemin d'accès (via le système de fichiers) aux fichiers du thème
+Theme_URL()               Le chemin d'accès (via une URL) aux fichiers du thème
 
-Generally you loop through the images and directories using local variables:
+<b>En-tête et pied-de-page</b>
+isHeader(), pHeader()     Test pour et afficher l'en-tête
+isFooter(), pFooter()     La même chose pour le pied-de-page
+
+En général, vous bouclez à travers les images et les répertoires en utilisant
+des variables locales :
 
   my $image = First('pics');
   while ($image) {
@@ -406,140 +438,171 @@ Generally you loop through the images and directories using local variables:
     $image = Next($image);
   }
 
-This will print the name of each image.  Our object types are either 'pics'
-for images or 'dirs' for the child directories.  Here are the object functions:
+Ceci affichera le nom de chaque image. Nos types d'objets sont soit 'pics'
+pour les images soit 'dirs' pour les répertoires-enfants. Ici se trouvent les
+fonctions relatives aux objets :
 
-<b>Objects</b> (type is either 'pics' (default) or 'dirs')
-First($type)             Get the first image or sub-album object.
-Last($type)              Last object
-Next($obj)               Given an object, return the next object
-Next($obj,1)             Same, loop past end to beginning.
-Prev($obj), Prev($obj,1)  Similar to Next()
+<b>Objets</b> (le type est soit 'pics' (défaut) soit 'dirs')
+First($type)             Renvoie comme objet la première image ou le premier sous-album.
+Last($type)              Renvoie le dernier objet
+Next($obj)               Etant donné un objet, renvoie l'objet suivant
+Next($obj,1)             La même chose mais retourne au début une fois la fin atteinte
+Prev($obj), Prev($obj,1) Similaire à Next()
 
-num('pics') or just num() Total number of images in this album
-num('dirs')               Total number of children/sub-albums
-Also:
-num('parent_albums')      Total number of parents leading up to this album.
+num('pics') ou juste num() Nombre total d'images de cet album
+num('dirs')                Nombre total de sous-albums
+Egalement:
+num('parent_albums')       Nombre total d'albums parents conduisant à cet album
 
-Object lookup:
+Consultation d'objet :
 get_obj($num, $type, $loop)
-                          Finds object by number ('pics' or 'dirs').
-                          If $loop is set than the count will wrap around.
+                          Trouve un objet à partir de son numéro (type 'pics' ou 'dirs').
+                          Si la variable $loop est positionnée alors le
+			  compteur rebouclera au début lors de la recherche
 
-<b>Object Properties</b>
-Each object (image or child albums) has properties.
-Some properties are accessed by a single field:
+<b>Propriétés des objets</b>
+Chaque objet (image ou sous-album) possède des propriétés.
+L'accès à certaines propriétés se fait par un simple champ :
 
-Get($obj,$field)            Get a single field of an object
+Get($obj,$field)            Retourne un simple champ pour un objet donné
 
-Field                     Description
+Champ                     Description
 -----                     ----------
-type                      What type of object?  Either 'pics' or 'dirs'
-is_movie                  Boolean: is this a movie?
-name                      Name (cleaned and optionally from captions)
-cap                       Image caption
-capfile                   Optional caption file
-alt                       Alt tag 
-num_pics                  [directories only, -dir_thumbs] Num of pics in directory
-num_dirs                  [directories only, -dir_thumbs] Num of dirs in directory
+type                      Quel type d'objet ? Soit 'pics' soit 'dirs'
+is_movie                  Booléen: est-ce que c'est un film ?
+name                      Nom (nettoyé et optionnel pour les légendes)
+cap                       Légende de l'image
+capfile                   Fichier optionnel des légendes
+alt                       Etiquette (tag) alt
+num_pics                  [répertoires seulement, -dir_thumbs] Nombre d'images
+			    dans le répertoire
+num_dirs                  [répertoires seulement, -dir_thumbs] Nombre de
+			    sous-répertoire dans le répertoire
 
-Some properties are accessed by a field and subfield.  For example,
-each image has information for different sizes:  full, medium and thumb
-(though 'medium' is optional).
+L'accès à des propriétés se fait via un champ et un sous-champ. Par exemple,
+chaque image comporte une information sur ses différentes tailles : plein
+écran, moyenne et vignette (bien que la taille moyenne soit optionnelle).
 
-Get($obj,$size,$field)      Get a property for a given size
+Get($obj,$size,$field)      Retourne la propriété de l'image pour une taille donnéee
 
-Size          Field       Description
-----          -----       ----------
-$size         x           Width
-$size         y           Height
-$size         file        Filename (without path)
-$size         path        Filename (full path)
-$size         filesize    Filesize in bytes
-full          tag         The tag (either 'image' or 'embed') - only for 'full'
+Taille        Champ       Description
+------        -----       ----------
+$size         x           Largeur
+$size         y           Hauteur
+$size         file        Nom du fichier (sans le chemin)
+$size         path        Nom du fichier (chemin complete)
+$size         filesize    Taille du fichier en octets
+full          tag         L'étiquette (tag) (soit 'image' soit 'embed') -
+			    seulement pour 'full'
 
-We also have URL information which is access according to the
-page it's coming 'from' and the image/page it's pointing 'to':
+Il y a aussi des informations relatives aux URL dont l'accès se fait en
+fonction de la page d'où on vient ('from' / depuis) et l'image ou la page vers lequel
+on va ('to' / vers) :
 
-Get($obj,'URL',$from,$to)   Get a URL for an object from -> to
-Get($obj,'href',$from,$to)  Same but wraps it in an 'href' string.
-Get($obj,'link',$from,$to)  Same but wraps the object name inside the href link.
+Get($obj,'URL',$from,$to)   Renvoie un URL pour un objet 'depuis -> 'vers
+Get($obj,'href',$from,$to)  Idem mais utilise une chaîne de caractères avec 'href'
+Get($obj,'link',$from,$to)  Idem mais met le nom de l'objet à l'intérieur d'un
+			      lien href
 
-From         To           Description
-----         --           ----------
-album_page   image        Image_URL from album_page
-album_page   thumb        Thumbnail from album_page
-image_page   image        Image_URL from image_page
-image_page   image_page   This image page from another image page
-image_page   image_src    The &lt;img src&gt; URL for the image page
-image_page   thumb        Thumbnail from image_page
+Depuis       Vers         Description
+------       ----         ----------
+album_page   image        Image_URL vers album_page
+album_page   thumb        Thumbnail vers album_page
+image_page   image        Image_URL vers image_page
+image_page   image_page   Cette page d'image vers une autre page d'image
+image_page   image_src    L'URL d'&lt;img src&gt; pour la page d'image
+image_page   thumb        Page des vignettes depuis la page d'image
 
-Directory objects also have:
+Les objets répertoires ont aussi :
 
-From         To           Description
-----         --           ----------
-album_page   dir          URL to the directory from it's parent album page
+Depuis       Vers         Description
+------       ----         ----------
+album_page   dir          URL vers le répertoire depuis la page de son album-parent
 
-<b>Parent Albums</b>
-Parent_Album($num)        Get a parent album string (including the href)
-Parent_Albums()           Return a list of the parent albums strings (including href)
-Parent_Album($str)        A join($str) call of Parent_Albums()
-Back()                    The URL to go back or up one page.
+
+<b>Albums parent</b>
+Parent_Album($num)        Renvoie en chaîne de caractères le nom de l'album
+			    parent (incluant le href)
+Parent_Albums()           Retourne une liste de chaînes de caractères des
+			    albums parents (incluant le href)
+Parent_Album($str)        Crée la chaîne de caractères $str à partir de
+			    l'appel  à la fonction Parent_Albums()
+Back()                    L'URL pour revenir en arrière ou remonter d'une page
 
 <b>Images</b>
-This_Image                The image object for an image page
-Image($img,$type)         The &lt;img&gt; tags for type of medium,full,thumb
-Image($num,$type)         Same, but by image number
-Name($img)                The clean or captioned name for an image
-Caption($img)             The caption for an image
+This_Image                L'objet image pour une page d'image
+Image($img,$type)         Les étiquettes d'&lt;img&gt; pour les types 'medium',
+			    'full' et 'thumb'
+Image($num,$type)         Idem mais avec le numéro de l'image
+Name($img)                Le nom nettoyé ou légendé pour une image
+Caption($img)             La légende pour une image
 
-<b>Child Albums</b>
-Name($alb)
-Caption($img)             The caption for an image
+<b>Albums enfants</b>
+Name($alb)		  Le nom du sous-album
+Caption($img)             La légende pour une image
 
-<b>Convenience Routines</b>
-Pretty($str,$html,$lines) Pretty formats a name.
-    If $html then HTML is allowed (i.e., use 0 for <title> and the like)
-    Currently just puts prefix dates in a smaller font (i.e. '2004-12-03.Folder')
-    If $lines then multilines are allowed
-    Currently just follows dates with a 'br' line break.
-New_Row($obj,$cols,$off)  Should we start a new row after this object?
-                          Use $off if the first object is offset from 1
+
+
+<b>Quelques routines utiles</b>
+Pretty($str,$html,$lines) Formate un nom.
+    Si la variable $html est définie alors le code HTML est autorisé
+    (c'est-à-dire utilise 0 pour <title> et associés). Actuellement, préfixe
+    seulement avec la date dans une taille de caractères plus petite
+    (c'est-à-dire '2004-12-03.Folder').
+    Si la variable $line est définie alors le multiligne est
+    autorisé. Actuellement, suis seulement la date avec un retour à la ligne 'br'.
+New_Row($obj,$cols,$off)  Devons-nous commencer une nouvelle ligne après cet
+			  objet ?
+			  Utiliser la variable $off si l'offset du premier
+			  objet démarre à partir de 1
 Image_Array($src,$x,$y,$also,$alt)
-                          Returns an &lt;img&gt; tag given $src, $x,...
+                          Retourne un tag HTML &lt;img&gt; à partir de $src, $x,...
 Image_Ref($ref,$also,$alt)
-                          Like Image_Array, but $ref can be a hash of
-                          Image_Arrays keyed by language ('_' is default).
-                          album picks the Image_Array by what languages are set.
+			  Identique à Image_Array, mais la variable $ref peut
+			  être une table de hachage de Image_Arrays indexée par
+			  le langage (par défaut, '_').
+			  album choisit l'Image_Array en fonction de la
+			  définition des langages.
 Border($img,$type,$href,@border)
 Border($str,$x,$y,@border)
-                          Create the full bordered image.  See 'Borders' for
+                          Crée une image entière entourée de bordures. Voir
+			  'Bordures' pour de plus amples détails.
 
 
-If you're creating a theme from scratch, consider adding support for -slideshow.
-The easiest way to do this is to cut/paste the "slideshow" code out of an
-existing theme.
+Si vous créez un thème à partir de zéro, considérez l'ajout du support pour
+l'option -slideshow. Le moyen le plus facile de réaliser cette opération est
+de copier / coller le code "slideshow" d'un thème existant.
 
-<b><a name='Submitting_Themes'>5:</a>   Submitting Themes</b>
 
-Have a custom theme?  I'd love to see it, even if it's totally site-specific.
+<b><a name='Soumettre_des_thèmes'>5:</a>   Soumettre des thèmes</b>
 
-If you have a new theme you'd like to offer the public, feel free to send
-it to me and/or a URL where I can see how it looks.  Be sure to set the CREDIT
-file properly and let me know if you are donating it to MarginalHacks for
-everyone to use or if you want it under a specific license.
+Vous avez personnalisé un thème ? Je serais ravi de le voir même s'il est
+totalement spécifique à votre site internet.
 
-<b><a name='Converting_v2.0_Themes_to_v3.0_Themes'>6:</a>   Converting v2.0 Themes to v3.0 Themes</b>
+si vous avez un nouveau thème que vous souhaiteriez rendre publique,
+envoyez-le moi ou envoyez une adresse URL où je puisse le voir. N'oubliez pas
+de mettre le fichier CREDIT à jour et faites-moi savoir si vous donnez ce
+thème à MarginalHacks pour une utilisation libre ou si vous souhaitez le
+mettre sous une license particulière.
 
-album v2.0 had a theme interface which has been rewritten.  Most 2.0 themes
-(especially those that don't use many of the global variables) will still
-work, but the interface is deprecated and may disappear in the near future.
 
-It's not difficult to convert from v2.0 to v3.0 themes.
 
-The v2.0 themes used global variables for many things.  These are now
-deprecated  In v3.0 you should keep track of images and directories in
-variables and use the 'iterators' that are supplied, for example:
+
+<b><a name='Conversion_des_thèmes_v2.0_aux_thèmes_v3.0'>6:</a>   Conversion des thèmes v2.0 aux thèmes v3.0</b>
+
+La version v2.0 d'album a introduit une interface de thèmes qui a été réécrite
+dans la version v3.0 d'album. La plupart des thèmes de la version 2.0 (plus
+spécialement ceux qui n'utilisent pas la plupart des variables globales)
+fonctionneront toujours mais l'interface est obsolète et pourrait disparaître
+dans un futur proche.
+
+La conversion des thèmes de la version 2.0 à la version 3.0 n'est pas bien
+difficile.
+
+Les thèmes de la version 2.0 utilisent des variables globales pour tout un tas
+de choses. Celles-ci sont maintenant obsolètes. Dans la version 3.0, vous
+devez conserver une trace des images et des répertoires dans des variables et
+utiliser des 'itérateurs' qui sont fournis. Par exemple :
 
   my $image = First('pics');
   while ($image) {
@@ -547,28 +610,32 @@ variables and use the 'iterators' that are supplied, for example:
     $image = Next($image);
   }
 
-Will loop through all the images and print their names.
-The chart below shows you how to rewrite the old style calls which
-used a global variable with the new style which uses a local variable,
-but to use these calls you need to rewrite your loops as above.
+Ceci parcourra toutes les images et affichera leur nom.
+Le tableau ci-dessous vous montre comment réécrire des appels codés avec
+l'ancien style utilisant une variable globale en des appels codés avec le
+nouveau style qui utilise une variable locale. Cependant pour utiliser ces
+appels, vous devez modifier vos boucles comme ci-dessus.
 
-Here is a conversion chart for helping convert v2.0 themes to v3.0:
+Voici une tableau de conversion pour aider au passage des thèmes de la version
+2.0 à la version 3.0 :
 
-# Global vars shouldn't be used
-# ALL DEPRECATED - See new local variable loop methods above
-$PARENT_ALBUM_CNT             Rewrite with: Parent_Album($num) and Parent_Albums($join)
-$CHILD_ALBUM_CNT              Rewrite with: my $dir = First('dirs');  $dir=Next($dir);
-$IMAGE_CNT                    Rewrite with: my $img = First('pics');  $pics=Next($pics);
-@PARENT_ALBUMS                Can instead use: @{Path('parent_albums')}
+# Les variables globales ne doivent plus être utilisées
+# OBSOLETE - Voir les nouvelles méthodes d'itérations avec variables locales
+# ci-dessus
+$PARENT_ALBUM_CNT             Réécrire avec : Parent_Album($num) et Parent_Albums($join)
+$CHILD_ALBUM_CNT              Réécrire avec : my $dir = First('dirs');  $dir=Next($dir);
+$IMAGE_CNT                    Réécrire avec : my $img = First('pics');  $pics=Next($pics);
+@PARENT_ALBUMS                Utiliser à la place : @{Path('parent_albums')}
 @CHILD_ALBUMS, @CHILD_ALBUM_NAMES, @CHILD_ALBUM_URLS, ...
 
-# Old global variable modifiers:
-# ALL DEPRECATED - See new local variable loop methods above
+# Anciennes méthodes modifiant les variables globales
+# OBSOLETE - Voir les nouvelles méthodes d'itérations avec variables locales
+# ci-dessus
 Next_Image(), Images_Left(), Image_Cnt(), Image_Prev(), Image_Next()
 Set_Image_Prev(), Set_Image_Next(), Set_Image_This()
 Next_Child_Album(), Child_Album_Cnt(), Child_Albums_Left()
 
-# Paths and stuff
+# chemins et autres
 pAlbum_Name()                 Path('album_name')
 Album_Filename()              Path('album_file')
 pFile($file)                  print read_file($file)
@@ -576,14 +643,14 @@ Get_Opt($option)              Option($option)
 Index()                       Option('index')
 pParent_Album($str)           print Parent_Album($str)
 
-# Parent Albums
-Parent_Albums_Left            Deprecated, see '$PARENT_ALBUM_CNT' above
-Parent_Album_Cnt              Deprecated, see '$PARENT_ALBUM_CNT' above
-Next_Parent_Album             Deprecated, see '$PARENT_ALBUM_CNT' above
+# Albums parents
+Parent_Albums_Left            Obsolète, voir '$PARENT_ALBUM_CNT' ci-dessus
+Parent_Album_Cnt              Obsolète, voir '$PARENT_ALBUM_CNT' ci-dessus
+Next_Parent_Album             Obsolète, voir '$PARENT_ALBUM_CNT' ci-dessus
 pJoin_Parent_Albums           print Parent_Albums(\@_)
 
-# Images, using variable '$img'
-pImage()                      Use $img instead and:
+# Images, utilisant la variable '$img'
+pImage()                      Utiliser $img à la place et :
                               print Get($img,'href','image');
                               print Get($img,'thumb') if Get($img,'thumb');
                               print Name($img), "&lt;/a&gt;";
@@ -605,7 +672,7 @@ Image_Tag()                   Get($img,'full','tag')
 Image_URL()                   Get($img,'URL','image')
 Image_Page_URL()              Get($img,'URL','image_page','image_page') || Back()
 
-# Child album routines, using variable '$alb'
+# Routines pour les albums enfant utilisant la variable '$alb'
 pChild_Album($nobr)           print Get($alb,'href','dir');
                               my $name = Name($alb);
                               $name =~ s/&lt;br&gt;//g if $nobr;
@@ -615,9 +682,14 @@ pChild_Album_Caption()        print Child_Album_Caption($alb)
 Child_Album_URL()             Get($alb,'URL','dir')
 Child_Album_Name()            Name($alb)
 
-# Unchanged
+# Inchangé
 Meta()                        Meta()
 Credit()                      Credit()
+
+<b><a name='Traduit_par:'>7:</a>   Traduit par:</b>
+
+Jean-Marc [jean-marc.bouche AT 9online.fr]
+</span>
 
 </pre>
 <p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>

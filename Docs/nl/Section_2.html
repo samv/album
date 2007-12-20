@@ -14,7 +14,7 @@
 	<meta http-equiv='Content-Language' content='nl'>
 
 
-  <title>MarginalHacks album - MINI HOW-TO
+  <title>MarginalHacks album - <html> 
  - Documentation</title>
 
   <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
@@ -96,7 +96,7 @@
   <font size=+2 face='lucida, helvetica' color=#ccccc0>
     A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
 
-    T&nbsp;w&nbsp;o&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;M&nbsp;I&nbsp;N&nbsp;I&nbsp; &nbsp;H&nbsp;O&nbsp;W&nbsp;-&nbsp;T&nbsp;O&nbsp;
+    T&nbsp;w&nbsp;o&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;<&nbsp;h&nbsp;t&nbsp;m&nbsp;l&nbsp;>&nbsp; &nbsp;
 <br>
 
   </font>
@@ -166,197 +166,179 @@
 
 <p><hr><p>
 <a href='.'>Table Of Contents</a>
-<ol><a href='#Eenvouding_album'><li>Eenvouding album</a>
- <a href='#Bijschriften_toevoegen'><li>Bijschriften toevoegen</a>
- <a href='#Fotos_verbergen'><li>Foto's verbergen</a>
- <a href='#Een_thema_gebruiken'><li>Een thema gebruiken</a>
- <a href='#Tussenformaat_plaatjes'><li>Tussenformaat plaatjes</a>
- <a href='#EXIF-bijschriften_toevoegen'><li>EXIF-bijschriften toevoegen</a>
- <a href='#Albums_toevoegen'><li>Albums toevoegen</a>
+<ol><a href='#Simpel_album'><li>Simpel album</a>
+ <a href='#Tekstinhoud_toevoegen'><li>Tekstinhoud toevoegen</a>
+ <a href='#Foto&#39;s_verbergen'><li>Foto&#39;s verbergen</a>
+ <a href='#Wat_EXIF_tekstinhouden_toevoegen'><li>Wat EXIF tekstinhouden toevoegen</a>
  <a href='#Vertaald_door:'><li>Vertaald door:</a>
 </ol><p><hr><p>
 
 
 <pre>
 
-<span lang="nl">
-<b><a name='Eenvouding_album'>1:</a>   Eenvouding album</b>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head>
 
-Er van uitgaand dat je album hebt geinstalleerd, kunnen we een paar 
-eenvoudige gevallen bekijken. Als je hier fouten tegenkomt of problemen 
-hebt, kijk dan in de installatiehandleiding.
+<pre>
+MINI HOW-TO
 
-Je hebt een webmap nodig om thema's en je fotoalbum in op te slaan. We 
-zullen in dit document /home/httpd/test gebruiken. Die moet zichtbaar 
-zijn met een webserver. In dit voorbeeld zullen we de volgende URL 
-gebruiken:
-   http://myserver/test/
+<span lang="en">
+<b><a name='Simpel_album'>1:</a>   Simpel album</b>
 
-Pas je commando's/URL's aan waar nodig.
+Veronderstel dat u al een album goed geïnstalleerd hebt, kunnen we toch nog wat simpele zaken behandelen.
+Als u hier fouten of problemen heeft, bekijk dan de installatiedocumenten.
 
-Maak eerst een map aan en stop er een paar plaatjes in. Deze noemen we:
-   /home/httpd/test/Photos
+U heeft een webpad nodig om thema&#39;s en uw fotoalbum op te zetten.
+Wij zullen /home/httpd/test gebruiken in deze documentatie. Dit moet
+weergeefbaar zijn door een webserver. In dit voorbeeld zullen wij de volgende URL gebruiken:
+  http://myserver/test/
 
-en voeg er een paar plaatjes aan toe met de namen 'IMG_001.jpg' tot en 
-met 'IMG_004.jpg'.
+Verander uw commando&#39;s/URL&#39;s zoals geschikt
 
-Voor het eenvoudigste geval, voer album uit:
+Allereerst, maak en map en stop er wat afbeeldingen in. Wij zullen deze noemen:
+  /home/httpd/test/Photos
 
-<code>% album /home/httpd/test/Photos</code>
+En we voegen wat afbeeldingen toe genaamd &#39;IMG_001.jpg&#39; tot &#39;IMG_004.jpg&#39;
 
-Nu kun je het album bekijken in een webbrowser met zoiets als:
-   http://myserver/test/Photos
-
-<b><a name='Bijschriften_toevoegen'>2:</a>   Bijschriften toevoegen</b>
-
-Maak een tekstbestand /home/httpd/test/Photos/captions.txt aan met de 
-volgende inhoud (gebruik de 'tab'-toets waar "  [tab]  " staat)
-
--- captions.txt ---------
-IMG_001.jpg  [tab]  Naam van het eerste plaatje
-IMG_002.jpg  [tab]  Tweede plaatje
-IMG_003.jpg  [tab]  Nog een plaatje  [tab]   met een bijschrift!
-IMG_004.jpg  [tab]  Laatste plaatje  [tab]   met een ander bijschrift.
--------------------------
-
-Voer album opnieuw uit:
+Nu, in het simpele geval, gewoon uw album uitvoeren:
 
 <code>% album /home/httpd/test/Photos</code>
 
-en je zult zien dat de bijschriften zijn veranderd.
+Nu kunt u het album bekijken in een webbrowser op iets zoals dit:
+  http://myserver/test/Photos
 
-Maak nu een bestand met tekst aan in:
-   /home/httpd/test/Photos/header.txt
+<b><a name='Tekstinhoud_toevoegen'>2:</a>   Tekstinhoud toevoegen</b>
 
-en voer album opnieuw uit. Je zult de tekst bovenaan de pagina zien.
-
-<b><a name='Fotos_verbergen'>3:</a>   Foto's verbergen</b>
-
-Er zijn een paar manieren om foto's/bestanden/folders te verbergen, maar 
-  we zullen hier het bijschriftenbestand gebruiken.
-Verander een plaatje in commentaar met '#' in captions.txt:
+Maak een bestand /home/httpd/test/Photos/captions.txt met de volgende
+inhouden (use the &#39;tab&#39; key where you see &quot;  [tab]  &quot;)
 
 -- captions.txt ---------
-IMG_001.jpg  [tab]  Naam van het eerste plaatje
-#IMG_002.jpg  [tab]  Tweede plaatje
-IMG_003.jpg  [tab]  Nog een plaatje  [tab]   met een bijschrift!
-IMG_004.jpg  [tab]  Laatste plaatje  [tab]   met nog een bijschrift.
+IMG_001.jpg  [tab]  Eerste afbeeldingsnaam
+IMG_002.jpg  [tab]  Tweede afbeelding
+IMG_003.jpg  [tab]  Een andere afbeelding  [tab]   met een tekstinhoud!
+IMG_004.jpg  [tab]  Laatste afbeelding     [tab]   net een andere tekstinhoud.
 -------------------------
 
-Voer album opnieuw uit, en je zult zien dat IMG_002.jpg nu ontbreekt.
-Als we dit hadden gedaan voordat we album de eerste keer hadden 
-uitgevoerd, dan hadden we nooit het middelgrote plaatje en het 
-postzegelplaatje aangemaakt.  Als je wilt, kun je ze nu verwijderen met 
--clean:
+En bekijk het album opnieuw:
 
-<code>% album -clean /home/httpd/test/Photos</code>
+<code>% album /home/httpd/test/Photos</code>
 
-<b><a name='Een_thema_gebruiken'>4:</a>   Een thema gebruiken</b>
+En u zult de tekstinhouden zien veranderen.
 
-Als de thema's correct zijn geinstalleerd en in het pad theme_path 
-staan, dan kun je een thema voor je album gebruiken:
+Maak nu een bestand met tekst in: /home/httpd/test/Photos/header.txt
+
+Bekijk het album opnieuw. U zult nu tekst zien bovenaan de pagina.
+
+<b><a name='Foto&#39;s_verbergen'>3:</a>   Foto&#39;s verbergen</b>
+
+Er zijn een paar manieren om foto&#39;s/bestanden/mappen te verbergen, maar wij zullen
+het captions bestand gebruiken. Probeer een afbeelding te voorzien van een &#39;#&#39; in captions.txt:<font color="#00FF00">
+
+</font>-- captions.txt ---------
+IMG_001.jpg  [tab]  Eerste afbeeldingsnaam
+#IMG_002.jpg  [tab]  Tweede afbeelding
+IMG_003.jpg  [tab]  Een andere afbeelding  [tab]   met een tekstinhoud!
+IMG_004.jpg  [tab]  Laatste afbeelding     [tab]   met een andere tekstinhoud.
+-------------------------<font color="#00FF00">
+
+</font>Bekijk uw album opnieuw, en u zult zien dat IMG_002.jpg nu niet meer zichtbaar is.
+Als we dit eerder hadden gedaan, voordat we het album de eerste keer hadden bekeken, zouden we nooit
+het medium van thumbnailafbeeldingen gegenereerd hebben. Als u dit wilt,
+kunt u ze nu verwijderen met -clean:
+
+<code>% album -clean /home/httpd/test/Photos</code><font color="#00FF00">
+
+</font>ITEM: Een thema gebruiken
+
+Als thema&#39;s goed geïnstalleerd zijn en in uw theme_path staan, dan
+zou het mogelijk moeten zijn om een thema te gebruiken in uw album:
 
 <code>% album -theme Blue /home/httpd/test/Photos</code>
 
-Het fotoalbum zou nu het thema Blue moeten gebruiken. Als er 
-afbeeldingen ontbreken in het album, dan is het thema waarschijnlijk 
-niet geinstalleerd in een map die bereikbaar is via het web; zie de 
-installatiehandleiding.
+Het fotoalbum zou nu het blauwe thema moeten gebruiken. Als het nu
+een rotzooi is van gebroken afbeeldingen, dan is het thema vast niet
+geïnstalleerd in een web-toegankeljke map, bekijk hiervoor de installatiedocumeten.
 
-Album bewaart de opties die je opgeeft, dus de volgende keer dat je 
-album uitvoert:
+Het album slaat de opties die u specificeert op, dus de volgende keer dat u uw album opent:
 
 <code>% album /home/httpd/test/Photos</code>
 
-zul je nog steeds het thema Blue gebruiken. Om een thema uit te zetten, 
-kun je het volgende doen:
+Het blauwe thema zal dan nog steeds in gebruik zijn. Om het thema te verwijderen, kunt u invoeren:
 
-<code>% album -no_theme /home/httpd/test/Photos</code>
+<code>% album -no_theme /home/httpd/test/Photos</code><font color="#00FF00">
 
-<b><a name='Tussenformaat_plaatjes'>5:</a>   Tussenformaat plaatjes</b>
+</font>ITEM: Mediumafbeeldingen
 
-Plaatjes in volle resolutie zijn meestal te groot voor een webalbum, dus 
-gebruiken we middelgrote plaatjes op de plaatjespagina's:
+Volledige resolutie afbeeldingen zijn meestal te groot voor een webalbum, dus
+zullen wij mediumafbeeldingen op de afbeeldingspagina&#39;s gebruiken:
 
 <code>% album -medium 33% /home/httpd/test/Photos</code>
 
-Je kunt nog steeds de plaatjes in volle resolutie opvragen door op het 
-middelgrote plaatje te klikken, of:
+U heeft nog steeds toegang tot de volledige afbeeldingsgrootte door te klikken op de mediumafbeelding, of:
 
 <code>% album -just_medium /home/httpd/test/Photos</code>
 
-zorgt ervoor dat het plaatje in volle grootte niet langer opgevraagd kan 
-worden (aangenomen dat we album op enig moment uitvoeren met de -medium 
-optie).
+Dit zal de volledige afbeeldingsgrootte behouden i.p.v. verkleind te worden (veronderstel dat we
+het tegelijk uitvoeren met de -medium optie)<font color="#00FF00">
+</font>
+<b><a name='Wat_EXIF_tekstinhouden_toevoegen'>4:</a>   Wat EXIF tekstinhouden toevoegen</b>
 
-<b><a name='EXIF-bijschriften_toevoegen'>6:</a>   EXIF-bijschriften toevoegen</b>
+Laten we wat openingsinformatie aan de tekstinhouden van elke afbeelding toevoegen.
 
-We kunnen de diafragma-instelling (aperture) toevoegen aan het 
-bijschrift van elk plaatje.
+<code>% album -exif &quot;&lt;br&gt;aperture=%Aperture%&quot; /home/httpd/test/Photos</code>
 
-<code>% album -exif "&lt;br&gt;aperture=%Aperture%" 
-/home/httpd/test/Photos</code>
+Dit zal alleen openingsinformatie toevoegen voor alle afbeeldingen die we gespecificeerd hebben in
+de &#39;Aperture&#39; exiftag (het deel tussen de &#39;%&#39;-tekens). We stoppen er ook
+een &lt;br&gt; tag in zodat de exifinformatie op een nieuwe regel komt te staan.
 
-Dit voegt alleen diafragma-informatie toe voor plaatjes die 
-daadwerkelijk de EXIF-tag 'Aperture' (het gedeelte tussen de '%'-tekens) 
-bevatten.  We zetten er ook een &lt;br&gt;-tag in zodat de 
-EXIF-informatie op een nieuwe regel komt.
+We kunnen meer exifinformatie toevoegen:
 
-We kunnen meer EXIF-informatie toevoegen:
+<code>% album -exif &quot;&lt;br&gt;focal: %FocalLength%&quot; /home/httpd/test/Photos</code>
 
-<code>% album -exif "&lt;br&gt;focal: %FocalLength%" 
-/home/httpd/test/Photos</code>
+Omdat het album de opties van eerder heeft opgeslagen, krijgen we nu beide EXIF-tags voor elke
+afbeelding die Aperture en FocalLength specificeerd. We gaan aperture verwijderen:
 
-Omdat album de eerdere opties heeft bewaard, krijgen we nu beide 
-EXIF-tags voor alle plaatjes waarin Aperture en FocalLength zijn opgegeven.
+<code>% album -no_exif &quot;&lt;br&gt;aperture=%Aperture%&quot; /home/httpd/test/Photos</code>
 
-We kunnen de diafragma-informatie weer weghalen met:
+De &#39;-no_exif&#39; optie moet met de vorige exifstring exact overeenkoment of
+het zal genegeerd worden. U kunt ook het configbestand bewerken dat het album aanmaakt:
+  /home/httpd/test/Photos/album.conf
+En verwijder het daar.<font color="#00FF00">
 
-<code>% album -no_exif "&lt;br&gt;aperture=%Aperture%" 
-/home/httpd/test/Photos</code>
+</font>ITEM: Meer albums toevoegen
 
-De '-no_exif'-optie moet precies overeenkomen met de eerder opgegeven 
-string, anders gebeurd er niets. Je kunt ook het configuratiebestand dat 
-album heeft aangemaakt veranderen:
-   /home/httpd/test/Photos/album.conf
-en verwijder de exif-regel daar.
+Laten we zeggen dat we op reis gaan naar Spanje. We maken wat foto&#39;s en stoppen ze in:
+  /home/httpd/test/Photos/Spain/
 
-<b><a name='Albums_toevoegen'>7:</a>   Albums toevoegen</b>
-
-Stel dat we op reis naar Spanje zijn geweest. We maken een aantal foto's 
-en zetten ze in:
-   /home/httpd/test/Photos/Spain/
-
-Voer album opnieuw uit op het bovenste niveau:
+Bekijk nu het album opniew op het hoogste niveau:
 
 <code>% album /home/httpd/test/Photos</code>
 
-Dit zal Photos aanpassen zodat het nu ook naar Spanje verwijst, en zal 
-album ook uitvoeren in Spain/, met dezelfde instellingen/thema, etc..
+Dit zal de map Photos verversen zodat het nu linkt naar Spain en het zal ook een album uitvoeren
+van Spain/, met dezelfde instellingen/thema, enz.
 
-Nu gaan we nogmaals op reis, en we maken:
-   /home/httpd/test/Photos/Italy/
+Nu gaan we een andere reis maken, en we maken:
+  /home/httpd/test/Photos/Italy/
 
-We zouden album kunnen uitvoeren op het bovenste niveau:
+We kunnen een album op het hoogste niveau uitvoeren:
 
 <code>% album /home/httpd/test/Photos</code>
 
-Maar dan zou de map Spain/ opnieuw gescand worden, terwijl deze niet 
-veranderd is. Album zal geen HTML of postzegelplaatjes aanmaken als dat 
-niet noodzakelijk is, maar het kost nog steeds tijd, zeker als onze 
-albums groter worden. We kunnen dus opgeven dat we alleen de nieuwe map 
-willen toevoegen:
+Maar dat zal de Spain-map, welke niet veranderd is, niet herscannen.
+Albums genereren meestal geen HTML of thumbnails, alleen als het nodig is,
+maar het kan nog steeds tijd verspillen, vooral als onze albums groter worden.
+Dus we kunnen hem vertellen gewoon de nieuwe map toe te voegen:
 
 <code>% album -add /home/httpd/test/Photos/Italy</code>
 
-Dit zal de bovenste index aanpassen (in Photos) en het album Italy aanmaken.
+Dit zal de hoofdindex (in Photos) verversen en het Italië-album genereren.<font color="#00FF00">
+</font>
+<b><a name='Vertaald_door:'>5:</a>   Vertaald door:</b>
 
-<b><a name='Vertaald_door:'>8:</a>   Vertaald door:</b>
-
-Marco W. Beijersbergen [http://cosine.nl]
+David Ljung Madison  [http://GetDave.com/]
 </span>
-
-
+</pre>
 </pre>
 <p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>
     </td>

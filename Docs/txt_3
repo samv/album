@@ -53,6 +53,21 @@ Which could remove the 'hi' exif value and leave the 'there' value intact.
 
 Also see the section on <a href='Section_4.html#Saving_Options'>Saving Options</a>.
 
+To see a brief usage:
+
+<code>% album -h</code>
+
+To see more options:
+
+<code>% album -more</code>
+
+And an (almost) full list of options:
+
+<code>% album -More</code>
+
+Plugins can also <a href="Section_7.html#Plugin_Options">have options</a> with their own usage.
+
+
 ITEM: Themes
 
 Themes are an essential part of what makes album compelling.

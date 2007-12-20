@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '4.02';
+  my $VERSION=  '4.03';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -78,7 +78,8 @@ sub OPTION_ARR() { 5; }	# Array of strings
 
 add_option(1,'h',\&usage, usage=>"Show usage");
 add_option(1,'more',\&usage, usage=>"To show more options.");
-add_option(2,'More',\&usage, usage=>"To show even more options.");
+#add_option(2,'More',\&usage, usage=>"To show even more options.");
+add_option(2,'usage',\&usage, args=>'<level>', emptyarg_okay=>1, usage=>"Show usage as deep as you like.");
 add_option(1,'lang',\&get_language, args=>'<lang>', emptyarg_okay=>1, usage=>"Specify language(s)");
 add_option(2,'list_langs',\&list_languages, usage=>"List out full language information");
 add_option(3,'make_lang',\&make_language, args=>'<lang>', usage=>"Print out a new language file");
@@ -86,25 +87,28 @@ add_option(10,'list_html_trans',\&list_languages, usage=>["List HTML translation
 	"Useful for creating multi-lingual images for themes",
 	"Output is in HTML and utf-8, change charset as needed"]);
 add_option(99,'check_langs',\&check_languages, usage=>"Check installed languages");
-add_option(99,'make_lang_check',\&make_language, usage=>"Make sure that program output/translations are okay for -make_lang");
+add_option(99,'make_lang_check',\&make_language, usage=>"Test that output/translations are okay for -make_lang");
 add_option(10,'lang_path', OPTION_ARR, default=>['@DATA_PATH/lang'], usage=>"Add a path to search for language files");
 add_option(2,'q',OPTION_BOOL, one_time=>1, usage=>"Be quiet");
 add_option(2,'d',OPTION_BOOL, one_time=>1, usage=>"Set debug mode");
 add_option(3,'D',OPTION_BOOL, one_time=>1, usage=>"Heavy debug mode");
+add_option(9,'dtheme',OPTION_BOOL, one_time=>1, usage=>"Theme debug mode");
+add_option(9,'Dtheme',OPTION_BOOL, one_time=>1, usage=>"Theme heavy debug mode");
 add_option(99,'pod',\&gen_pod, usage=>"Generate pod text");
 add_option(1,'conf', \&read_conf, one_time=>1, args=>'<file>', usage=>"Read a .conf file");
 add_option(2,'virgin_check',OPTION_BOOL, one_time=>1, default=>1, usage=>"Do the virgin check to see if you've run album before");
 add_option(3,'save_conf',OPTION_BOOL, default=>1, usage=>"Save $PROGFILE.conf files in photo album");
 add_option(3,'configure',OPTION_BOOL, usage=>"Setup initial $PROGNAME site configuration");
 add_option(1,'version',\&version, usage=>"Display program version info");
-add_option(1,'mv',\&get_plugin, usage=>"Move images across albums (see 'album -plugin_info utils/mv')");
-add_option(3,'create_plugin',\&get_plugin, usage=>"Create a new plugin (see 'album -plugin_info utils/create_plugin')");
+add_option(1,'mv',\&get_plugin, usage=>"Move imgs across albums: see 'album -plugin_info utils/mv'");
+add_option(3,'create_plugin',\&get_plugin, usage=>"Create plugin: see 'album -plugin_info utils/create_plugin'");
 
 # Album Options:
 add_option(1,'Album Options:',OPTION_SEP);
 add_option(3,'image_pages',OPTION_BOOL, default=>1, usage=>"Create a page for each image");
 add_option(2,'thumbs',OPTION_BOOL, default=>1, usage=>"Images have thumbnails");
 add_option(2,'dir_thumbs',OPTION_BOOL, default=>1, usage=>"Directories have thumbnail (if supported by theme)");
+add_option(9,'thumb_post',OPTION_STR, default=>'', usage=>"Additional postfix for thumbnails.");
 add_option(1,'medium', OPTION_STR, args=>'<geom>', usage=>"Generate medium size images");
 add_option(2,'just_medium',OPTION_BOOL, usage=>"Don't link to full-size images");
 add_option(1,'slideshow',OPTION_BOOL, default=>0, usage=>"Slideshow capabilities (only with some themes)");
@@ -114,6 +118,7 @@ add_option(1,'clean',OPTION_BOOL, one_time=>1, usage=>"Remove unused thumbnails"
 add_option(3,'captions',OPTION_STR, default=>'captions.txt', usage=>"Specify captions filename");
 add_option(3,'image_headers',OPTION_BOOL, default=>0, usage=>"Show header.txt on image pages (default theme only)");
 add_option(2,'album_captions',OPTION_BOOL, default=>1, usage=>"Also show captions on album page");
+add_option(3,'folder_count',OPTION_BOOL, default=>1, usage=>"Show folder/image counts for each album");
 add_option(1,'caption_edit',OPTION_BOOL, usage=>"Add comment tags so that caption_edit.cgi will work");
 add_option(1,'exif', OPTION_ARR, args=>'<fmt>', usage=>["Append exif info to captions.  Use %key% in fmt string",
            "Example:  -exif \"<br>Camera: %Camera model%\"",
@@ -122,7 +127,7 @@ add_option(3,'exif_album', OPTION_ARR, args=>'<fmt>', usage=>"-exif for just alb
 add_option(3,'exif_image', OPTION_ARR, args=>'<fmt>', usage=>"-exif for just image pages");
 add_option(2,'file_sizes',OPTION_BOOL, usage=>"Show image file sizes");
 	## For backwards compat with themes?
-	add_option(999,'image_sizes',OPTION_BOOL, usage=>"DEPRECATED OPTION");
+	add_option(999,'image_sizes', \&deprecated_option, usage=>"DEPRECATED: Size of images");
 add_option(2,'fix_urls',OPTION_BOOL, default=>1, usage=>"Encode unsafe chars as %xx in URLs");
 add_option(2,'known_images',OPTION_BOOL, default=>1, usage=>"Only include known image types");
 add_option(2,'top',OPTION_STR, default=>'../', usage=>"URL for 'Back' link on top page");
@@ -134,8 +139,8 @@ add_option(2,'hashes',OPTION_BOOL, default=>1, one_time=>1, usage=>"Show hash ma
 add_option(2,'name_length',OPTION_NUM, default=>40, usage=>"Limit length of image/dir names");
 add_option(2,'sort',OPTION_STR, default=>'captions', usage=>"Sort type, captions, name or date");
 	## Deprecated!
-	add_option(99,'date_sort', \&deprecated_option, args=>'sort', usage=>"DEPRECATED: Sort images/dirs by date instead of captions/name");
-	add_option(99,'name_sort', \&deprecated_option, args=>'sort', usage=>"DEPRECATED: Sort by name, not caption order");
+	add_option(99,'date_sort', \&deprecated_option, instead=>'sort', usage=>"DEPRECATED: Sort images/dirs by date instead of name");
+	add_option(99,'name_sort', \&deprecated_option, instead=>'sort', usage=>"DEPRECATED: Sort by name, not caption order");
 add_option(2,'reverse_sort',OPTION_BOOL, usage=>"Sort in reverse");
 add_option(2,'case_sort',OPTION_BOOL, default=>0, usage=>"Use case sensitive sorting when sorting names");
 add_option(3,'body',OPTION_STR, default=>'<body>', usage=>"Specify <body> tags for non-theme output");
@@ -176,21 +181,21 @@ add_option(3,'thumb_scale_opts',OPTION_ARR, usage=>"List of thumbnail convert op
 # Plugin Options:
 add_option(1,'Plugin and Theme Options:',OPTION_SEP);
 add_option(1,'data_path', OPTION_ARR, default=>\@DATA_PATH, usage=>["Path for themes, plugins, language files, etc...",""]);
-add_option(1,'plugin', \&get_plugin, args=>'<plugin>', usage=>"Load a plugin.");
-add_option(1,'plugin_usage', \&usage, args=>'<plugin>', usage=>"Show usage for a plugin.");
-add_option(3,'plugin_info', \&list_plugins, args=>'<plugin>', one_time=>1, usage=>"Print info for a specific plugins.");
+add_option(1,'plugin', \&get_plugin, args=>'<plugin>', usage=>"Load a plugin");
+add_option(1,'plugin_usage', \&usage, args=>'<plugin>', usage=>"Show usage for a plugin");
+add_option(3,'plugin_info', \&list_plugins, args=>'<plugin>', one_time=>1, usage=>"Print info for a specific plugins");
 add_option(10,'plugin_path', OPTION_ARR, default=>['@DATA_PATH/plugins'], usage=>"Add a path to search for plugins.\n\t");
-add_option(10,'plugin_post', OPTION_STR, default=>'.alp', usage=>"Default postfix for plugins.");
-add_option(3,'list_plugins', \&list_plugins, one_time=>1, usage=>"Print info for all known plugins.");
-add_option(10,'list_plugins_crf', \&list_plugins, one_time=>1, usage=>"Print info for all known plugins in computer readable format.");
-add_option(4,'list_hooks', \&list_hooks, one_time=>1, usage=>"Show all known plugin hooks (for developers).");
-add_option(4,'hook_info', \&list_hooks, args=>'<hook>', one_time=>1, usage=>"Show hook info for a specific hook (for developers).");
+add_option(10,'plugin_post', OPTION_STR, default=>'.alp', usage=>"Default postfix for plugins");
+add_option(3,'list_plugins', \&list_plugins, one_time=>1, usage=>"Print info for all known plugins");
+add_option(10,'list_plugins_crf', \&list_plugins, one_time=>1, usage=>"Print info for all plugins in computer readable format");
+add_option(4,'list_hooks', \&list_hooks, one_time=>1, usage=>"Show all known plugin hooks (for developers)");
+add_option(4,'hook_info', \&list_hooks, args=>'<hook>', one_time=>1, usage=>"Show hook info for a specific hook (for developers)");
 
 # Theme Options:
 #add_option(1,'Theme Options:',OPTION_SEP);
 add_option(1,'theme', OPTION_STR, args=>'<dir>', usage=>"Specify a theme directory");
 add_option(2,'theme_url', OPTION_STR, args=>'<url>', usage=>"In case you want to refer to the theme by absolute URL");
-add_option(10,'theme_path', OPTION_ARR, args=>'<dir>', default=>[], usage=>"Directories that contain themes");
+add_option(10,'theme_path', OPTION_ARR, args=>'<dir>', default=>[], usage=>["Directories that contain themes",""]);
 
 # Paths:
 add_option($WINDOWS?1:10,'Paths:',OPTION_SEP);
@@ -216,12 +221,12 @@ add_option($TCAP?1:10,'cmdproxy',OPTION_STR, default=>'cmdproxy', usage=>"Path t
 # Default directory page
 add_option(10,'header',OPTION_STR, default=>'header.txt', usage=>"Path to header file");
 add_option(10,'footer',OPTION_STR, default=>'footer.txt', usage=>"Path to footer file");
-add_option(10,'credit',OPTION_STR, usage=>"Credit line to add to the bottom of every album.");
+add_option(10,'credit',OPTION_STR, usage=>"Credit line to add to the bottom of every album");
               # We can't set -no_album as a command-line option because it
 							# gets misread as a -no_<option>, but that's okay with me...
               # This wouldn't be difficult to fix in parse_arg,
               # though it would be less readable.
-add_option(10,'no_album',OPTION_STR, default=>'.no_album', usage=>"Ignore dir/files if file with this postfix exists");
+add_option(10,'no_album',OPTION_STR, default=>'.no_album', usage=>"Ignore dir/file if dir/file.no_album exists");
 add_option(10,'hide_album',OPTION_STR, default=>'.hide_album', usage=>"Ignore and don't display these files");
 add_option(10,'not_img',OPTION_STR, default=>'.not_img', usage=>"Don't treat these files as images");
 
@@ -417,6 +422,8 @@ sub add_option {
   # 1) Can't handle "\Qfile\E";
   sub file_quote {
     my ($opt,$file) = @_;
+# I think any file quoting might be causing problems under some versions of CygWin
+		return $file if $opt->{cygwin};
     $opt->{windows} ? "\"$file\"" : "\Q$file\E";
   }
 
@@ -528,7 +535,7 @@ sub usage {
 	undef $msg if $plugin;
 	undef $msg if $option eq 'h';
 	undef $msg, $show=2 if $option eq 'more';
-	undef $msg, $show=3 if $option eq 'More';
+	undef $msg, $show=($val||3) if $option eq 'usage';
 
 	# Otherwise we have a usage error
 	if ($msg) {
@@ -750,11 +757,9 @@ sub deprecated_option {
   my ($opt, $option, $val) = @_;
   return unless !$MAIN::DEPRECATED_OPTION{$option}++;
 
-  my $err = "Deprecated option ignored: [-$option].";
-
+  ppwarn($opt,"Deprecated option ignored: <-[_1]>",$option);
   my $optinfo = get_option($opt,$option);
-  my $instead = ($optinfo->{args}) ? trans($opt,"\tSee <-[_1]> option instead\n",$optinfo->{args}) : "";
-  ppwarn($opt,"Deprecated option ignored: <-[_1]>",$instead)
+	ppwarn($opt,"See <-[_1]> option instead\n",$optinfo->{instead}) if $optinfo->{instead};
 }
 
 # Get option info hash for an option (for an optional plugin)
@@ -1400,6 +1405,7 @@ sub scrub_opts {
   my ($opt,$first) = @_;
 
   $opt->{d}=1 if $opt->{D};
+  $opt->{dtheme}=1 if $opt->{Dtheme};
 
   # We only scrub these once, they pretty much shouldn't be changed
   # in any per-album configurations, and that would probably screw
@@ -2112,6 +2118,9 @@ sub diff_path {
     # But if they both have drive spec and one's diff, use full path
     return "${tdrive}:$to" if $tdrive && $fdrive && $tdrive ne $fdrive;
   }
+
+  $from =~ s|//|/|g;
+  $to =~ s|//|/|g;
 
   my $back = "";
   while ($to !~ /^\Q$from\E/) {
@@ -3683,6 +3692,7 @@ sub clean_name {
 # What's the filesize of a file?  (String format)
 sub filesize {
   my ($opt, $file) = @_;
+	# I probably could have just used (-s $file) here..  Ah well.
   my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
       $atime,$mtime,$ctime,$blksize,$blocks) = stat($file);
   $size=int($size/102.4)/10;
@@ -3739,6 +3749,7 @@ sub clean_thumb_dir {
     my $remove_type;
     my $name = $file;
     my $html = index_page($opt) ? ('.'.index_page($opt)) : $opt->{html};
+    my $post = $opt->{thumb_post} ? ".$opt->{thumb_post}" : "";
     if ($name =~ s/\Q$html\E$//) {
       $remove_type = "unused image page"
         unless ($opt->{image_pages} && contains($name, @pics));
@@ -3757,7 +3768,7 @@ sub clean_thumb_dir {
     } elsif ($name  =~ /(.+)\.snap\.(.+?)(\.$opt->{type})?$/i) {
       $name = "$1.$2";
       $remove_type = "unused snapshot image" unless contains($name, @pics);
-    } elsif ($name  =~ /(.+)\.$opt->{type}$/i) {
+    } elsif ($name  =~ /(.+)$post\.$opt->{type}$/i) {
       # Thumbnail?
       $name = $1;
       $remove_type = "unused thumbnail"
@@ -4203,7 +4214,7 @@ sub eperl_set_file {
 sub send_perl {
   my ($opt,$code) = @_;
 
-  #print STDERR $code;	# For debugging eperl
+  print STDERR $code if $opt->{Dtheme};
   print ALBUM $code;
 
 #  my $line_info = "";
@@ -4766,9 +4777,10 @@ sub Name {
 sub Pretty {
   my (\$str,\$html,\$lines) = \@_;
 
-  # I sort my albums by date:   2001-10-03.some_directory
+  # I sort my albums by date:   2001-10-03.Some-directory
   if (\$str =~ /^(\\d{4}-\\d{1,2}(-\\d{1,2})?)( .+)/) {
     my (\$date,\$rest) = (\$1,\$3);
+		\$rest =~ s/-/ /g;
     \$date = "<font size='-1'>\$date</font>" if \$html;
     \$date .= "<br />" if \$lines;
     \$str = \$date.\$rest;
@@ -4951,14 +4963,18 @@ sub Image_Repeat_td {
   my (\$rx, \$ry, \$src, \$x, \$y) = \@_;
 	\$rx = \$rx || \$x;
 	\$ry = \$ry || \$y;
-  "<td width='\$rx' height='\$ry' background='\$src'></td>";
+	## Not XHTML Transitional valid:
+	#"<td width='\$rx' height='\$ry' background='\$src'></td>";
+  "<td width='\$rx' height='\$ry' style='background-image:url(\$src)'></td>";
 }
 sub Image_Repeat {
   my (\$rx, \$ry, \$src, \$x, \$y) = \@_;
   \$rx = \$rx || \$x;
   \$ry = \$ry || \$y;
   #"<div style='float:left;width:\$rx; height:\$ry; background-image:url(\$src);
-	"<table cellpadding=0 cellspacing=0 width='\$rx'><tr height='\$ry'><td background='\$src'></td></tr></table>";
+	## Not XHTML Transitional valid:
+	#"<table cellpadding=0 cellspacing=0 width='\$rx'><tr height='\$ry'><td background='\$src'></td></tr></table>";
+	"<table cellpadding=0 cellspacing=0 width='\$rx'><tr height='\$ry'><td tyle='background-image:url(\$src)'</td></tr></table>";
 }
 
 # Borders can be 0 pieces, 4 pieces, 8 or 12
@@ -5208,12 +5224,18 @@ sub Meta {
     my \$First_url = Get(First(),'URL','image_page','image_page');
     my \$Last_url = Get(Last(),'URL','image_page','image_page');
     my \$Prev = Prev(This_Image, \$opt->{image_loop});
+    my \$Prev_pic = Get(\$Prev,'full','file');
     my \$Prev_url = Get(\$Prev,'URL','image_page','image_page');
     my \$Prev_src = Get(\$Prev,'URL','image_page','image_src') || "''";
     my \$Next = Next(This_Image, \$opt->{image_loop});
+    my \$Next_pic = Get(\$Next,'full','file');
     my \$Next_url = Get(\$Next,'URL','image_page','image_page');
     my \$Next_src = Get(\$Next,'URL','image_page','image_src') || "''";
+    # The <metas> are for album dependency checking
+    # The <links> are for browser navigation
     print <<PREV_NEXT;
+		<meta name='Prev_Image' content='\$Prev_pic' />
+		<meta name='Next_Image' content='\$Next_pic' />
 		<link rel='first' title='First Image' href=\$First_url />
 		<link rel='last' title='Last Image' href=\$Last_url />
 		<link rel='prev' title='Previous Image' href=\$Prev_url />
@@ -5263,6 +5285,7 @@ sub setup_output {
   if ($theme) {
     # We pipe into eperl stdin
     my $qout = file_quote($opt,$out);
+    print STDERR "\nOPEN PIPE: |\Q$^X\E > $qout\n" if $opt->{dtheme};
     (open(ALBUM,"|\Q$^X\E > $qout")) ||
       fatal($opt,"Couldn't start perl pipe for theme '[_1]'\n", $out);
   } else {
@@ -5274,6 +5297,7 @@ sub setup_output {
 
 sub close_output {
   my ($opt,$out,$theme) = @_;
+  print STDERR "close_output\n" if $theme && $opt->{dtheme};
   close(ALBUM);
   my $ret = $?;
   return unless $theme;
@@ -5605,9 +5629,9 @@ sub write_index {
       }
       print ALBUM "<font size='+1'>$obj->{name}</font></a>\n";
 
-      print ALBUM "<font size='-1'><br />$obj->{num_pics_str}</font>\n" if $obj->{num_pics};
+      print ALBUM "<font size='-1'><br />$obj->{num_pics_str}</font>\n" if $obj->{num_pics_str};
 
-      print ALBUM "<font size='-1'><br />$obj->{num_dirs_str}</font>\n" if $obj->{num_dirs};
+      print ALBUM "<font size='-1'><br />$obj->{num_dirs_str}</font>\n" if $obj->{num_dirs_str};
     }
     end_table();
     print ALBUM "<hr />\n";
@@ -6167,7 +6191,7 @@ sub dir_info {
   gather_contents($opt,$child_data);
   my $num_dirs = $child_data->{dirs} ? @{$child_data->{dirs}} : 0;
   $data->{obj}{$child}{num_dirs} = $num_dirs;
-  $data->{obj}{$child}{num_dirs_str} = $num_dirs ? trans($opt,"[*,_1,folder]",$num_dirs) : "";	#EXPLANATION: 0 folders, 1 folder, 2 folders, 3 folders..	#LVL=1
+  $data->{obj}{$child}{num_dirs_str} = $num_dirs && $opt->{folder_count} ? trans($opt,"[*,_1,folder]",$num_dirs) : "";	#EXPLANATION: 0 folders, 1 folder, 2 folders, 3 folders..	#LVL=1
 
   my @images = ();
   if ($child_data->{pics}) {
@@ -6178,7 +6202,7 @@ sub dir_info {
     @images = grep is_image($opt,$_), @{$child_data->{pics}};
     my $num_pics = scalar @images;
     $data->{obj}{$child}{num_pics} = $num_pics;
-    $data->{obj}{$child}{num_pics_str} = $num_pics ? trans($opt,"[*,_1,image]",$num_pics) : "";	#EXPLANATION: 0 images, 1 image, 2 images, 3 images..	#LVL=1
+    $data->{obj}{$child}{num_pics_str} = $num_pics && $opt->{folder_count} ? trans($opt,"[*,_1,image]",$num_pics) : "";	#EXPLANATION: 0 images, 1 image, 2 images, 3 images..	#LVL=1
   }
 
   # Now we can actually get the directory thumb
@@ -6455,11 +6479,16 @@ sub do_album {
 sub new_image_path {
   my ($opt,$dir,$pic,$type,$add_nodir,$add_dir) = @_;
 
+	# Kludge - sometimes $pic contains directory elements
+	# (such as if we use a plugin to specify a thumbnail in another directory)
+	($dir,$pic) = ($dir.$opt->{slash}.$1,$2)
+		if $pic =~ m|(.+\Q$opt->{slash}\E)(.+?)$|;
+
   my $postfix = $add_nodir;
   my @new = do_hook($opt,undef, 'new_image_path', $dir,$pic,$type,$postfix);
   # Description: Create a pathname for a new image (such as a thumbnail)
   # Description: Called with: directory, picture, new picture type and:
-  # Description: postfix hint, such as 'snap.' or 'med.'
+  # Description: postfix hint, such as '.snap' or '.med'
   # Returns: (filename, full pathname)
   return @new if defined $new[0];
 
@@ -6469,9 +6498,9 @@ sub new_image_path {
   $post = $post || $type;
   $post .= ".$type" if $type && lc($type) ne lc($post);
 
-  return ("${pic}.${add_nodir}$post","${pic}.${add_nodir}$post")
+  return ("${pic}.${add_nodir}$post","${pic}${add_nodir}.$post")
     unless $opt->{dir};
-  my $file = "${pic}.${add_dir}$post";
+  my $file = "${pic}${add_dir}.$post";
 
   $dir = $dir ? "$dir/$opt->{dir}" : $opt->{dir};
   (-d $dir) || mkdir($dir,0755) || fatal($opt,"Couldn't make directory '[_1]'\n",$dir);
@@ -6592,13 +6621,13 @@ sub scale {
   # Returns: [since our scale routine should know this anyways]
   return @xyxy if defined $xyxy[0];
 
-  my $scale = $opt->{sample} ? "-sample $scale_arg" : "-geometry $scale_arg";
+  my @scale = $opt->{sample} ? ('-sample',$scale_arg) : ('-geometry',$scale_arg);
 
   # Source image
   my $qimg = file_quote($opt,$img);
 # This works only on some systems with some versions of convert  :(
   $qimg .= "\[0]" if $opt->{animated_gifs};
-  my @args = ($qimg,'-verbose',$scale);
+  my @args = ($qimg,'-verbose',@scale);
 
   # Scale options
   push(@args, @{$opt->{scale_opts}}) if $opt->{scale_opts};
@@ -6703,7 +6732,7 @@ sub snapshot {
   my $full_path = $obj->{full}{path};
 
   my $type = $opt->{type};
-  my ($file,$path) = new_image_path($opt,$dir,$full_file,$type,'snap.','snap.');
+  my ($file,$path) = new_image_path($opt,$dir,$full_file,$type,'.snap','.snap');
 
   return $obj->{has_thumb}=0 unless movie_frame($opt,$full_path,$path);
   ($obj->{snapshot}{file},$obj->{snapshot}{path}) = ($file,$path);
@@ -6734,7 +6763,7 @@ sub medium {
   my $type = $opt->{medium_type};
   $type = $opt->{type} if $obj->{is_movie} && !$type;
   ($obj->{medium}{file},$obj->{medium}{path})
-    = new_image_path($opt,$dir,$file,$type,'med.','med.');
+    = new_image_path($opt,$dir,$file,$type,'.med','.med');
 
   # Don't regenerate mediums unless the image has changed
   return get_size($opt,'medium',$obj)
@@ -6784,19 +6813,21 @@ sub thumbnail {
   return unless -r $full_path;
   print STDERR "IMAGE: $full_path\n" if $opt->{d};
 
-  $obj->{thumb}{path} = do_hook($opt,undef, 'thumbnail', $dir, $obj, $file, $full_path);
+	my $post = $opt->{thumb_post} ? ".$opt->{thumb_post}" : "";
+  my ($default_file, $default) = new_image_path($opt,$dir,$file,$opt->{type},"$post.tn",$post);
+
+  $obj->{thumb}{path} = do_hook($opt,undef, 'thumbnail', $dir, $obj, $file, $full_path, $default);
   # Description: Create a thumbnail using an image object or path
   # Description: This might be called with "non-image" types (such as movies)
   # Description: so check in your hook for the types you can read.
-  # Returns: Full path to the thumbnail
+  # Returns: Full path to the thumbnail (likely to be $default)
   if ($obj->{thumb}{path}) {
     $obj->{thumb}{file} = $obj->{thumb}{path};
     $obj->{thumb}{file} =~ s|.*$opt->{slash}||g;
     return get_size($opt,'thumb',$obj);
   }
 
-  ($obj->{thumb}{file},$obj->{thumb}{path})
-    = new_image_path($opt,$dir,$file,$opt->{type},'tn.','');
+  ($obj->{thumb}{file},$obj->{thumb}{path}) = ($default_file,$default);
 
   # Don't regenerate thumbs if we don't need to.
   return get_size($opt,'thumb',$obj)

@@ -1,0 +1,588 @@
++ : new feature
+- : deprecated feature
+* : bugfix
+
+Version 4.03, 2007/12/20
+------------------------
++ Fixed up album for CygWin changes - files are no longer quoted, no spaces in filenames!
+  (Thanks to the patient Amarsena Reddy, Amarsena.Reddy varian com)
++ Added -usage for seeing as many options as you want
++ Added -thumb_post (Thanks Dave Hansen, dave sr71 net)
++ Added -folder_count (Thanks Dave Hansen, dave sr71 net)
++ Added hidden -dtheme and -Dtheme options
+* Fixed deprecated option output
+* Fixed dependency checking for image HTML lost in v4.00
+* exif/mouseover plugin now works for child albums
+  (Thanks George Hansper, georgeh anstat com au)
+* Improved XHTML output (replaced 'td background=...')
++ Language: French is mostly complete, as well as docs
+* Proper handling of thumbs in other dirs (due to plugins) (Thanks Dave Hansen)
+
+Version 4.02, 2007/01/19
+------------------------
++ Language: German now 100%, added Spanish and Catalan
+* Bugfix for new installs (two subs named 'install_language')
+
+Version 4.01, 2007/01/08
+------------------------
++ New languages: fr, zh-cn, cs, it, ko, de
++ Themes can now support multi-lingual images.
+  (Easy using update of simmer_theme)  See example: Themes/Blue/lang/nl/
++ Themes have more translations (number of images, More albums, etc..)
++ Added -check_lang and -list_html_trans support
++ New plugin: images/xy_cache
+* Fixed empty directory thumbnail bug
+* Fixed/improved _curr_plugin/_curr_hook API.
+* Plugged captions/db/digikam db resource leak (Thanks Anders Bolager, anders bolager com)
+* Fixed '\\' bug with -make_lang
+* Small get_option fix for plugins (and option_changed)
+
+Version 4.00, 2006/12/17
+------------------------
++ Full language/i18n support!  See -lang, -list_langs, and -lang_path
++ New languages: (en), he, nl, pl as well as banner, l33t and swedish_chef
++ Option -make_lang for creating easy language templates
++ New plugin: captions/exif/mouseover
++ New plugin: org/link
+  (Thanks Matt Forrest, mforrest scs ryerson ca)
++ Added 3gp support using ffmpeg.  Another other movie formats people need?
++ Added -nothumbs support (Thanks Marten van Wezel, marten arago utwente nl)
++ Changed -hash_width option to -screen_width
+* Fixed save_conf multiple-saving of multiple array/code values
+* Errors now pass non-zero exit value
+* Fixed -noknown_images (Thanks Dougie Nisbet, album highmoor co uk)
+* Return to XHTML valid (Thanks Markus Mayer, mmayer blastwave org)
+
+Version 3.13, 2006/10/10
+------------------------
++ New plugin: format/meta
++ Cleaned up image preloading and added "AddOnload" javascript for plugins
+  (Update your themes for proper image preloading)
++ Themes can now do num(This_Image) (Thanks Daniel K, DKml xs4all nl)
+* Better fix for double exif captioning (Thanks Joseph Dery, joedery gmail com)
+* Fix for medium_scale_opts (Thanks Glyn Davies, agdavies gmail com)
+* Removed unnecessary zips and tars in Themes packaging
+
+Version 3.12, 2006/06/14
+------------------------
++ Added -create_plugin plugin code
++ New -slideshow support (for most themes)
++ Added overlay thumbnail support.  Themes are simpler and cooler!
+  See FunLand as an example.  Also updated simmer_theme.
++ Added 'album -mv' syntax (just a shortcut for the 'utils/mv' plugin)
++ Added -credit (global footer) (Thanks Dave Hansen, dave sr71 net)
++ Added -case_sort option (used to be default!)
+  (Thanks Samuel Denis D'Ortun, sddproductions.com)
+* Changed ImageMagick calls to handle new syntax (~v6.25)
+  (Thanks John Westlund, john.westlund gmail com)
++ Added -follow_symlinks (Thanks Dave Hansen, dave sr71 net)
++ Added hide_album hook (Thanks Dave Hansen, dave sr71 net)
++ Add hook 'end_handle_file' (needed for plugin: format/hide_regex)
+* Fixed handling of -no_* in plugin options.
+* Fixed caption_edit.cgi directory caption problem (upgrade to CGI v1.07!)
+  (Thanks Kathryn Hogg, kjh flyballdogs com)
+* Moved dir_thumb hook so it still counts images/folders
++ Patches: full path to find files
+  (Thanks Scott Bertin, scottbertin yahoo com)
++ Added data-> head and body_tag
+
+Version 3.11, 2006/04/09
+------------------------
++ Changed ffmpeg option from singlejpeg to mjpeg, ffmpeg also now handles mp4
++ Changed 'do_album*' hooks to skip album generation on false
++ Added hooks:  gather_contents, gather_contents_item
+* Patches: Fix stop_hashes hook, thumbnail/medium hooks, -burn 'index.html'
+  (Thanks Scott Bertin, scottbertin yahoo com)
+* Double exif captioning (Thanks Roland Rosenfeld, roenv spinnaker de
+   and John Sellens, jsellens generalconcepts com)
++ Plugin: images/epeg (Thanks Scott J. Bertin, scottbertin yahoo com)
++ New theme: Stamp.  Updated theme: W_Peterman
+* Change for themes: Get($dir, 'dir') -> Get($dir, 'file')
+* Fixed issue with old 'medium *\\>' album.conf options.
+  (Thanks Waldy Wisniewski, waldy wizfamily co uk)
+* Fixed -h/-plugin_usage bug
+* Fixed -clean to also include commented out images.
+
+Version 3.10, 2005/11/01
+------------------------
++ Plugin support
++ New plugins: utils/mv, many others
++ Massively improved/corrected/clarified arg saving in conf files
++ Improved dependency checking
++ Use (fast!) Image::Size if available (Thanks Dave Hansen, dave sr71 net)
++ Can now clear array options with -no
+* -transform_url fix for %s
+* diff_path now handles ActiveState windows paths for all cases
++ Added image overlay support for themes (see simmer_theme.3.03 & OldPhoto)
++ Added "Indexes:" progress bar for slower machines (like mine!)
++ Added -no_virgin_check option (for caption_edit and other CGI)
++ Added -image_headers for no_theme output (and set default to 0)
++ Medium/thumbnail images regenerated only when -medium/-geometry changed.
+  (Thanks Andy Somerville, andy.somerville gmail com)
+* -no_image_loop now works with no_theme output
+* Default output is now Valid XHTML 1.0 Transitional
+  (Thanks Goran Sandin, Goran.Sandin abc se)
+* Fixed poor quoting of img alt and title tags
++ Added link tags for First/Last and album Up
+* Improved -name_length shortening algorithm to avoid bad HTML
++ Replaced -date_sort and -name_sort with -sort [captions,name,date]
++ Added perldocs to caption_edit.cgi
+* Fixed saving '#' in config files (Thanks Diego Liziero, diegoliz gmail com)
+* Fixed problem with using movies as directory thumbnails
+* Fixed inability to add non-images with -no_known_images
+* Small path fix for "Your album has moved" false negative
+* Fixed stupid split_path bug that disliked the letter 'Q'.  The shame..
+  (also fixed StoryCaption bug and alignment problem)
+* Initial config menus now support ~/path (Thanks Dylan G., dylang thock com)
+  (Thanks Friedrich Pukelsheim, pukelsheim math uni-augsburg de)
+* Can handle '# commented' captions with spaces after '#'
+  (Thanks Matt Roberts, matt.roberts bigfoot com)
+* Fixed clean case-sensitivity, -medium_type and parentheses bugs
+  (Thanks Matthew J. Probst, mprobst probst org)
+* Fixed incorrect "Your album has been moved" trigger
+  (Thanks Dwight Dover, dwidov alltel net)
+* Default theme now supports -no_album_captions
+* Fixed attempt_require for Cwd so that it doesn't error (nobody told me!)
+
+Version 3.07, 2004/12/30
+------------------------
++ Name shortening (-name_length) no longer splits html tags and &chars;
++ img title tags now same as alt tags
+* Fixed problem with multiple -exif evaluations
+* Fix saving of -medium in conf files.
+
+Version 3.06, 2004/12/07
+------------------------
++ Updated Story, StoryCaption themes to v3 API
++ Small cleanup to BigMaste
+* Fixed font-date-/font stuff once and for all.
+* Fixed difference between no_album and hide_album
+* Fixes release typo in Minimalist theme
+
+Version 3.05, 2004/07/23
+------------------------
+* -notop now works with most themes.
+* scale_opts typos
+* Fixed pImage_Src bug in deprecated theme API code for older style themes.
+* No longer ignores "_files"
+* Gracefully handles missing thumbnail/ffmpeg errors
++ Added New_Row() support routine
++ Initial plugin infrastructure (not really being used yet..)
++ Maste theme improvements including dir_thumbs
+
+Version 3.04, 2004/07/14
+------------------------
+* Fixed dependency problem with exif_image/album
+
+Version 3.03, 2004/07/13
+------------------------
++ Theme API and conversion docs, simmer_theme docs.
+* Fixed problem with top/back link
+* No more 'Skipping unknown HTML' on .no_album dirs
+* No more font tags inserted in titles.
+
+Version 3.02, 2004/07/05
+------------------------
++ Cleaned up output "Read conf:"
+* -add doesn't include default directory
+* Added dependency check to movie_frame generation
+* Added image page dependency check on -exif option
+* conf, -add and usage updates.
+* -clean and -index work together now.
+
+Version 3.01, 2004/06/29
+------------------------
+* Fixed small problem with -clean and empty dirs
+* Differentiated betwen dir/.no_album and dir/.hide_album
+
+Version 3.00, 2004/06/28
+------------------------
++ COMPLETE REWRITE
++ Theme and theme API cleanup
++ Directory thumbnails
++ Configuration files
++ New installation process
++ Lock images for .htaccess albums, theme cleanup
++ All new documentation
++ Better Windows support
++ Ability to use separate exif captions for album/image pages
+  (Thanks Joel Emer, joel emer org)
++ Many, many more features/additions
+
+Version 2.53, 2004/04/25?
+------------------------
+* Thumbnails for similar filenames are different (a.jpg vs a.gif)
+  (Thanks Robert Lange, robert.lange s1999 tu-chemnitz de)
+
+Version 2.52, 2004/01/28
+------------------------
++ Clarified credit line
+
+Version 2.51, 2003/11/15
+------------------------
++ Album directories can have captions (only some themes)
+  (Thanks Chris Lawson, cl tinfoilhat ca)
++ Better handling of animated gifs
+* Small exif bugfix
+* Fixed small diff_path problem
+
+Version 2.50, 2003/11/11
+------------------------
++ Can now add EXIF info using jhead
+  (Thanks Vin Scarlata, vincent.r.scarlata intel com
+          & Zainul zainul ee iitb ac in
+          & Durval Menezes durval tmp com br
+          & Rudolph van der Merwe rvdmerwe ece ogi edu
+          & Neal McBurnett neal bcn boulder co us
+          & Marcell Lengyel marcell.lengyel solidtech com
+          & Philippe Duperron pduperron seditel fr
+          & countless others...)
+
+Version 2.49, 2003/11/03
+------------------------
++ Added -noembed option
+
+Version 2.48, 2003/09/11
+------------------------
++ Commented (#) captions are the same as .no_album
+  (Thanks Juergen, js ub uni-marburg de)
++ Option -index now allows postfix as well (default is .html)
+  (Thanks Jan Hnatek, http://hnilek.zsbarr.cz/)
+
+Version 2.47, 2003/06/19
+------------------------
++ Update to support major changes in caption_edit.cgi
+  (Thanks for inspiration, Jason Dufair, http://dufair.org/)
+
+Version 2.46, 2003/05/31
+------------------------
++ Added -add option so you don't have to regenerate entire albums
+
+Version 2.45, 2003/04/07
+------------------------
++ Added -no_image_loop
+  (Thanks Todd Foster, tefrsf bronxfellowship org)
+
+Version 2.44, 2003/01/21
+------------------------
++ Added -just_medium option to not link to full size images
+* Improved theme error output
+
+Version 2.43, 2003/01/15
+------------------------
+* Files are properly quoted and fix_urls now covers everything it should
+  (Thanks Vaclav Dvorak, http://vdvo.net/)
+* .mov files now work
++ Directory name in captions.txt can just be "."
+  (Thanks bernhard.nebel gmx de)
++ Added javascript to preload prev/next images (Thanks tbjorkman charter net)
+
+Version 2.42, 2003/01/08
+------------------------
+* Fixed some bugs, added jhead feature for getting jpeg size
+  (Thanks Carl Schott, cschott charter net)
+
+Version 2.41, 2003/01/08
+------------------------
++ Added -caption_edit and caption_edit.cgi script
+  (Thanks Bennemann Christoph TB, BennemannC swe-gmbh de)
+
+Version 2.40, 2002/10/29
+------------------------
++ No more "Broken Pipe" messages (Thanks Quentin Dunchue: que qnr biz)
++ Added theme_url option for specifying absolute path to themes
+
+Version 2.39, 2002/09/21
+------------------------
++ Switched to ffmpeg for movie frame extractor
+  (Thanks Vaclav Dvorak, http://vdvo.net/)
+
+Version 2.38, 2002/09/12
+------------------------
+* Proper handling for images with negative co-ordinates [Jim Dinan]
+
+Version 2.37, 2002/08/17
+------------------------
++ New charset option for non-themed output
+* Doesn't try to clean /path/names of captions (oops)
+
+Version 2.36, 2002/06/18
+------------------------
++ Changed Back() in themes to be quoted like other theme functions
+! You will need to update your theme to upgrade to v2.36 !
+
+Version 2.35, 2002/05/08
+------------------------
++ Win98/Win2k should be working
+  (Thanks Michael Mayer, Michael.Mayer enerflex com,
+          & Don Roebuck, don1two hotmail com,
+          & Christof Brandauer, cbrand poseidon newmedia at,
+          & Watson, watson_dd yahoo com,
+          & countless others...)
+
+Version 2.34, 2002/04/11
+------------------------
++ All sorts of new Windows code
+  (Thanks Magnus von Koeller, http://vonkoeller.de/)
++ Fix for unknown images in album
++ Handle umlauts, etc.. in filenames
++ Added -name_sort to ignore order in caption file
+
+Version 2.33, 2002/03/29
+------------------------
++ Added -reverse_sort option
+  (Thanks jay johnston, j shambolic com)
+
+Version 2.32, 2002/03/18
+------------------------
++ Removed ePerl dependency, *massive* 300% speedups!
+
+Version 2.31, 2002/02/08
+------------------------
++ Can sort dir/images by date (-date_sort)
++ Can limit printed name length (-name_length)
++ Improved Windows functionality - works on most Windows variants!
++ alt tags now default to name
+
+Version 2.30, 2002/02/06
+------------------------
+* Oops!  Regeneration of album with medium images was screwing up!
+  (Thanks Ryan Mack, rmack mackman net)
+
+Version 2.29, 2002/01/23
+------------------------
+* Fixed loss of .no_album feature
+
+Version 2.28, 2002/01/22
+------------------------
++ New option: -medium_type
+
+Version 2.27, 2002/01/17
+------------------------
++ Properly orders files listed without captions in captions.txt
+  (Thanks Robert-Jan Oosterloo, robertjan frettenflat nl)
+
+Version 2.26, 2002/01/14
+------------------------
++ Works easier for Windows folks
+
+Version 2.25, 2001/12/27
+------------------------
++ Directories can now rename themselves in their own captions txt
+
+Version 2.24, 2001/12/12
+------------------------
++ New option -CROP (top|bottom|left|right)
+  (Thanks Shane Bouslough, Shane.Bouslough eurekaggn com)
+
+Version 2.23, 2001/11/29
+------------------------
++ Nifty progress 'thermometer' printed during thumbnail generation
+  (Thanks DKL, http://tessellated.net/)
+
+Version 2.22, 2001/11/27
+------------------------
++ (Security improvement) Theme path saved in HTML is no longer absolute
+  (Thanks DKL, http://tessellated.net/,
+          & Kyushima Masahiro, kyushima_masahiro hosp pref okinawa jp)
+
+Version 2.21, 2001/11/06
+------------------------
++ Switched default thumbnail to jpg because it looks better and because
+  convert -> gif format is buggy.
++ You will probably need to run -clean once to get rid of all the .gif thumbnails.
+* Improved sizing of mpg files
++ Fixed small date bug in non-theme index files
+
+Version 2.20, 2001/10/22
+------------------------
++ Added -depth feature to limit descending of directories.
++ Added .not_img as well as .no_album tags
++ Added --med_scale_opts and --ful_scale_opts
+* Name of image page for non-themes now uses captions
++ Fixed -known_images problem that was missing images
+  (Thanks Salim Idriss, sfi aiki mc duke edu)
+
+Version 2.19, 2001/10/04
+------------------------
++ Improved ability to find relative theme path anywhere inside web root
+  (Thanks Caleb Storms, CalebStorms com)
+
+Version 2.18, 2001/09/25
+------------------------
++ Non-tab separator for caption files is now a double colon
++ Added mpg support (Thanks Peter Chow, PeterChow com)
++ Ignores CVS,SCCS,RCS directories
+  (Thanks Dylan R. E. Moonfire, dmoonfire yahoo com)
+
+Version 2.17, 2001/09/04
+------------------------
++ Sorts images/directories according to the order in the captions file
+  (Thanks Nancy Mazur, Nancy.Mazur cs kuleuven ac be
+          & Gabriel Burca, gburca yahoo com)
+
+Version 2.16, 2001/08/07
+------------------------
++ If -index specifies the default index, then it will use it in the URLs
++ Default captions file changed from Captions to captions.txt
++ Captions file can be split with colons if no tabs are found in the file.
++ Added docs, created .tar.gz download
++ Added --full_scale_opts and --med_scale_opts
+* Fixed image name in Maste theme
+* Fixed Column Film Maste dkl frames simple simple2 to work with -medium
+
+Version 2.15, 2001/07/18
+------------------------
+* Added quoting to -medium, so spaces and whatnot will work
+
+Version 2.14, 2001/07/13
+------------------------
+* -medium now works for themes
+  (Thanks Dr. Hendrik G. Seliger, Hendrik.Seliger gmx net,
+          & Joseph E. Mainusch, Joseph.Mainusch osa com)
+
+Version 2.13, 2001/07/10
+------------------------
++ (Somewhat) improved output for non-theme -nocrop option
++ Completely update Captions file parsing
+
+Version 2.12, 2001/07/04
+------------------------
++ Can now generate medium size images for web viewing as well as keeping
+  the fullsize raw images.
+  (Thanks Stephan Skrodzki, skrodzki stevelap convergence de,
+          & Aron Atkins, aron sidehack sat gweep net,
+          & Guido Schade, schade pixelpark com,
+          & countless others)
++ Happy Fourth of July!
+
+Version 2.11, 2001/06/25
+------------------------
++ Only generates image pages when necessary, big speedup!
+  (*First* run of new album will take full time, though)
++ Cleaned up index page writing code, only starts writing page when all
+  images are generated (to reduce chance of viewers getting a blank page)
+* Fixed "double-theme" writing bug (when more than one theme was specified)
+* Changed URL: "/to/some/dir"  to:  "/to/some/dir/"   (notice '/')
+
+
+Version ?.??, ????/??/??
+------------------------
++ Somewhere in here I released Windows support, though I forgot to log it.
+  (Thanks many, including Torben Jensen tdj dds nl)
+
+Version 2.10, 2001/05/23
+------------------------
+* Fixed 'next' instead of 'return' that was causing perl5.6 to segfault :(
+
+Version 2.09, 2001/05/22
+------------------------
+* Fixed header/footer printing problem (depended on where album was run)
+  (Thanks Andrew M. Bishop, amb gedanken demon co uk)
++ If -nocrop is used, images aren't stretched inside thumbnail
+* Fixed bug where META (previous) theme was ignored if no args supplied
+
+Version 2.08, 2001/04/25
+------------------------
++ Added -all and stopped descending .directories by default
+  (Thanks Sujeetharan, http://sujee.net/)
++ Added --scale_opts ability to specify things like -profile and -quality
+  (Thanks Dustin Travis, dustin acceleration net)
+
+Version 2.07, 2001/04/17
+------------------------
++ Maintains theme settings for next album generation
++ Added -no_theme option to override above feature
+
+Version 2.06, 2001/04/13
+------------------------
++ Improved thumbnail generation (Thanks Alan Stein, http://ajsoft.com/)
++ Added -sample and -body
+
+Version 2.05, 2001/03/23
+------------------------
++ Added isHeader, pHeader, isFooter, pFooter to theme support, updated themes
+  (Thanks Ed Lawson, elawson lawson-philpot com)
+
+Version 2.04, 2001/03/18
+------------------------
++ Added -top option (though not in usage)
++ Added Back() and Index() to theme support functions
+
+Version 2.03, 2001/03/09
+------------------------
+* Workaround perlbug that screwed up image size in image pages
+
+Version 2.02, 2001/03/05
+------------------------
++ Added parsing of CROP directives in filenames
+
+Version 2.01, 2001/03/05
+------------------------
+* Fixed alt= tags so they don't convert spaces
+  (Thanks Ed Maste, e2maste engmail uwaterloo ca)
+
+Version 2.00, 2001/02/25
+------------------------
++ IMAGE PAGE creation
++ known_images now completely ignores non-images
++ Ignore zero-length files
++ Usage now shows defaults
++ THEME SUPPORT
+  (Thanks DKL, http://tessellated.net/)
+
+Version 1.16, 2001/02/11
+------------------------
++ Ignore .htaccess files
+  (Thanks Veli-Pekka Lehtosaari, vplehto ww iki fi)
+
+Version 1.15, 2001/02/07
+------------------------
+* Fixed typo in meta tags (missing '>')
+  (Thanks Erik O'Shaughnessy, eriko schwa central sun com)
+
+Version 1.14, 2001/02/05
+------------------------
++ Added -known_images
+  (Thanks DKL, http://tessellated.net/)
+
+Version 1.13, 2001/01/30
+------------------------
+* Fixed quotes in filenames (all filename characters should be okay now)
+  (Thanks DKL, http://tessellated.net/)
+
+Version 1.12, 2001/01/23
+------------------------
++ Added fix_urls option (should probably improve this)
+* Fixed handling of files with shell characters (spaces, brackets..)
+  (Thanks Stefan Recksiegel, stefan post kek jp)
+
+Version 1.11, 2001/01/22
+------------------------
++ Added ability to ignore directories/files
++ identify option no longer needed, now automated
+* nosizes option applies to non-images as well
+* Fixed: -clean was improperly comparing files with regex in them
+
+Version 1.10, 2001/01/08
+------------------------
++ Integrated thumb into album
++ Added many options, cleaned up option handling and usage
++ New Meta-Generator string for recognizing which HTML is safe to overwrite
++ Now can regenerate sub-trees of an album without losing album path info
++ Added -clean to remove unused images from thumbnail directories
++ Ignores files that end in ~ for emacs folks
++ Captions support for people who don't want to rename all their files
++ Fixed spacing between img tag and image name
++ Output now XHTML conformant
+  (Thanks Leigh L. Klotz, Jr, klotz graflex org)
++ Added -sizes/-nosizes options
+
+Version 1.01
+------------
+* links to previous albums were broken
++ Started revisioning, created CHANGELOG 
+
+Version 1.00
+------------
++ Public release

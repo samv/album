@@ -1,0 +1,165 @@
+<html> 
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head>
+
+<pre>
+MINI HOW-TO
+
+<span lang="en">
+ITEM: Simpel album
+
+Veronderstel dat u al een album goed geïnstalleerd hebt, kunnen we toch nog wat simpele zaken behandelen.
+Als u hier fouten of problemen heeft, bekijk dan de installatiedocumenten.
+
+U heeft een webpad nodig om thema&#39;s en uw fotoalbum op te zetten.
+Wij zullen /home/httpd/test gebruiken in deze documentatie. Dit moet
+weergeefbaar zijn door een webserver. In dit voorbeeld zullen wij de volgende URL gebruiken:
+  http://myserver/test/
+
+Verander uw commando&#39;s/URL&#39;s zoals geschikt
+
+Allereerst, maak en map en stop er wat afbeeldingen in. Wij zullen deze noemen:
+  /home/httpd/test/Photos
+
+En we voegen wat afbeeldingen toe genaamd &#39;IMG_001.jpg&#39; tot &#39;IMG_004.jpg&#39;
+
+Nu, in het simpele geval, gewoon uw album uitvoeren:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Nu kunt u het album bekijken in een webbrowser op iets zoals dit:
+  http://myserver/test/Photos
+
+ITEM: Tekstinhoud toevoegen
+
+Maak een bestand /home/httpd/test/Photos/captions.txt met de volgende
+inhouden (use the &#39;tab&#39; key where you see &quot;  [tab]  &quot;)
+
+-- captions.txt ---------
+IMG_001.jpg  [tab]  Eerste afbeeldingsnaam
+IMG_002.jpg  [tab]  Tweede afbeelding
+IMG_003.jpg  [tab]  Een andere afbeelding  [tab]   met een tekstinhoud!
+IMG_004.jpg  [tab]  Laatste afbeelding     [tab]   net een andere tekstinhoud.
+-------------------------
+
+En bekijk het album opnieuw:
+
+<code>% album /home/httpd/test/Photos</code>
+
+En u zult de tekstinhouden zien veranderen.
+
+Maak nu een bestand met tekst in: /home/httpd/test/Photos/header.txt
+
+Bekijk het album opnieuw. U zult nu tekst zien bovenaan de pagina.
+
+ITEM: Foto&#39;s verbergen
+
+Er zijn een paar manieren om foto&#39;s/bestanden/mappen te verbergen, maar wij zullen
+het captions bestand gebruiken. Probeer een afbeelding te voorzien van een &#39;#&#39; in captions.txt:<font color="#00FF00">
+
+</font>-- captions.txt ---------
+IMG_001.jpg  [tab]  Eerste afbeeldingsnaam
+#IMG_002.jpg  [tab]  Tweede afbeelding
+IMG_003.jpg  [tab]  Een andere afbeelding  [tab]   met een tekstinhoud!
+IMG_004.jpg  [tab]  Laatste afbeelding     [tab]   met een andere tekstinhoud.
+-------------------------<font color="#00FF00">
+
+</font>Bekijk uw album opnieuw, en u zult zien dat IMG_002.jpg nu niet meer zichtbaar is.
+Als we dit eerder hadden gedaan, voordat we het album de eerste keer hadden bekeken, zouden we nooit
+het medium van thumbnailafbeeldingen gegenereerd hebben. Als u dit wilt,
+kunt u ze nu verwijderen met -clean:
+
+<code>% album -clean /home/httpd/test/Photos</code><font color="#00FF00">
+
+</font>ITEM: Een thema gebruiken
+
+Als thema&#39;s goed geïnstalleerd zijn en in uw theme_path staan, dan
+zou het mogelijk moeten zijn om een thema te gebruiken in uw album:
+
+<code>% album -theme Blue /home/httpd/test/Photos</code>
+
+Het fotoalbum zou nu het blauwe thema moeten gebruiken. Als het nu
+een rotzooi is van gebroken afbeeldingen, dan is het thema vast niet
+geïnstalleerd in een web-toegankeljke map, bekijk hiervoor de installatiedocumeten.
+
+Het album slaat de opties die u specificeert op, dus de volgende keer dat u uw album opent:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Het blauwe thema zal dan nog steeds in gebruik zijn. Om het thema te verwijderen, kunt u invoeren:
+
+<code>% album -no_theme /home/httpd/test/Photos</code><font color="#00FF00">
+
+</font>ITEM: Mediumafbeeldingen
+
+Volledige resolutie afbeeldingen zijn meestal te groot voor een webalbum, dus
+zullen wij mediumafbeeldingen op de afbeeldingspagina&#39;s gebruiken:
+
+<code>% album -medium 33% /home/httpd/test/Photos</code>
+
+U heeft nog steeds toegang tot de volledige afbeeldingsgrootte door te klikken op de mediumafbeelding, of:
+
+<code>% album -just_medium /home/httpd/test/Photos</code>
+
+Dit zal de volledige afbeeldingsgrootte behouden i.p.v. verkleind te worden (veronderstel dat we
+het tegelijk uitvoeren met de -medium optie)<font color="#00FF00">
+</font>
+ITEM: Wat EXIF tekstinhouden toevoegen
+
+Laten we wat openingsinformatie aan de tekstinhouden van elke afbeelding toevoegen.
+
+<code>% album -exif &quot;&lt;br&gt;aperture=%Aperture%&quot; /home/httpd/test/Photos</code>
+
+Dit zal alleen openingsinformatie toevoegen voor alle afbeeldingen die we gespecificeerd hebben in
+de &#39;Aperture&#39; exiftag (het deel tussen de &#39;%&#39;-tekens). We stoppen er ook
+een &lt;br&gt; tag in zodat de exifinformatie op een nieuwe regel komt te staan.
+
+We kunnen meer exifinformatie toevoegen:
+
+<code>% album -exif &quot;&lt;br&gt;focal: %FocalLength%&quot; /home/httpd/test/Photos</code>
+
+Omdat het album de opties van eerder heeft opgeslagen, krijgen we nu beide EXIF-tags voor elke
+afbeelding die Aperture en FocalLength specificeerd. We gaan aperture verwijderen:
+
+<code>% album -no_exif &quot;&lt;br&gt;aperture=%Aperture%&quot; /home/httpd/test/Photos</code>
+
+De &#39;-no_exif&#39; optie moet met de vorige exifstring exact overeenkoment of
+het zal genegeerd worden. U kunt ook het configbestand bewerken dat het album aanmaakt:
+  /home/httpd/test/Photos/album.conf
+En verwijder het daar.<font color="#00FF00">
+
+</font>ITEM: Meer albums toevoegen
+
+Laten we zeggen dat we op reis gaan naar Spanje. We maken wat foto&#39;s en stoppen ze in:
+  /home/httpd/test/Photos/Spain/
+
+Bekijk nu het album opniew op het hoogste niveau:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Dit zal de map Photos verversen zodat het nu linkt naar Spain en het zal ook een album uitvoeren
+van Spain/, met dezelfde instellingen/thema, enz.
+
+Nu gaan we een andere reis maken, en we maken:
+  /home/httpd/test/Photos/Italy/
+
+We kunnen een album op het hoogste niveau uitvoeren:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Maar dat zal de Spain-map, welke niet veranderd is, niet herscannen.
+Albums genereren meestal geen HTML of thumbnails, alleen als het nodig is,
+maar het kan nog steeds tijd verspillen, vooral als onze albums groter worden.
+Dus we kunnen hem vertellen gewoon de nieuwe map toe te voegen:
+
+<code>% album -add /home/httpd/test/Photos/Italy</code>
+
+Dit zal de hoofdindex (in Photos) verversen en het Italië-album genereren.<font color="#00FF00">
+</font>
+ITEM: Vertaald door:
+
+David Ljung Madison  [http://GetDave.com/]
+</span>
+</pre>

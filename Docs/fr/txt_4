@@ -1,163 +1,189 @@
-Configuration Files
+Fichiers de configuration
 
-ITEM: Configuration Files
+<span lang="fr">
 
-Album behavior can be controlled through command-line options, such as:
+ITEM: Fichiers de configuration
+
+Le comportement du script album peut être controlé via des options en ligne
+de commande comme :
 
 <code>% album -no_known_images</code>
 
 <code>% album -geometry 133x100</code>
 
-<code>% album -exif "File: %File name% " -exif "taken with %Camera make%"</code>
+<code>% album -exif "Fichier : %File name% " -exif "pris avec %Camera make%"</code>
 
-But these options can also be specified in a configuration file:
+Mais ces options peuvent aussi être définies dans un fichier de configuration :
 
-<tt># Example configuration file      # comments are ignored
-known_images       0            # known_images=0 is same as no_known_images
+<tt># Exemple de fichier de configuration      # les commentaires sont ignorés
+known_images       0            # known_images=0 est la même chose que no_known_images
 geometry           133x100
-exif               "File: %File name% "
-exif               "taken with %Camera make%"</tt>
+exif               "Fichier : %File name% "
+exif               "pris avec %Camera make%"</tt>
 
-The configuration file format is one option per line optionally followed
-by whitespace and the option value.  Boolean options can be set without
-the option value or can be cleared/set with 0 and 1.
+Le format du fichier de configuration est d'une option par ligne
+éventuellement suivie par des espaces et la valeur de l'option. Les options
+booléennes peuvent être initialisées sans valeur ou bien être positionnées
+avec 0 et 1.
 
-ITEM: Location Of Configuration Files
+ITEM: Localisation des fichiers de configuration
 
-album looks for configuration files in a few locations, in order:
+album recherche les fichiers de configuration dans quelques endroits ; dans
+l'ordre :
 
-/etc/album/conf              System-wide settings
-/etc/album.conf              System-wide settings
-$BASENAME/album.conf         In the 'album' install directory
-$HOME/.albumrc               User specific settings
-$HOME/.album.conf            User specific settings
-$DOT/album.conf              User specific (I keep my dot files elsewhere)
-$USERPROFILE/album.conf      For Windows (C:\Documents and Settings\TheUser)
+/etc/album/conf              Configuration valable pour l'ensemble du système
+/etc/album.conf              Configuration valable pour l'ensemble du système
+$BASENAME/album.conf         Dans le répertoire d'installation d'album
+$HOME/.albumrc               Configuration dépendante de l'utilisateur
+$HOME/.album.conf            Configuration dépendante de l'utilisateur
+$DOT/album.conf              Configuration dépendante de l'utilisateur (je
+conserver mes fichiers "point" alleurs)
+$USERPROFILE/album.conf      Pour Windows (C:\Documents et Settings\Utilisateur)
 
-album also looks for album.conf files inside the photo album directories.
-Sub-albums can also have album.conf which will alter the settings 
-from parent directories (this allows you to, for example, have a 
-different theme for part of your photo album).  Any album.conf files 
-in your photo album directories will configure the album and any sub-albums
-unless overridden by any album.conf settings found in a sub-album.
+album regarde également des fichiers album.conf à l'intérieur même des
+répertoires de l'album photo courant.
+Les sous-albums photos peuvent aussi disposer d'un fichier album.conf qui
+modifiera la configuration de base des répertoires parent (ceci vous permet,
+par exemple, d'avoir plusieurs thèmes pour des parties différentes de votre
+album photo).
+N'importe quel fichier album.conf dans le répertoire de votre album photo
+configurera l'album et tous les sous-albums à moins qu'un autre fichier de
+configuration album.conf ne soit trouvé dans un sous-album.
 
-As an example, consider a conf for a photo album at 'images/album.conf':
+Par exemple, considérons la configuration pour un album photo situé dans le
+répertoire 'images/album.conf' :
 
 <tt>theme       Dominatrix6
 columns     3</tt>
 
-And another conf inside 'images/europe/album.conf':
+Une autre configuration est trouvée dans le répertoire
+'images/europe/album.conf' :
 
 <tt>theme       Blue
 crop</tt>
 
-album will use the Dominatrix6 theme for the images/ album and all of
-it's sub-albums except for the images/europe/ album which will use
-the Blue theme.  All of the images/ album and sub-albums will have
-3 columns since that wasn't changed in the images/europe/ album, however
-all of the thumbnails in images/europe/ and all of it's sub-albums
-will be cropped due to the 'crop' configuration setting.
+album utilisera le thème Dominatrix6 pour l'album photo du répertoire images/
+et tous ses sous-albums excepté pour le sous-album images/europe/ qui
+disposera du thème Blue. Toutes les images de l'album photo du répertoire
+images/ seront sur 3 colonnes y compris dans le sous-album images/europe/ car
+ce paramètre y est inchangé. Cependant, toutes les vignettes du sous-album
+images/europ/ seront recadrées du fait de la présence de l'option 'crop' dans
+le fichier de configuration.
 
-ITEM: Saving Options
 
-Whenever you run an album, the command-line options are saved in
-an album.conf inside the photo album directory.  If an album.conf
-already exists it will be modified not overwritten, so it is safe
-to edit this file in a text editor.
+ITEM: Sauvegarde des options
 
-This makes it easy to make subsequent calls to album.  If you
-first generate an album with:
+Dès que vous lancez le script album, les options en ligne de commande sont
+sauvegardées dans un fichier album.conf situé à l'intérieur du répertoire de
+votre album photo. Si un tel fichier existe déjà, il sera modifié et non
+remplacé ce qui permet d'éditer très facilement ce fichier via un éditeur de texte.
+
+Ceci facilite l'usage ultérieur du script album. Par exemple, si vous générez
+pour la première fois un album photo avec :
 
 <code>% album -crop -no_known_images -theme Dominatrix6 -sort date images/</code>
 
-Then the next time you call album you can just:
+Alors la prochaine fois que vous appellerez album, vous aurez juste besoin de
+taper :
 
 <code>% album images/</code>
 
-This works for sub-albums as well:
+Ceci fonctionne également pour les sous-albums photo :
 
 <code>% album images/africa/</code>
 
-Will also find all of the saved options.
+trouvera aussi toutes les options sauvegardées.
 
-Some 'one-time only' options are not saved for obvious reasons, such
-as -add, -clean, -force, -depth, etc..
+Quelques options à l'usage limité comme -add (ajouter un nouveau sous-album),
+-clean (effacer les fichiers inutiles), -force (forcer la regénération d'un
+album photo), -depth (préciser la profondeur c'est-à-dire le nombre de niveaux
+de sous-albums sur laquelle s'applique la commande), etc... ne sont pas sauvegardées pour des raisons évidentes.
 
-Running album multiple times on the same directories can
-get confusing if you don't understand how options are saved.
-Here are some examples.
 
-Premises:
-1) Command-line options are processed before conf options found
-   in the album directory.
+Lancer plusieurs fois album dans le même répertoire peut devenir confus si
+vous ne comprenez pas comment les options sont sauvegardées.
+Voici quelques exemples.
+
+Introduction :
+1) Les options en ligne de commande sont traités avant les options du fichier
+   de configuration trouvé dans le répertoire de l'album photo.
    
-2) Album should run the same the next time you call it if you
-   don't specify any options.
+2) album utilisera les mêmes options la prochaine fois que vous le lancez si
+   vous ne spécifiez aucune option.
 
-   For example, consider running album twice on a directory:
+   Par exemple, si on suppose qu'on lance deux fois album dans un répertoire :
 
-   <code>% album -exif "comment 1" photos/spain</code>
-   <code>% album photos/spain</code>
+   <code>% album -exif "commentaire 1" photos/espagne</code>
+   <code>% album photos/espagne</code>
 
-   The second time you run album you'll still get the "comment 1"
-   exif comment in your photos directory.
+   La deuxième fois que vous utiliserez album, vous aurez toujours le
+   commentaire exif "commentaire 1" pour l'album photo de ce répertoire.
 
-3) Album shouldn't end up with multiple copies of the same array
-   options if you keep calling it with the same command-line
+3) album ne finira pas avec de multiples copies d'une même option acceptant
+   plusieurs arguments si vous continuez à l'appeler avec la même ligne de
+   commande.
 
-   For example:
+   Par exemple :
 
-   <code>% album -exif "comment 1" photos/spain</code>
-   <code>% album -exif "comment 1" photos/spain</code>
-   
-   The second time you run album you will NOT end up with multiple
-   copies of the "comment 1" exif comment.
+   <code>% album -exif "commentaire 1" photos/espagne</code>
+   <code>% album -exif "commentaire 1" photos/espagne</code>
 
-   <b>However, please note that if you re-specify the same options
-   each time, album may run slower because it thinks it needs to
-   regenerate your html!</b>
+   La deuxième fois que vous lancez album, vous n'aurez pas à la fin plusieurs
+   copies du commentaire exif "commentaire 1" dans vos photos.   
 
-As an example, if you run:
+   <b>Cependant, veuillez noter que si vous re-préciser à chaque fois les
+   mêmes options, album pourrait être plus lent à s'exécuter car il pensera
+   qu'il a besoin de regénérer vos fichiers html !</b>
 
-<code>% album -medium 640x640 photos/spain</code>
-  (then later...)
-<code>% album -medium 640x640 photos/spain</code>
+Ainsi par exemple, si vous lancez :
 
-Then the second time will unnecessarily regenerate all your
-medium images.  This is <b>much</b> slower.
+<code>% album -medium 640x640 photos/espagne</code>
+  (puis plus tard...)
+<code>% album -medium 640x640 photos/espagne</code>
 
-It's better to specify command-line options only the first time
-and let them get saved, such as:
+Alors la seconde fois regénérera inutilement toutes vos photos de taille
+moyenne ("medium"). Ceci est <b>beaucoup</b> lent.
 
-<code>% album -medium 640x640 photos/spain</code>
-  (then later...)
-<code>% album photos/spain</code>
+Il est donc préférable de spécifier les options en ligne de commande
+seulement la première fois, puis d'utiliser ensuite la sauvegarde qui en a été
+faite comme ici :
+
+<code>% album -medium 640x640 photos/espagne</code>
+  (puis plus tard...)
+<code>% album photos/espagne</code>
 
 
-Unfortunately these constraints mean that any new array options will
-be put at the beginning of your list of -exif options.
+Malheureusement, ces contraintes signifient que, pour toutes les options
+acceptant plusieurs arguments, les dernières valeurs entrées se retrouveront
+en début de liste comme sur l'exemple ci-dessous avec l'option -exif.
 
-For example:
+<code>% album -exif "commentaire 1" photos/espagne</code>
+<code>% album -exif "commentaire 2" photos/espagne</code>
 
-<code>% album -exif "comment 1" photos/spain</code>
-<code>% album -exif "comment 2" photos/spain</code>
+Les commentaires seront en fait ordonnés ainsi : "commentaire 2" puis
+"commentaire 1".
 
-The comments will actually be ordered "comment 2" then "comment 1"
+Pour préciser l'ordre exact, vous aurez besoin de re-spécifier toutes les
+options :
 
-To specify exact ordering, you may need to re-specify all options.
+Soit en spécifiant de nouveau "commentaire 1" pour le remettre en première
+position dans la liste.
 
-Either specify "comment 1" to put it back on top:
+<code>% album -exif "commentaire 1" photos/espagne</code>
 
-<code>% album -exif "comment 1" photos/spain</code>
+Ou juste en spécifiant toutes les options dans l'ordre que vous souhaitez :
 
-Or just specify all the options in the order you want:
+<code>% album -exif "commentaire 1" -exif "commentaire 2" photos/espagne</code>
 
-<code>% album -exif "comment 1" -exif "comment 2" photos/spain</code>
+Quelques fois, il peut être plus facile d'éditer directement le fichier
+album.conf afin d'y apporter les modifications souhaitées.
 
-Sometimes it may be easier to merely edit the album.conf file directly
-to make any changes.
+Finalement, ceci nous permet seulement d'accumuler les options.
+On peut effacer les options en utiliser -no et -clear (voir la section
+correspondante <a href='Section_3.html#Options'>Options</a>), ces
+modifications étant également sauvegardées d'une utilisation à une autre.
 
-Finally, this only allows us to accumulate options.
-We can delete options using -no and -clear, see the section on <a href='Section_3.html#Options'>Options</a>,
-these settings (or clearings) will also be saved from run to run.
+ITEM: Traduit par:
 
+Jean-Marc [jean-marc.bouche AT 9online.fr]
+</span>

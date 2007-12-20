@@ -494,7 +494,7 @@ Caption($img)             The caption for an image
 
 <b>Convenience Routines</b>
 Pretty($str,$html,$lines) Pretty formats a name.
-    If $html then HTML is allowed (i.e., use 0 for <title> and the like)
+    If $html then HTML is allowed (i.e., use 0 for &lt;title&gt; and the like)
     Currently just puts prefix dates in a smaller font (i.e. '2004-12-03.Folder')
     If $lines then multilines are allowed
     Currently just follows dates with a 'br' line break.
@@ -508,7 +508,8 @@ Image_Ref($ref,$also,$alt)
                           album picks the Image_Array by what languages are set.
 Border($img,$type,$href,@border)
 Border($str,$x,$y,@border)
-                          Create the full bordered image.  See 'Borders' for
+                          Create the full bordered image.
+                          See 'Borders' for more information.
 
 
 If you're creating a theme from scratch, consider adding support for -slideshow.
@@ -526,9 +527,10 @@ everyone to use or if you want it under a specific license.
 
 <b><a name='Converting_v2.0_Themes_to_v3.0_Themes'>6:</a>   Converting v2.0 Themes to v3.0 Themes</b>
 
-album v2.0 had a theme interface which has been rewritten.  Most 2.0 themes
-(especially those that don't use many of the global variables) will still
-work, but the interface is deprecated and may disappear in the near future.
+album v2.0 introduced a theme interface which has been rewritten.  Most
+2.0 themes (especially those that don't use many of the global variables)
+will still work, but the interface is deprecated and may disappear in
+the near future.
 
 It's not difficult to convert from v2.0 to v3.0 themes.
 
