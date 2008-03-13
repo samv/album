@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '4.03';
+  my $VERSION=  '4.04';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -1422,7 +1422,7 @@ sub scrub_opts {
     }
 
     # ffmpeg can handle AVI, MOV (see 'is_movie()')
-    $IMAGE_TYPES.="|AVI|MOV|MOOV|MP4|3GP" if $opt->{ffmpeg};
+    $IMAGE_TYPES.="|AVI|MOV|MOOV|MP4|3GP|WMV" if $opt->{ffmpeg};
 
     #########################
     # Windows crap
@@ -5099,8 +5099,8 @@ BORDER4
 			my \$end = \$href ? "</a>" : "";
 
       print <<OVERLAY8;
-					<div style="position: relative; width: \$full_width; height: \$full_height;">
-						<div style="position: absolute; z-index: 0; position: absolute; left: \$l_pad; top: \$r_pad;">
+					<div style="position: relative; width: \${full_width}px; height: \${full_height}px;">
+						<div style="position: absolute; z-index: 0; left: \${l_pad}px; top: \${r_pad}px;">
 							\$img
 						</div>
 						<div style="position: absolute; z-index: 2; top: 0px; left: 0px;">
@@ -5115,16 +5115,16 @@ BORDER4
 						<div style="position: absolute; z-index: 2; bottom: 0px; right: 0px;">
 							\$href\$br\$end
 						</div>
-						<div style="position: absolute; z-index: 1; top: 0px; left: \$TL->[\$width];">
+						<div style="position: absolute; z-index: 1; top: 0px; left: \$TL->[\$width]px;">
 							\$href\$t\$end
 						</div>
-						<div style="position: absolute; z-index: 1; bottom: 0px; left: \$BL->[\$width];">
+						<div style="position: absolute; z-index: 1; bottom: 0px; left: \$BL->[\$width]px;">
 							\$href\$b\$end
 						</div>
-						<div style="position: absolute; z-index: 1; top: \$T->[\$height]; left: 0px;">
+						<div style="position: absolute; z-index: 1; top: \$T->[\$height]px; left: 0px;">
 							\$href\$l\$end
 						</div>
-						<div style="position: absolute; z-index: 1; top: \$T->[\$height]; right: 0px;">
+						<div style="position: absolute; z-index: 1; top: \$T->[\$height]px; right: 0px;">
 							\$href\$r\$end
 						</div>
 					</div>
@@ -6016,7 +6016,7 @@ sub gather_contents {
 
 sub is_movie {
   my ($opt,$pic) = @_;
-  $pic =~ /\.(mpe?g|moo?v|avi|mp4|3gp)$/i ? 1 : 0;
+  $pic =~ /\.(mpe?g|moo?v|avi|mp4|3gp|wmv)$/i ? 1 : 0;
 }
 
 # Deal with each image/picture/file/whatever
@@ -6602,11 +6602,14 @@ sub get_size {
 sub check_anim_gifs {
   my ($opt,$img,$new) = @_;
   return if -f $new;
-  return unless -f "$new.0";
+	# The old imagemagick would create file.jpg.gif.0 instead of file.jpg.gif
+	# New ImageMagick creates file.gif instead of file.jpg.gif [convert bug!]
+	my $newPoss = $new =~ m|(.+)(\.[^\./]+)(\.[^\./]+)$| ? "$1$3" : "${new}-0";
+  return unless -f "$new.0" || -f $newPoss;
   # We shouldn't get here if animated_gifs is set
   return if $opt->{animated_gifs};
   $opt->{animated_gifs}=1;
-  rename("$new.0",$new);	# Try to fix
+  rename(-f $newPoss ? $newPoss : "$new.0",$new);	# Try to fix
   print STDERR "\n";
   pperror($opt,"Animated gif was found that wasn't scaled properly.\n\tTry using option [_1] in the future.\n",'-animated_gifs');
 }

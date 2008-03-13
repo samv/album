@@ -2,6 +2,12 @@
 - : deprecated feature
 * : bugfix
 
+
+Version 4.04, 2008/03/13
+------------------------
+* Fixed overlay of images (now needs "px"?) (Thanks Laura Baldwin, boojum mit edu)
++ Added wmv to movie types (Thanks Kevin Walton, kevin unseen org)
+
 Version 4.03, 2007/12/20
 ------------------------
 + Fixed up album for CygWin changes - files are no longer quoted, no spaces in filenames!
@@ -16,6 +22,7 @@ Version 4.03, 2007/12/20
   (Thanks George Hansper, georgeh anstat com au)
 * Improved XHTML output (replaced 'td background=...')
 + Language: French is mostly complete, as well as docs
++ Better handling of convert animated gif file renaming bugs (Thanks Jon Daley)
 * Proper handling of thumbs in other dirs (due to plugins) (Thanks Dave Hansen)
 
 Version 4.02, 2007/01/19
