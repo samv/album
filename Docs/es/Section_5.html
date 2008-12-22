@@ -1,0 +1,340 @@
+
+<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN'>
+<html>
+<head>
+	<style>
+	<!--
+	:lang(es) { color: green; }
+	-->
+	</style>
+	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../it' hreflang='it' lang='it' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../de' hreflang='de' lang='de' title='album documentation'>
+	<meta http-equiv='Content-Language' content='es'>
+	<link rel='alternate' type='text/html' href='../fr' hreflang='fr' lang='fr' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../nl' hreflang='nl' lang='nl' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../hu' hreflang='hu' lang='hu' title='album documentation'>
+
+
+  <title>MarginalHacks album - Feature Requests, Bugs, Patches and Troubleshooting
+ - Documentation</title>
+
+  <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <style>
+  <!--
+  code {color: red;}
+  tt {color: #ff6666;}
+  A:hover {background-color: yellow;}
+  -->
+  </style>
+  <script language='JavaScript'>
+  <!--
+  ver4 = (document.layers || document.all) ? 1 : 0;
+
+  if (document.images) {
+    ImageArray = new Array (
+      'http://DavePics.com/Domains/MarginalHacks.gif',
+      'http://DavePics.com/Domains/MarginalHacks_down.gif',
+      'http://DavePics.com/Domains/GetDave.gif',
+      'http://DavePics.com/Domains/GetDave_down.gif',
+      'http://DavePics.com/Domains/Daveola.gif',
+      'http://DavePics.com/Domains/Daveola_down.gif',
+      'http://DavePics.com/Domains/DaveSource.gif',
+      'http://DavePics.com/Domains/DaveSource_down.gif' )
+
+    ImageList = new Array ();
+    for (counter in ImageArray) {
+      ImageList[counter] = new Image();
+      ImageList[counter].src = ImageArray[counter];
+    }
+  };
+  defaultStatus = 'Marginal Hacks'
+
+  //-->
+  </script>
+</head>
+
+<body bgcolor=white link='#0000FF' alink='#0000FF' vlink='#5000FF' text='#000000'>
+
+<div lang='en'>
+<center>
+<table border=0 cellspacing=0 cellpadding=0 width=100%>
+  <tr> <td rowspan=2>
+      <a href='http://MarginalHacks.com/'
+         onMouseOver = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks_down.gif'
+          onMouseOut = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks.gif'
+         onMouseDown = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks_down.gif'
+           onMouseUp = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks.gif'>
+      <img name=MarginalHacks alt='MarginalHacks.com'
+           src='http://DavePics.com/Domains/MarginalHacks.gif'
+           width=69 height=60 border=0></a>
+      <a href='http://DaveSource.com/'
+         onMouseOver = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource_down.gif'
+          onMouseOut = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource.gif'
+         onMouseDown = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource_down.gif'
+           onMouseUp = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource.gif'>
+      <img name=DaveSource alt='DaveSource.com'
+           src='http://DavePics.com/Domains/DaveSource.gif'
+           width=69 height=60 border=0></a>
+      <a href='http://GetDave.com/'
+         onMouseOver = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave_down.gif'
+          onMouseOut = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave.gif'
+         onMouseDown = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave_down.gif'
+           onMouseUp = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave.gif'>
+      <img name=GetDave alt='GetDave.com - all the current Dave Pointers.'
+           src='http://DavePics.com/Domains/GetDave.gif'
+           width=69 height=60 border=0></a>
+      <a href='http://Daveola.com/'
+         onMouseOver = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola_down.gif'
+          onMouseOut = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola.gif'
+         onMouseDown = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola_down.gif'
+           onMouseUp = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola.gif'>
+      <img name=Daveola alt='Daveola.com - My home.'
+           src='http://DavePics.com/Domains/Daveola.gif'
+           width=69 height=60 border=0></a>
+  </td>
+  <td bgcolor=#000000 align=right>
+  <font size=+2 face='lucida, helvetica' color=#ccccc0>
+    A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
+
+    F&nbsp;i&nbsp;v&nbsp;e&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;F&nbsp;e&nbsp;a&nbsp;t&nbsp;u&nbsp;r&nbsp;e&nbsp; &nbsp;R&nbsp;e&nbsp;q&nbsp;u&nbsp;e&nbsp;s&nbsp;t&nbsp;s&nbsp;,&nbsp; &nbsp;B&nbsp;u&nbsp;g&nbsp;s&nbsp;,&nbsp; &nbsp;P&nbsp;a&nbsp;t&nbsp;c&nbsp;h&nbsp;e&nbsp;s&nbsp; &nbsp;a&nbsp;n&nbsp;d&nbsp; &nbsp;T&nbsp;r&nbsp;o&nbsp;u&nbsp;b&nbsp;l&nbsp;e&nbsp;s&nbsp;h&nbsp;o&nbsp;o&nbsp;t&nbsp;i&nbsp;n&nbsp;g&nbsp;
+<br>
+
+  </font>
+  </td></tr>
+	<tr height=16>
+		<td height=16 align=right>
+			<a href="http://del.icio.us/post?url=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Del.icio.us"><img src="/Bookmarks/delicious.gif" title="Add 'Marginal Hacks Photo Album Generator' to Del.icio.us" alt="Add 'Marginal Hacks Photo Album Generator' to Del.icio.us" border="0"></a>
+			<a href="http://digg.com/software/Marginal_Hacks_Photo_Album_Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Digg 'Marginal Hacks Photo Album Generator'"><img src="/Bookmarks/digg.gif" title="Digg 'Marginal Hacks Photo Album Generator'" alt="Digg 'Marginal Hacks Photo Album Generator'" border="0"></a>
+			<a href="http://furl.net/storeIt.jsp?t=Marginal+Hacks+Photo+Album+Generator&amp;u=http://MarginalHacks.com/Hacks/album/" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to FURL"><img src="/Bookmarks/furl.gif" title="Add 'Marginal Hacks Photo Album Generator' to FURL" alt="Add 'Marginal Hacks Photo Album Generator' to FURL" border="0"></a>
+			<a href="http://reddit.com/submit?url=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generato" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to reddit"><img src="/Bookmarks/reddit.gif" title="Add 'Marginal Hacks Photo Album Generator' to reddit" alt="Add 'Marginal Hacks Photo Album Generator' to reddit" border="0"></a>
+			<a href="http://www.stumbleupon.com/refer.php?url=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Stumble Upon"><img src="/Bookmarks/stumbleupon.gif" title="Add 'Marginal Hacks Photo Album Generator' to Stumble Upon" alt="Add 'Marginal Hacks Photo Album Generator' to Stumble Upon" border="0"></a>
+			<a href="http://www.technorati.com/faves?add=http://MarginalHacks.com/Hacks/album/" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Technorati"><img src="/Bookmarks/technorati.gif" title="Add 'Marginal Hacks Photo Album Generator' to Technorati" alt="Add 'Marginal Hacks Photo Album Generator' to Technorati" border="0"></a>
+			<a href="http://myweb2.search.yahoo.com/myresults/bookmarklet?u=http://MarginalHacks.com/Hacks/album/&amp;t=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Yahoo My Web"><img src="/Bookmarks/myweb2.gif" title="Add 'Marginal Hacks Photo Album Generator' to Yahoo My Web" alt="Add 'Marginal Hacks Photo Album Generator' to Yahoo My Web" border="0"></a>
+			<a href="http://www.google.com/bookmarks/mark?op=edit&amp;output=popup&amp;bkmk=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Google Bookmarks"><img src="/Bookmarks/google.gif" title="Add 'Marginal Hacks Photo Album Generator' to Google Bookmarks" alt="Add 'Marginal Hacks Photo Album Generator' to Google Bookmarks" border="0"></a>
+			<a href="http://www.squidoo.com/lensmaster/bookmark?http://MarginalHacks.com/Hacks/album/" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Squidoo"><img src="/Bookmarks/squidoo.gif" title="Add 'Marginal Hacks Photo Album Generator' to Squidoo" alt="Add 'Marginal Hacks Photo Album Generator' to Squidoo" border="0"></a>
+			<a href="http://www.spurl.net/spurl.php?url=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Spurl"><img src="/Bookmarks/spurl.gif" title="Add 'Marginal Hacks Photo Album Generator' to Spurl" alt="Add 'Marginal Hacks Photo Album Generator' to Spurl" border="0"></a>
+			<a href="http://www.bloglines.com/sub/http://MarginalHacks.com/Hacks/album/" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Bloglines"><img src="/Bookmarks/bloglines.gif" title="Add 'Marginal Hacks Photo Album Generator' to Bloglines" alt="Add 'Marginal Hacks Photo Album Generator' to Bloglines" border="0"></a>
+ 	 </td>
+	</tr>
+</table>
+
+<a name=top>
+
+<table cellpadding=8 width='100%'> <tr>
+  <td valign=top>
+    <table>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/'>Home</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Themes.html'>Themes/<br />Screenshots</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Languages.html'>Languages</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Plugins.html'>Plugins</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/License.html'>License</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Download.html'>Download</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3>Documentation
+          <font size='-1'>
+<br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
+<br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">Italiano</a></span>
+<br><span lang='de'>&nbsp;&nbsp; <img src="../de/flag.png"> &nbsp;&nbsp;<a href="../de">Deutsch</a></span>
+<br><span lang='es'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;Español</span>
+<br><span lang='fr'>&nbsp;&nbsp; <img src="../fr/flag.png"> &nbsp;&nbsp;<a href="../fr">Français</a></span>
+<br><span lang='nl'>&nbsp;&nbsp; <img src="../nl/flag.png"> &nbsp;&nbsp;<a href="../nl">Nederlands</a></span>
+<br><span lang='hu'>&nbsp;&nbsp; <img src="../hu/flag.png"> &nbsp;&nbsp;<a href="../hu">magyar</a></span>
+
+          </font>
+</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3>Mailing List
+				<br />
+				<span style="font-size: 11px; margin-left: 10px;">
+				<a href="http://groups.google.com/group/album-announce" rel=nofollow>announcements</a>
+				- (<a href="http://MarginalHacks.com/archives/album-announce/" rel=nofollow>old</a>)
+				</span>
+				<br />
+				<span style="font-size: 11px; margin-left: 10px;">
+				<a href="http://groups.google.com/group/album-users" rel=nofollow>user discussion</a>
+				- (<a href="http://MarginalHacks.com/archives/album/" rel=nofollow>old</a>)
+				</span>
+				</h3>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/CHANGELOG.html'>CHANGELOG</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Praises.html'>Praises</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href=/Contact/>Contact</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+    </table>
+  </td>
+  <td valign=top>
+
+
+
+<p><hr><p>
+<a href='.'>Table Of Contents</a>
+<ol><a href='#Feature_Requests'><li>Feature Requests</a>
+ <a href='#Bug_reports'><li>Bug reports</a>
+ <a href='#Writing_Patches,_Modifying_album'><li>Writing Patches, Modifying album</a>
+ <a href='#Known_Bugs'><li>Known Bugs</a>
+ <a href='#PROBLEM:_My_index_pages_are_too_large'><li>PROBLEM: My index pages are too large!</a>
+ <a href='#ERROR:_no_delegate_for_this_image_format_(._album)'><li><b>ERROR:</b> no delegate for this image format (./album)</a>
+ <a href='#ERROR:_no_delegate_for_this_image_format_(some_non_image_file)'><li><b>ERROR:</b> no delegate for this image format (some_non_image_file)</a>
+ <a href='#ERROR:_no_delegate_for_this_image_format_(some.jpg)'><li><b>ERROR:</b> no delegate for this image format (some.jpg)</a>
+ <a href='#ERROR:_identify:_JPEG_library_is_not_available_(some.jpg)'><li><b>ERROR:</b> identify: JPEG library is not available (some.jpg)</a>
+ <a href='#ERROR:_Cant_get_[some_image]_size_from_-verbose_output.'><li><b>ERROR:</b> Can't get [some_image] size from -verbose output.</a>
+</ol><p><hr><p>
+
+
+<pre>
+
+<b><a name='Feature_Requests'>1:</a>   Feature Requests</b>
+
+If there's something you want added to album, first make sure
+it doesn't already exist!  Check the man page or the usage:
+
+<code>% man album</code>
+<code>% album -h</code>
+
+Also see -more and -usage options.
+
+If you don't see it there, consider writing a patch or a plugin.
+
+<b><a name='Bug_reports'>2:</a>   Bug reports</b>
+
+Before you submit a bug, please make sure you have the most current release of album!
+
+When submitting a bug, I need to know <b>at least</b>:
+
+1) Your operating system
+2) The exact problem and the exact error messages
+
+I'd also like to know, if possible:
+1) The exact album command you ran
+2) The output from the command
+
+And I generally also need the debug output of album:
+
+<code>% album -d</code>
+
+Finally, make sure that you've got the most current
+version of album, and the most current themes as well.
+
+<b><a name='Writing_Patches,_Modifying_album'>3:</a>   Writing Patches, Modifying album</b>
+
+If you want to modify album, you might want to check with me
+first to make sure it's not already on my development plate.
+
+If not, then consider writing it as a plugin instead of patching
+the album source.  This avoids adding complexity to album for
+features that may not be globally used.
+
+If it needs to go into album (for example, if it's a bug), then
+please make sure to first download the most <a href='http://MarginalHacks.com/bin/album'>recent copy of album</a>
+first, then patch that and send me either a diff, a patch, or the
+full script.  If you comment off the changes you make that'd be great too.
+
+<b><a name='Known_Bugs'>4:</a>   Known Bugs</b>
+
+v3.11:  -clear_* and -no_* doesn't clear out parent directory options.
+v3.10:  Burning CDs doesn't quite work with theme absolute paths.
+v3.00:  Array and code options are saved backwards, for example:
+        "album -lang aa .. ; album -lang bb .." will still use language 'aa'
+        Also, in some cases array/code options in sub-albums will not
+        be ordered right the first time album adds them and you may
+        need to rerun album.  For example:
+        "album -exif A photos/ ; album -exif B photos/sub"
+        Will have "B A" for the sub album, but "A B" after: "album photos/sub"
+
+<b><a name='PROBLEM:_My_index_pages_are_too_large'>5:</a>   PROBLEM: My index pages are too large!</b>
+
+I get many requests to break up the index pages after reaching a certain
+threshold of images.
+
+The problem is that this is hard to manage - unless the index pages are
+treated just like sub-albums, then you now have three major components
+on a page, more indexes, more albums, and thumbnails.  And not only is
+that cumbersome, but it would require updating all the themes.
+
+Hopefully the next major release of album will do this, but until then
+there is another, easier solution - just break the images up into
+subdirectories before running album.
+
+I have a tool that will move new images into subdirectories for you and
+then runs album:
+  <a href='http://MarginalHacks.com/Hacks/album/tools/in_album'>in_album</a>
+
+<b><a name='ERROR:_no_delegate_for_this_image_format_(._album)'>6:</a>   <b>ERROR:</b> no delegate for this image format (./album)</b>
+
+You have the album script in your photo directory and it can't make
+a thumbnail of itself!  Either:
+1) Move album out of the photo directory (suggested)
+2) Run album with -known_images
+
+<b><a name='ERROR:_no_delegate_for_this_image_format_(some_non_image_file)'>7:</a>   <b>ERROR:</b> no delegate for this image format (some_non_image_file)</b>
+
+Don't put non-images in your photo directory, or else run with -known_images.
+
+<b><a name='ERROR:_no_delegate_for_this_image_format_(some.jpg)'>8:</a>   <b>ERROR:</b> no delegate for this image format (some.jpg)</b>
+<b><a name='ERROR:_identify:_JPEG_library_is_not_available_(some.jpg)'>9:</a>   <b>ERROR:</b> identify: JPEG library is not available (some.jpg)</b>
+
+Your ImageMagick installation isn't complete and doesn't know how
+to handle the given image type.
+
+<b><a name='ERROR:_Cant_get_[some_image]_size_from_-verbose_output.'>10:</a>  <b>ERROR:</b> Can't get [some_image] size from -verbose output.</b>
+
+ImageMagick doesn't know the size of the image specified.  Either:
+1) Your ImageMagick installation isn't complete and can't handle the image type.
+2) You are running album on a directory with non-images in it without
+   using the -known_images option.
+
+If you're a <a href='http://MarginalHacks.com/redir.cgi?Gentoo.org/'>gentoo linux</a> user and you see this error, then run this command
+as root (thanks Alex Pientka):
+
+  USE="avi gif jpeg mpeg png quicktime tiff" emerge imagemagick
+
+
+
+</pre>
+<p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>
+    </td>
+  </tr>
+</table>
+</div>
+
+</body>
+</html>
+	<center>
+	<br><br><br>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	</center>

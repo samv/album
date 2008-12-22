@@ -8,7 +8,7 @@ it doesn't already exist!  Check the man page or the usage:
 <code>% man album</code>
 <code>% album -h</code>
 
-Also see -more and -More options.
+Also see -more and -usage options.
 
 If you don't see it there, consider writing a patch or a plugin.
 

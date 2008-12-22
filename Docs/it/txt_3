@@ -61,9 +61,11 @@ To see more options:
 
 <code>% album -more</code>
 
-And an (almost) full list of options:
+And even more full list of options:
 
-<code>% album -More</code>
+<code>% album -usage=2</code>
+
+You can specify numbers higher than 2 to see even more options (up to about 100)
 
 Plugins can also <a href="Section_7.html#Plugin_Options">have options</a> with their own usage.
 

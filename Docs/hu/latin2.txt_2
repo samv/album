@@ -1,0 +1,177 @@
+MINI HOW-TO
+
+<span lang="hu">
+ITEM: Egyszerû album
+
+Az album program telepítése után próbáljuk ki
+a következõ egyszerû példákat! Probléma esetén vegyük
+igénybe a telepítési útmutató segítségét!
+
+A sablonok (theme-ek) és a fotóalbum tárolásához hozzunk létre
+egy könyvtárat, ebben a leírásban a /home/httpd/test könyvtárat
+fogjuk használni. Olyan könyvtárat kell választanunk, amelyet a
+web szerver is megtalál. Példánkban a http://myserver/test címet fogjuk
+használni, itt éri el a web szerver a "test" könyvtárunkat.
+
+Elõször hozzunk létre egy könyvtárat, és másoljuk bele a képeket!
+Legyen ez a könyvtár a /home/httpd/test/Photos.
+A képek neve a példában 'IMG_001.jpg', ..., 'IMG_004.jpg'.
+
+A legegyszerûbb album létrehozásához adjuk ki a következõ utasítást:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Ezek után a a fényképalbumot egy web böngészõvel a következõ címen
+érhetjük el:
+  http://myserver/test/Photos
+
+ITEM: A fotók feliratozása
+
+Készítsük el a /home/httpd/test/Photos/captions.txt fájlt a
+következõ tartalommal (használjuk a "tab" gombot a "  [tab]  "
+helyén):
+
+-- captions.txt ---------
+IMG_001.jpg  [tab]  Az elsõ kép neve
+IMG_002.jpg  [tab]  Második kép
+IMG_003.jpg  [tab]  Újabb kép  [tab]   micsoda felirat!
+IMG_004.jpg  [tab]  Utolsó kép     [tab]   újabb felirat.
+-------------------------
+
+Ezután futtassuk újra az album programot:
+
+<code>% album /home/httpd/test/Photos</code>
+
+és íme, a feliratok megjelentek.
+
+Most készítsük el a /home/httpd/test/Photos/header.txt fájlt,
+benne tetszõleges szöveggel. Az album program futtatása után
+a felirat megjelenik az oldal tetején.
+
+ITEM: Képek elrejtése
+
+Képek, fájlok vagy könyvtárak többféleképpen is elrejthetõk. Most
+a captions.txt fájl segítségével mutatjuk be képek elrejtését.
+A "#" jelet írjuk be valamelyik sor elejére:
+
+-- captions.txt ---------
+IMG_001.jpg  [tab]  Az elsõ kép neve
+#IMG_002.jpg  [tab]  Második kép
+IMG_003.jpg  [tab]  Újabb kép  [tab]   micsoda felirat!
+IMG_004.jpg  [tab]  Utolsó kép     [tab]   újabb felirat.
+-------------------------
+
+Az album program futtatása után látható, hogy az IMG_002.jpg nevû
+kép hiányzik. Ha ezt az album program elsõ futtatása elõtt csináltuk
+volna, akkor a közepes és a kis méretû képeket (ikonokat) nem is
+készítette volna el a program. Ezek a most már felesleges képek
+utólag is eltávolíthatók a -clean kapcsoló használatával:
+
+<code>% album -clean /home/httpd/test/Photos</code>
+
+ITEM: Sablonok használata
+
+Amennyiben a sablonok megfelelõen telepítve vannak, és
+theme_path a sablonok helyét jelzi, akkor a sablonok
+használhatók a következõképpen:
+
+<code>% album -theme Blue /home/httpd/test/Photos</code>
+
+Ekkor a kész fotóalbum a Blue nevû sablont használja. Ha az
+albumban meg nem jelenített képeket találunk, akkor valószínûleg
+olyan könyvtárba lett telepítve a sablon, amelyet a böngészõprogram
+nem ér el, a részletekért l. a telepítési útmutatót.
+
+A program futáskor elmenti az alkalmazott beállításokat, így ha a
+következõ alkalommal futtatjuk a programot:
+
+<code>% album /home/httpd/test/Photos</code>
+
+még mindig a Blue sablont használja. A sablon kikapcsolásához a
+következõ parancsot használjuk:
+
+<code>% album -no_theme /home/httpd/test/Photos</code>
+
+ITEM: Közepes méretû képek
+
+A teljes méretû fényképek rendszerint túl nagyok egy webes albumhoz,
+ezért az album oldalakon közepes méretû képeket használunk:
+
+<code>% album -medium 33% /home/httpd/test/Photos</code>
+
+A teljes méretû képek nem vesznek el, alapesetben
+a közepes méretû képre kattintva
+tekinthetjük meg õket, vagy az
+
+<code>% album -just_medium /home/httpd/test/Photos</code>
+
+parancs alkalmazásával elérhetjük, hogy a teljes méretû képekre ne
+helyezzen el linket a program (feltéve, hogy elõtte a -medium kapcsolóval
+hívtuk a programot valamikor).
+
+ITEM: EXIF feliratok használata
+
+Megadhatjuk például, hogy a fénykép készítésekor alkalmazott apertúra
+belekerüljön a képek feliratába:
+
+<code>% album -exif "&lt;br&gt;apertúra=%Aperture%" /home/httpd/test/Photos</code>
+
+Ez a parancs csak azon képek feliratához írja hozzá az apertúrára vonatkozó információt,
+amelyek exif információjában szerepel az "Aperture" kulcsszó (a "%" jelek közti
+rész jelenik meg a feliratban). Az elõzõ parancsban szereplõ &lt;br&gt;
+hatására az exif információ a kép feliratában új sorban jelenik meg.
+
+Egyéb exif információ is elhelyezhetõ a feliratban, pl:
+
+<code>% album -exif "&lt;br&gt;fókusz: %FocalLength%" /home/httpd/test/Photos</code>
+
+Mivel az elõzõ futtatáskor a program elmentette a beállításokat, most
+mindkét exif információ megjelenik a képek feliratában: az apertúra és a
+fókusztávolság is. Ha törölni akarjuk az apertúrára vonatkozó részt:
+
+<code>% album -no_exif "&lt;br&gt;aperture=%Aperture%" /home/httpd/test/Photos</code>
+
+A "-no_exif" kapcsolónak pontosan meg kell egyeznie a korábban megadott
+-exif kapcsolónál megadott résszel, különben a program figyelmen kívül hagyja.
+A program által elmentett konfigurációs állományt is szabadon meg lehet változtatni:
+  /home/httpd/test/Photos/album.conf
+Itt is lehet törölni a kérdéses részt.
+
+ITEM: További albumok hozzáadása
+
+Tegyük fel, hogy a spanyolországi nyaralás során készült képeket a
+
+  /home/httpd/test/Photos/Spain/
+könyvtárban helyeztük el. Futtassuk most az album programot az
+összes képet tartalmazó könyvtárra:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Ez a parancs elkészíti az albumot a Photos könyvtárban, majd készít egy linket a
+Spain könyvtárra, és ugyanazon beállításokkal, sablonnal elkészíti az
+albumot a Spain alkönyvtárban is.
+
+Újabb utazást követõen a képeket a következõ könyvtárba tesszük:
+  /home/httpd/test/Photos/Italy/
+
+Újra futtatva a programot az összes képet tartalmazó könyvtárra:
+
+<code>% album /home/httpd/test/Photos</code>
+
+Ez a parancs újra feldolgozza a Spain könyvtárat is, ami nem változott.
+Az album program nem készít újabb HTML oldalakat vagy kis méretû
+képeket, ha azokat már korábban elkészítette, de a feleslegesen feldolgozott
+könyvtárak így is feleslegesen töltik az idõt, különösen nagy albumok
+esetén. Ennek elkerülésére megadhatjuk, hogy csak az új könyvtárat
+dolgozza fel:
+
+<code>% album -add /home/httpd/test/Photos/Italy</code>
+
+Ez az eredeti albumhoz hozzáadja a linket az új albumhoz, és elkészíti
+az Italy albumot.
+
+ITEM: Fordította:
+
+György Károlyi  [http://www.me.bme.hu/~karolyi/indexe.html]
+</span>
+

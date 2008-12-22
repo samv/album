@@ -1,0 +1,673 @@
+
+<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN'>
+<html>
+<head>
+	<style>
+	<!--
+	:lang(hu) { color: green; }
+	-->
+	</style>
+	<link rel='alternate' type='text/html' href='../' hreflang='en' lang='en' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../it' hreflang='it' lang='it' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../de' hreflang='de' lang='de' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../es' hreflang='es' lang='es' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../fr' hreflang='fr' lang='fr' title='album documentation'>
+	<link rel='alternate' type='text/html' href='../nl' hreflang='nl' lang='nl' title='album documentation'>
+	<meta http-equiv='Content-Language' content='hu'>
+
+
+  <title>MarginalHacks album - Creating Themes
+ - Documentation</title>
+
+  <link rel='shortcut icon' HREF='/favicon.ico' type='image/x-gif'>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <style>
+  <!--
+  code {color: red;}
+  tt {color: #ff6666;}
+  A:hover {background-color: yellow;}
+  -->
+  </style>
+  <script language='JavaScript'>
+  <!--
+  ver4 = (document.layers || document.all) ? 1 : 0;
+
+  if (document.images) {
+    ImageArray = new Array (
+      'http://DavePics.com/Domains/MarginalHacks.gif',
+      'http://DavePics.com/Domains/MarginalHacks_down.gif',
+      'http://DavePics.com/Domains/GetDave.gif',
+      'http://DavePics.com/Domains/GetDave_down.gif',
+      'http://DavePics.com/Domains/Daveola.gif',
+      'http://DavePics.com/Domains/Daveola_down.gif',
+      'http://DavePics.com/Domains/DaveSource.gif',
+      'http://DavePics.com/Domains/DaveSource_down.gif' )
+
+    ImageList = new Array ();
+    for (counter in ImageArray) {
+      ImageList[counter] = new Image();
+      ImageList[counter].src = ImageArray[counter];
+    }
+  };
+  defaultStatus = 'Marginal Hacks'
+
+  //-->
+  </script>
+</head>
+
+<body bgcolor=white link='#0000FF' alink='#0000FF' vlink='#5000FF' text='#000000'>
+
+<div lang='en'>
+<center>
+<table border=0 cellspacing=0 cellpadding=0 width=100%>
+  <tr> <td rowspan=2>
+      <a href='http://MarginalHacks.com/'
+         onMouseOver = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks_down.gif'
+          onMouseOut = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks.gif'
+         onMouseDown = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks_down.gif'
+           onMouseUp = document.images['MarginalHacks'].src='http://DavePics.com/Domains/MarginalHacks.gif'>
+      <img name=MarginalHacks alt='MarginalHacks.com'
+           src='http://DavePics.com/Domains/MarginalHacks.gif'
+           width=69 height=60 border=0></a>
+      <a href='http://DaveSource.com/'
+         onMouseOver = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource_down.gif'
+          onMouseOut = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource.gif'
+         onMouseDown = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource_down.gif'
+           onMouseUp = document.images['DaveSource'].src='http://DavePics.com/Domains/DaveSource.gif'>
+      <img name=DaveSource alt='DaveSource.com'
+           src='http://DavePics.com/Domains/DaveSource.gif'
+           width=69 height=60 border=0></a>
+      <a href='http://GetDave.com/'
+         onMouseOver = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave_down.gif'
+          onMouseOut = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave.gif'
+         onMouseDown = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave_down.gif'
+           onMouseUp = document.images['GetDave'].src='http://DavePics.com/Domains/GetDave.gif'>
+      <img name=GetDave alt='GetDave.com - all the current Dave Pointers.'
+           src='http://DavePics.com/Domains/GetDave.gif'
+           width=69 height=60 border=0></a>
+      <a href='http://Daveola.com/'
+         onMouseOver = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola_down.gif'
+          onMouseOut = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola.gif'
+         onMouseDown = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola_down.gif'
+           onMouseUp = document.images['Daveola'].src='http://DavePics.com/Domains/Daveola.gif'>
+      <img name=Daveola alt='Daveola.com - My home.'
+           src='http://DavePics.com/Domains/Daveola.gif'
+           width=69 height=60 border=0></a>
+  </td>
+  <td bgcolor=#000000 align=right>
+  <font size=+2 face='lucida, helvetica' color=#ccccc0>
+    A&nbsp;l&nbsp;b&nbsp;u&nbsp;m&nbsp;<br>
+
+    S&nbsp;i&nbsp;x&nbsp; &nbsp;-&nbsp;-&nbsp; &nbsp;C&nbsp;r&nbsp;e&nbsp;a&nbsp;t&nbsp;i&nbsp;n&nbsp;g&nbsp; &nbsp;T&nbsp;h&nbsp;e&nbsp;m&nbsp;e&nbsp;s&nbsp;
+<br>
+
+  </font>
+  </td></tr>
+	<tr height=16>
+		<td height=16 align=right>
+			<a href="http://del.icio.us/post?url=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Del.icio.us"><img src="/Bookmarks/delicious.gif" title="Add 'Marginal Hacks Photo Album Generator' to Del.icio.us" alt="Add 'Marginal Hacks Photo Album Generator' to Del.icio.us" border="0"></a>
+			<a href="http://digg.com/software/Marginal_Hacks_Photo_Album_Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Digg 'Marginal Hacks Photo Album Generator'"><img src="/Bookmarks/digg.gif" title="Digg 'Marginal Hacks Photo Album Generator'" alt="Digg 'Marginal Hacks Photo Album Generator'" border="0"></a>
+			<a href="http://furl.net/storeIt.jsp?t=Marginal+Hacks+Photo+Album+Generator&amp;u=http://MarginalHacks.com/Hacks/album/" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to FURL"><img src="/Bookmarks/furl.gif" title="Add 'Marginal Hacks Photo Album Generator' to FURL" alt="Add 'Marginal Hacks Photo Album Generator' to FURL" border="0"></a>
+			<a href="http://reddit.com/submit?url=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generato" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to reddit"><img src="/Bookmarks/reddit.gif" title="Add 'Marginal Hacks Photo Album Generator' to reddit" alt="Add 'Marginal Hacks Photo Album Generator' to reddit" border="0"></a>
+			<a href="http://www.stumbleupon.com/refer.php?url=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Stumble Upon"><img src="/Bookmarks/stumbleupon.gif" title="Add 'Marginal Hacks Photo Album Generator' to Stumble Upon" alt="Add 'Marginal Hacks Photo Album Generator' to Stumble Upon" border="0"></a>
+			<a href="http://www.technorati.com/faves?add=http://MarginalHacks.com/Hacks/album/" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Technorati"><img src="/Bookmarks/technorati.gif" title="Add 'Marginal Hacks Photo Album Generator' to Technorati" alt="Add 'Marginal Hacks Photo Album Generator' to Technorati" border="0"></a>
+			<a href="http://myweb2.search.yahoo.com/myresults/bookmarklet?u=http://MarginalHacks.com/Hacks/album/&amp;t=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Yahoo My Web"><img src="/Bookmarks/myweb2.gif" title="Add 'Marginal Hacks Photo Album Generator' to Yahoo My Web" alt="Add 'Marginal Hacks Photo Album Generator' to Yahoo My Web" border="0"></a>
+			<a href="http://www.google.com/bookmarks/mark?op=edit&amp;output=popup&amp;bkmk=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Google Bookmarks"><img src="/Bookmarks/google.gif" title="Add 'Marginal Hacks Photo Album Generator' to Google Bookmarks" alt="Add 'Marginal Hacks Photo Album Generator' to Google Bookmarks" border="0"></a>
+			<a href="http://www.squidoo.com/lensmaster/bookmark?http://MarginalHacks.com/Hacks/album/" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Squidoo"><img src="/Bookmarks/squidoo.gif" title="Add 'Marginal Hacks Photo Album Generator' to Squidoo" alt="Add 'Marginal Hacks Photo Album Generator' to Squidoo" border="0"></a>
+			<a href="http://www.spurl.net/spurl.php?url=http://MarginalHacks.com/Hacks/album/&amp;title=Marginal+Hacks+Photo+Album+Generator" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Spurl"><img src="/Bookmarks/spurl.gif" title="Add 'Marginal Hacks Photo Album Generator' to Spurl" alt="Add 'Marginal Hacks Photo Album Generator' to Spurl" border="0"></a>
+			<a href="http://www.bloglines.com/sub/http://MarginalHacks.com/Hacks/album/" class="social_img" onclick="window.open(this.href, '_blank', 'scrollbars=yes,menubar=no,height=600,width=750,resizable=yes,toolbar=no,location=no,status=no'); return false;" title="Add 'Marginal Hacks Photo Album Generator' to Bloglines"><img src="/Bookmarks/bloglines.gif" title="Add 'Marginal Hacks Photo Album Generator' to Bloglines" alt="Add 'Marginal Hacks Photo Album Generator' to Bloglines" border="0"></a>
+ 	 </td>
+	</tr>
+</table>
+
+<a name=top>
+
+<table cellpadding=8 width='100%'> <tr>
+  <td valign=top>
+    <table>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/'>Home</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Themes.html'>Themes/<br />Screenshots</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Languages.html'>Languages</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Plugins.html'>Plugins</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/License.html'>License</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Download.html'>Download</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3>Documentation
+          <font size='-1'>
+<br><span lang='en'>&nbsp;&nbsp; <img src="..//flag.png"> &nbsp;&nbsp;<a href="../">English</a></span>
+<br><span lang='it'>&nbsp;&nbsp; <img src="../it/flag.png"> &nbsp;&nbsp;<a href="../it">Italiano</a></span>
+<br><span lang='de'>&nbsp;&nbsp; <img src="../de/flag.png"> &nbsp;&nbsp;<a href="../de">Deutsch</a></span>
+<br><span lang='es'>&nbsp;&nbsp; <img src="../es/flag.png"> &nbsp;&nbsp;<a href="../es">Español</a></span>
+<br><span lang='fr'>&nbsp;&nbsp; <img src="../fr/flag.png"> &nbsp;&nbsp;<a href="../fr">Français</a></span>
+<br><span lang='nl'>&nbsp;&nbsp; <img src="../nl/flag.png"> &nbsp;&nbsp;<a href="../nl">Nederlands</a></span>
+<br><span lang='hu'>&nbsp;&nbsp; <img src="flag.png"> &nbsp;&nbsp;magyar</span>
+
+          </font>
+</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3>Mailing List
+				<br />
+				<span style="font-size: 11px; margin-left: 10px;">
+				<a href="http://groups.google.com/group/album-announce" rel=nofollow>announcements</a>
+				- (<a href="http://MarginalHacks.com/archives/album-announce/" rel=nofollow>old</a>)
+				</span>
+				<br />
+				<span style="font-size: 11px; margin-left: 10px;">
+				<a href="http://groups.google.com/group/album-users" rel=nofollow>user discussion</a>
+				- (<a href="http://MarginalHacks.com/archives/album/" rel=nofollow>old</a>)
+				</span>
+				</h3>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/CHANGELOG.html'>CHANGELOG</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href='http://MarginalHacks.com/Hacks/album/Praises.html'>Praises</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+      <tr bgcolor=#d0d0d0><td>
+        <h3><a href=/Contact/>Contact</a>&nbsp;&nbsp;</h3>
+        <p>
+      </td></tr>
+    </table>
+  </td>
+  <td valign=top>
+
+
+
+<p><hr><p>
+<a href='.'>Table Of Contents</a>
+<ol><a href='#Methods'><li>Methods</a>
+ <a href='#Editing_current_theme_HTML'><li>Editing current theme HTML</a>
+ <a href='#The_easy_way,_simmer_theme_from_graphics.'><li>The easy way, simmer_theme from graphics.</a>
+ <a href='#From_scratch,_Theme_API'><li>From scratch, Theme API</a>
+ <a href='#Submitting_Themes'><li>Submitting Themes</a>
+ <a href='#Converting_v2.0_Themes_to_v3.0_Themes'><li>Converting v2.0 Themes to v3.0 Themes</a>
+</ol><p><hr><p>
+
+
+<pre>
+
+<b><a name='Methods'>1:</a>   Methods</b>
+
+There are easy ways and complicated ways to create a custom theme,
+depending on what you want to be able to do.
+
+<b><a name='Editing_current_theme_HTML'>2:</a>   Editing current theme HTML</b>
+
+If you just want to slightly change the theme to match the output
+of your site, it might make sense to edit a current theme.
+In the theme directory there are two *.th files.  album.th is
+the template for album pages (the thumbnail pages) and image.th
+is the template for image pages (where you can see medium or full
+size images).  The files are very similar to HTML except for
+some embedded <: ePerl :> code.  Even if you don't know perl or
+ePerl you can still edit the HTML to make simple changes.
+
+Good starting themes:
+
+Any simmer_theme is going to be up to date and clean, such as "Blue" or
+"Maste."  If you only need 4 corner thumbnail borders then take a look
+at "Eddie Bauer."  If you want overlay/transparent borders, see FunLand.
+
+If you want something demonstrating a minimal amount of code, try "simple"
+but be warned that I haven't touched the theme in a long time.
+
+<b><a name='The_easy_way,_simmer_theme_from_graphics.'>3:</a>   The easy way, simmer_theme from graphics.</b>
+
+Most themes have the same basic form, show a bunch of thumbnails
+for directories and then for images, with a graphic border, line and
+background.  If this is what you want, but you want to create new
+graphics, then there is a tool that will build your themes for you.
+
+If you create a directory with the images and a CREDIT file as well
+as a Font or Style.css file, then simmer_theme will create theme for you.
+
+Files:
+
+<b>Font/Style.css</b>
+This determines the fonts used by the theme.  The "Font" file is the
+older system, documented below.  Create a Style.css file and define
+styles for: body, title, main, credit and anything else you like.
+
+See FunLand for a simple example.
+
+Alternatively, use a font file.  An example Font file is:
+
+--------------------------------------------------
+$TITLE_FONT = "size='4' color='#ffffff' face='Times New Roman,Georgia,Times'";
+$MAIN_FONT = "face='Times New Roman,Georgia,Times'";
+$CREDIT_FONT = "size='-1' face='Verdana' color='#ffffff'";
+$BODY = "background='$PATH/bkgrnd.gif' link='#0099FF'">
+--------------------------------------------------
+
+<b>CREDIT</b>
+The credit file is two lines and is used for the theme index at MarginalHacks.
+If you're never submitting your theme to us, then you don't need this file.
+(But please do!)  If so, the two lines (and only two lines) are:
+
+1) A short description of the theme (keep it all on one line)
+2) Your name (can be inside a mailto: or href link)
+
+<b>Null.gif</b>
+Each simmer theme needs a spacer image, this is a 1x1 transparent gif.
+You can just copy this from another simmer theme.
+
+Optional image files:
+
+<b>Bar Images</b>
+The bar is composed of Bar_L.gif, Bar_R.gif and Bar_M.gif in the middle.
+The middle is stretched.  If you need a middle piece that isn't stretched, use:
+  Bar_L.gif, Bar_ML.gif, Bar_M.gif, Bar_MR.gif, Bar_R.gif
+And then the Bar_ML.gif and Bar_MR.gif will be stretched.  (See the
+Craftsman theme for an example of this).
+
+<b>Locked.gif</b>
+A lock image for any directories that have .htaccess
+
+<b>Background image</b>
+If you want a background image, specify it in the Font file in the $BODY
+section, as in the example above.  The $PATH variable will be replaced
+with the path to the theme files:
+
+<b>More.gif</b>
+When an album page has sub-albums to list, it first shows the 'More.gif'
+image.
+
+<b>Next.gif, Prev.gif, Back.gif</b>
+For the next and previous arrows and the back button
+
+<b>Icon.gif</b>
+Shown at the top left by the parent albums, this is often just the text "Photos"
+
+<b>Border Images</b>
+There are many ways to slice up a border, from simple to complex, depending on
+the complexity of the border and how much you want to be able to stretch it:
+
+  <b>4 pieces</b>  Uses Bord_L.gif, Bord_R.gif, Bord_T.gif, Bord_B.gif
+    (The corners go with the left and right images)
+    4 piece borders usually don't stretch well so they don't work well on
+    image_pages.  Generally you can cut the corners out of the left and
+    right images to make:
+
+  <b>8 pieces</b>  Also includes Bord_TL.gif, Bord_TR.gif, Bord_BL.gif, Bord_BR.gif
+    8 piece borders allow you to stretch to handle most sized images
+
+  <b>12 pieces</b>  Also includes Bord_LT.gif, Bord_RT.gif, Bord_LB.gif, Bord_RB.gif
+    12 pieces allow stretching of borders that have more complex corners (such
+    as Dominatrix6 or Ivy)
+
+  <b>Overlay Borders</b>  Can use transparent images that can be partially
+    overlaying your thumbnail.  See below.
+
+Here's how the normal border pieces are laid out:
+
+   12 piece borders
+      TL  T  TR          8 piece borders       4 piece borders
+      LT     RT            TL  T  TR            TTTTTTT
+      L  IMG  R            L  IMG  R            L IMG R
+      LB     RB            BL  B  BR            BBBBBBB
+      BL  B  BR
+
+Note that every row of images must be the same height, though the
+widths do <b>not</b> have to line up.  (i.e., height TL = height T = height TR)
+(This is not true about overlay borders!)
+
+Once you've created these files, you can run the simmer_theme tool
+(an optional tool download at MarginalHacks.com) and your theme will
+then be ready to use!
+
+If you need different borders for the image pages, then use the same
+filenames prefixed by 'I' - such as IBord_LT.gif, IBord_RT.gif,...
+
+Overlay borders allow for really fantastic effects with image borders.
+Currently there's no support for different overlay borders for images.
+
+For using Overlay borders, create images:
+      Over_TL.png   Over_T.png   Over_TR.png
+      Over_L.png                 Over_R.png
+      Over_BL.png   Over_B.png   Over_BR.png
+
+Then figure out how many pixels of the borders are padding (outside photo)
+Then put those values in files: Over_T.pad Over_R.pad Over_B.pad Over_L.pad
+See "Themes/FunLand" for a simple example
+
+<b>Multi-lingual Images</b>
+If your images have text, you can translate them into other languages
+so that albums can be generated in other languages.  For example, you
+can create a Dutch "More.gif" image and put it in 'lang/nl/More.gif'
+in the theme (nl is the language code for Dutch).
+When the user runs album in Dutch (album -lang nl) then the theme
+will use the Dutch image if found.  Themes/Blue has a simple example.
+The currently "translated" images are:
+  More, Back, Next, Prev and Icon
+
+You can create an HTML table that shows the translations immediately
+available to themes with -list_html_trans:
+
+<code>% album -list_html_trans > trans.html</code>
+
+Then view trans.html in a browser.  Unfortunately different languages
+have different charsets, and an HTML page can only have one.  The
+output is in utf-8, but you can edit the "charset=utf-8" to properly
+view language characters in different charsets (such as hebrew).
+
+If you need more words translated for themes, let me know, and if you
+create any new language images for a theme, please send them to me!
+
+<b><a name='From_scratch,_Theme_API'>4:</a>   From scratch, Theme API</b>
+
+This is a much heavier job - you need to have a very clear idea of
+how you want album to place the images on your page.  It might be
+a good idea to start with modifying existing themes first to get
+an idea of what most themes do.  Also look at existing themes
+for code examples (see suggestions above).
+
+Themes are directories that contain at the minimum an 'album.th' file.
+This is the album page theme template.  Often they also contain an 'image.th'
+which is the image theme template, and any graphics/css used by the theme.
+Album pages contain thumbnails and image pages show full/medium sized images.
+
+The .th files are ePerl, which is perl embedded inside of HTML.  They
+end up looking a great deal like the actual album and image HTML themselves.
+
+To write a theme, you'll need to understand the ePerl syntax.  You can
+find more information from the actual ePerl tool available at MarginalHacks
+(though this tool is not needed to use themes in album).
+
+There are a plethora of support routines available, but often only
+a fraction of these are necessary - it may help to look at other themes
+to see how they are generally constructed.
+
+Function table:
+
+<b>Required Functions</b>
+Meta()                    Must be called in the <head> section of HTML
+Credit()                  Gives credit ('this album created by..')
+                          Must be called in the <body> section of HTML
+Body_Tag()                Called inside the actual <body> tag.
+
+<b>Paths and Options</b>
+Option($name)             Get the value of an option/configuration setting
+Version()                 Return the album version
+Version_Num()             Return the album version as just a number (i.e. "3.14")
+Path($type)               Returns path info for $type of:
+  album_name                The name of this album
+  dir                       Current working album directory
+  album_file                Full path to the album index.html
+  album_path                The path of parent directories
+  theme                     Full path to the theme directory
+  img_theme                 Full path to the theme directory from image pages
+  page_post_url             The ".html" to add onto image pages
+  parent_albums             Array of parent albums (album_path split up)
+Image_Page()              1 if we're generating an image page, 0 for album page.
+Page_Type()               Either 'image_page' or 'album_page'
+Theme_Path()              The filesystem path to the theme files
+Theme_URL()               The URL path to the theme files
+
+<b>Header and Footer</b>
+isHeader(), pHeader()     Test for and print the header
+isFooter(), pFooter()     Same for the footer
+
+Generally you loop through the images and directories using local variables:
+
+  my $image = First('pics');
+  while ($image) {
+    print Name($image);
+    $image = Next($image);
+  }
+
+This will print the name of each image.  Our object types are either 'pics'
+for images or 'dirs' for the child directories.  Here are the object functions:
+
+<b>Objects</b> (type is either 'pics' (default) or 'dirs')
+First($type)             Get the first image or sub-album object.
+Last($type)              Last object
+Next($obj)               Given an object, return the next object
+Next($obj,1)             Same, loop past end to beginning.
+Prev($obj), Prev($obj,1)  Similar to Next()
+
+num('pics') or just num() Total number of images in this album
+num('dirs')               Total number of children/sub-albums
+Also:
+num('parent_albums')      Total number of parents leading up to this album.
+
+Object lookup:
+get_obj($num, $type, $loop)
+                          Finds object by number ('pics' or 'dirs').
+                          If $loop is set than the count will wrap around.
+
+<b>Object Properties</b>
+Each object (image or child albums) has properties.
+Some properties are accessed by a single field:
+
+Get($obj,$field)            Get a single field of an object
+
+Field                     Description
+-----                     ----------
+type                      What type of object?  Either 'pics' or 'dirs'
+is_movie                  Boolean: is this a movie?
+name                      Name (cleaned and optionally from captions)
+cap                       Image caption
+capfile                   Optional caption file
+alt                       Alt tag 
+num_pics                  [directories only, -dir_thumbs] Num of pics in directory
+num_dirs                  [directories only, -dir_thumbs] Num of dirs in directory
+
+Some properties are accessed by a field and subfield.  For example,
+each image has information for different sizes:  full, medium and thumb
+(though 'medium' is optional).
+
+Get($obj,$size,$field)      Get a property for a given size
+
+Size          Field       Description
+----          -----       ----------
+$size         x           Width
+$size         y           Height
+$size         file        Filename (without path)
+$size         path        Filename (full path)
+$size         filesize    Filesize in bytes
+full          tag         The tag (either 'image' or 'embed') - only for 'full'
+
+We also have URL information which is access according to the
+page it's coming 'from' and the image/page it's pointing 'to':
+
+Get($obj,'URL',$from,$to)   Get a URL for an object from -> to
+Get($obj,'href',$from,$to)  Same but wraps it in an 'href' string.
+Get($obj,'link',$from,$to)  Same but wraps the object name inside the href link.
+
+From         To           Description
+----         --           ----------
+album_page   image        Image_URL from album_page
+album_page   thumb        Thumbnail from album_page
+image_page   image        Image_URL from image_page
+image_page   image_page   This image page from another image page
+image_page   image_src    The &lt;img src&gt; URL for the image page
+image_page   thumb        Thumbnail from image_page
+
+Directory objects also have:
+
+From         To           Description
+----         --           ----------
+album_page   dir          URL to the directory from it's parent album page
+
+<b>Parent Albums</b>
+Parent_Album($num)        Get a parent album string (including the href)
+Parent_Albums()           Return a list of the parent albums strings (including href)
+Parent_Album($str)        A join($str) call of Parent_Albums()
+Back()                    The URL to go back or up one page.
+
+<b>Images</b>
+This_Image                The image object for an image page
+Image($img,$type)         The &lt;img&gt; tags for type of medium,full,thumb
+Image($num,$type)         Same, but by image number
+Name($img)                The clean or captioned name for an image
+Caption($img)             The caption for an image
+
+<b>Child Albums</b>
+Name($alb)
+Caption($img)             The caption for an image
+
+<b>Convenience Routines</b>
+Pretty($str,$html,$lines) Pretty formats a name.
+    If $html then HTML is allowed (i.e., use 0 for &lt;title&gt; and the like)
+    Currently just puts prefix dates in a smaller font (i.e. '2004-12-03.Folder')
+    If $lines then multilines are allowed
+    Currently just follows dates with a 'br' line break.
+New_Row($obj,$cols,$off)  Should we start a new row after this object?
+                          Use $off if the first object is offset from 1
+Image_Array($src,$x,$y,$also,$alt)
+                          Returns an &lt;img&gt; tag given $src, $x,...
+Image_Ref($ref,$also,$alt)
+                          Like Image_Array, but $ref can be a hash of
+                          Image_Arrays keyed by language ('_' is default).
+                          album picks the Image_Array by what languages are set.
+Border($img,$type,$href,@border)
+Border($str,$x,$y,@border)
+                          Create the full bordered image.
+                          See 'Borders' for more information.
+
+
+If you're creating a theme from scratch, consider adding support for -slideshow.
+The easiest way to do this is to cut/paste the "slideshow" code out of an
+existing theme.
+
+<b><a name='Submitting_Themes'>5:</a>   Submitting Themes</b>
+
+Have a custom theme?  I'd love to see it, even if it's totally site-specific.
+
+If you have a new theme you'd like to offer the public, feel free to send
+it to me and/or a URL where I can see how it looks.  Be sure to set the CREDIT
+file properly and let me know if you are donating it to MarginalHacks for
+everyone to use or if you want it under a specific license.
+
+<b><a name='Converting_v2.0_Themes_to_v3.0_Themes'>6:</a>   Converting v2.0 Themes to v3.0 Themes</b>
+
+album v2.0 introduced a theme interface which has been rewritten.  Most
+2.0 themes (especially those that don't use many of the global variables)
+will still work, but the interface is deprecated and may disappear in
+the near future.
+
+It's not difficult to convert from v2.0 to v3.0 themes.
+
+The v2.0 themes used global variables for many things.  These are now
+deprecated  In v3.0 you should keep track of images and directories in
+variables and use the 'iterators' that are supplied, for example:
+
+  my $image = First('pics');
+  while ($image) {
+    print Name($image);
+    $image = Next($image);
+  }
+
+Will loop through all the images and print their names.
+The chart below shows you how to rewrite the old style calls which
+used a global variable with the new style which uses a local variable,
+but to use these calls you need to rewrite your loops as above.
+
+Here is a conversion chart for helping convert v2.0 themes to v3.0:
+
+# Global vars shouldn't be used
+# ALL DEPRECATED - See new local variable loop methods above
+$PARENT_ALBUM_CNT             Rewrite with: Parent_Album($num) and Parent_Albums($join)
+$CHILD_ALBUM_CNT              Rewrite with: my $dir = First('dirs');  $dir=Next($dir);
+$IMAGE_CNT                    Rewrite with: my $img = First('pics');  $pics=Next($pics);
+@PARENT_ALBUMS                Can instead use: @{Path('parent_albums')}
+@CHILD_ALBUMS, @CHILD_ALBUM_NAMES, @CHILD_ALBUM_URLS, ...
+
+# Old global variable modifiers:
+# ALL DEPRECATED - See new local variable loop methods above
+Next_Image(), Images_Left(), Image_Cnt(), Image_Prev(), Image_Next()
+Set_Image_Prev(), Set_Image_Next(), Set_Image_This()
+Next_Child_Album(), Child_Album_Cnt(), Child_Albums_Left()
+
+# Paths and stuff
+pAlbum_Name()                 Path('album_name')
+Album_Filename()              Path('album_file')
+pFile($file)                  print read_file($file)
+Get_Opt($option)              Option($option)
+Index()                       Option('index')
+pParent_Album($str)           print Parent_Album($str)
+
+# Parent Albums
+Parent_Albums_Left            Deprecated, see '$PARENT_ALBUM_CNT' above
+Parent_Album_Cnt              Deprecated, see '$PARENT_ALBUM_CNT' above
+Next_Parent_Album             Deprecated, see '$PARENT_ALBUM_CNT' above
+pJoin_Parent_Albums           print Parent_Albums(\@_)
+
+# Images, using variable '$img'
+pImage()                      Use $img instead and:
+                              print Get($img,'href','image');
+                              print Get($img,'thumb') if Get($img,'thumb');
+                              print Name($img), "&lt;/a&gt;";
+pImage_Src()                  print Image($img,'full')
+Image_Src()                   Image($img,'full')
+pImage_Thumb_Src()            print Image($img,'thumb')
+Image_Name()                  Name($img)
+Image_Caption()               Caption($img)
+pImage_Caption()              print Get($img,'Caption')
+Image_Thumb()                 Get($img,'URL','thumb')
+Image_Is_Pic()                Get($img,'thumb')
+Image_Alt()                   Get($img,'alt')
+Image_Filesize()              Get($img,'full','filesize')
+Image_Path()                  Get($img,'full','path')
+Image_Width()                 Get($img,'medium','x') || Get($img,'full','x')
+Image_Height()                Get($img,'medium','y') || Get($img,'full','y')
+Image_Filename()              Get($img,'full','file')
+Image_Tag()                   Get($img,'full','tag')
+Image_URL()                   Get($img,'URL','image')
+Image_Page_URL()              Get($img,'URL','image_page','image_page') || Back()
+
+# Child album routines, using variable '$alb'
+pChild_Album($nobr)           print Get($alb,'href','dir');
+                              my $name = Name($alb);
+                              $name =~ s/&lt;br&gt;//g if $nobr;
+                              print $name,"&lt;/a&gt;";
+Child_Album_Caption()         Caption($alb,'dirs')
+pChild_Album_Caption()        print Child_Album_Caption($alb)
+Child_Album_URL()             Get($alb,'URL','dir')
+Child_Album_Name()            Name($alb)
+
+# Unchanged
+Meta()                        Meta()
+Credit()                      Credit()
+
+</pre>
+<p><font size='-1'><li> Created by <a href='http://MarginalHacks.com/Hacks/make_faq/'>make_faq</a> from <a href='http://MarginalHacks.com/'>Marginal Hacks</a></font><p>
+    </td>
+  </tr>
+</table>
+</div>
+
+</body>
+</html>
+	<center>
+	<br><br><br>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	&uarr;<p>&uarr;<p>&uarr;<p>&uarr;<p>
+	</center>

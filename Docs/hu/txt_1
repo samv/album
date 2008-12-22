@@ -1,0 +1,121 @@
+Installation
+
+ITEM: Minimum Requirements
+
+1) The <a href='http://MarginalHacks.com/Hacks/album/'>album</a> perl script
+2) <a href='http://MarginalHacks.com/redir.cgi?imagemagick.org/'>ImageMagick</a> tools (specifically 'convert')
+
+Put the 'album' script and the ImageMagick tools somewhere in your PATH,
+or else call 'album' by it's full path (and specify the full path to
+convert either in the album script or in the album configuration files.
+
+ITEM: Initial Configuration
+
+The first time you run album it will ask you a few questions to
+setup the configuration for you.  If you're on UNIX/OSX, then you
+can run the first time as root so that it sets up the global configuration
+and themes for everyone instead of just the current user.
+
+ITEM: Optional Installation
+
+3) <a href='http://MarginalHacks.com/Hacks/album/Themes.html'>Themes</a>
+4) <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.sourceforge.net/'>ffmpeg</a> (for movie thumbnails)
+5) <a href='http://MarginalHacks.com/redir.cgi?www.sentex.net/~mwandel/jhead/'>jhead</a> (for reading EXIF info)
+6) plugins
+7) Various <a href='http://MarginalHacks.com/Hacks/album/Download.html'>tools</a> available at MarginalHacks.com
+
+ITEM: UNIX
+
+Most UNIX distros come with ImageMagick and perl, so just download
+the album script and themes (#1 and #3 above) and you're done.
+To test your install, run the script on a directory with images:
+
+<code>% album /path/to/my/photos/</code>
+
+ITEM: Debian UNIX
+
+album is in debian stable, though right now it's a bit stale.
+I recommend getting the latest version from MarginalHacks.
+You can save the .deb package, and then, as root, run:
+
+<code>% dpkg -i album.deb</code>
+
+ITEM: Macintosh OSX
+
+It works fine on OSX, but you have to run it from a terminal window.  Just
+install the album script and ImageMagick tools, and type in the path to album,
+any album options you want, and then the path to the directory with the
+photos in them (all separated by spaces), such as:
+
+<code>% album -theme Blue /path/to/my/photos/</code>
+
+ITEM: Win95, Win98, Win2000/Win2k, WinNT, WinXP
+(Windows 95, Windows 98, Windows 2000, Windows NT, Windows XP)
+
+There are two methods to run perl scripts on Windows, either using ActivePerl
+or Cygwin.
+
+ActivePerl is simpler and allows you to run album from a DOS prompt,
+though I've heard that it doesn't work with themes.
+Cygwin is a bulkier but more robust package that gives you access to
+a bunch of UNIX like utilities, and album is run from a bash (UNIX shell)
+prompt.
+
+<b>Cygwin method</b>
+-------------
+1) Install <a href='http://MarginalHacks.com/redir.cgi?sources.redhat.com/cygwin/'>Cygwin</a>
+   Choose packages:  perl, ImageMagick, bash
+   Do not use the normal ImageMagick install!  You must use the Cygwin ImageMagick packages!
+2) Install <a href='http://MarginalHacks.com/bin/album'>album</a> in bash path or call using absolute path:
+   <tt>bash% album /some/path/to/photos</tt>
+3) If you want exif info in your captions, you need the Cygwin version of <a href='http://MarginalHacks.com/Hacks/album/tools/jhead.exe'>jhead</a>
+
+
+<b>ActivePerl method</b>
+-----------------
+1) Install <a href='http://MarginalHacks.com/redir.cgi?ImageMagick.org/'>ImageMagick</a> for Windows
+2) Install <a href='http://MarginalHacks.com/redir.cgi?www.activestate.com/Products/ActivePerl/'>ActivePerl</a>, Full install (no need for PPM profile)
+   Choose: "Add perl to PATH" and "Create Perl file extension association"
+3) If Win98: Install <a href='http://MarginalHacks.com/redir.cgi?www.simtel.net/pub/pd/11141.html'>tcap</a> in path
+4) Save album as album.pl in windows path
+5) Use dos command prompt to run:
+   <tt>C:> album.pl C:\some\path\to\photos</tt>
+
+<b><i>Note:</i></b> Some versions of Windows (2000/NT at least) have their
+own "convert.exe" in the c:\windows\system32 directory (an NTFS utility?).
+If you have this, then you either need to edit your path variable,
+or else just specify the full path to convert in your album script.
+
+ITEM: How do I edit the Windows path?
+
+<b>Windows NT4 Users</b>
+  Right Click on My Computer, select Properties.
+  Select Environment tab.
+  In System Variables box select Path.
+  In Value edit box add the new paths separated by semicolons
+  Press OK/Set, press OK again.
+
+<b>Windows 2000 Users</b>
+  Right Click My Computer, select Properties.
+  Select Advanced tab.
+  Click Environment Variables.
+  In System Variables box select double-click Path
+  In Value edit box add the new paths separated by semicolons
+  Press OK/Set, press OK again.
+
+<b>Windows XP Users</b>
+  Click My Computer, select Change a Setting.
+  Double click System.
+  Select Advanced tab.
+  Select Environment Variables.
+  In System Variables box select double-click Path
+  In Value edit box add the new paths separated by semicolons
+  Press OK.
+
+
+ITEM: Macintosh OS9
+
+I don't have any plans to port this to OS9 - I don't know what
+the state of shells and perl is for pre-OSX.  If you have it working
+on OS9, let me know.
+

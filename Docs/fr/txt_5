@@ -11,7 +11,7 @@ l'aide en ligne :
 <code>% man album</code>
 <code>% album -h</code>
 
-Regardez aussi les options -more et -More.
+Regardez aussi les options -more et -usage.
 
 Si vous ne voyez rien ici, vous pouvez vous lancer dans l'écriture d'un
 correctif ou d'un module plug-in.

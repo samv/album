@@ -1,0 +1,125 @@
+Instalación
+
+<span lang="es">
+ITEM: Requisítos mínimos
+
+1) El script en perl de <a href='http://MarginalHacks.com/Hacks/album/'>album</a>
+2) Herramientas de <a href='http://MarginalHacks.com/redir.cgi?imagemagick.org/'>ImageMagick</a> (específicamente 'convert')
+
+Ponga el script de 'album' y las herramientas de ImageMagick en alguna parte de su PATH,
+o ejecute 'album' con su ruta completa (y especifique la ruta completa de 'convert'
+ya sea en el script de 'album' o en los archivos de configuración en el álbum).
+
+ITEM: Configuración inicial
+
+La primera vez que ejecute el script de 'album' le pedirá algunas preguntas
+para configurarlo.  Si está usando UNIX/OSX, entonces puede ejecutarlo la primera
+vez como 'root' para que haga la configuración global y los temas para todos
+en vez del usuario actual.
+
+ITEM: Instalación opcional
+
+3) <a href='http://MarginalHacks.com/Hacks/album/Themes.html'>Temas</a>
+4) <a href='http://MarginalHacks.com/redir.cgi?ffmpeg.sourceforge.net/'>ffmpeg</a> (para crear miniaturas de las imágenes)
+5) <a href='http://MarginalHacks.com/redir.cgi?www.sentex.net/~mwandel/jhead/'>jhead</a> (para leer información EXIF)
+6) plugins
+7) Varias <a href='http://MarginalHacks.com/Hacks/album/Download.html'>herramientas</a> disponibles en MarginalHacks.com
+
+ITEM: UNIX
+
+Casi todas las distribuciones de UNIX incluyen ImageMagick y perl, entonces solo descargue
+el script de 'album' y los temas (#1 and #3 más arriba) y es todo.
+Para probar que se haya instalado correctamente, ejecute el script en un directorio con imágenes:
+
+<code>% album /path/to/my/photos/</code>
+
+ITEM: Debian UNIX
+
+'album' se encuentra en debian estable, sin embargo por el momento está un poco viejo.
+Recomiendo descargar la versión más reciente en MarginalHacks.
+Puede guardar el paquete .deb, y luego, como root, ejecute:
+
+<code>% dpkg -i album.deb</code>
+
+ITEM: Macintosh OSX
+
+Funciona muy bien en OSX, pero debe ser ejecutado a través de una terminal.  Solamente
+instale el script de 'album' y las herramientas de ImageMagick, y teclee la ruta de 'album',
+cualquier opción que quiera, y luego la ruta del directorio con las imágenes
+(separados por espacios), por ejemplo:
+
+<code>% album -theme Blue /path/to/my/photos/</code>
+
+ITEM: Win95, Win98, Win2000/Win2k, WinNT, WinXP
+(Windows 95, Windows 98, Windows 2000, Windows NT, Windows XP)
+
+Hay dos métodos para ejecutar scripts de perl en Windows: usando ActivePerl
+o Cygwin.
+
+ActivePerl es más simple y permite la ejecución de 'album' a través de una terminal de DOS,
+sin embargo me han dicho que no funciona con temas.
+Cygwin es más voluminoso pero también un paquete más robusto que da acceso
+a muchas herramientas como en UNIX, y 'album' es ejecutado en una terminal bash (UNIX shell).
+
+<b>Método Cygwin</b>
+-------------
+1) Instale <a href='http://MarginalHacks.com/redir.cgi?sources.redhat.com/cygwin/'>Cygwin</a>
+   Escoja los paquetes:  perl, ImageMagick, bash
+   ¡No utilice la instalación inicial ImageMagick! ¡Debe usar los paquetes de Cygwin de ImageMagick!
+2) Instale <a href='http://MarginalHacks.com/bin/album'>album</a> en una ruta bash o ejecútelo usando una ruta absoluta:
+   <tt>bash% album /some/path/to/photos</tt>
+3) Si quere indormación exif en los pies de foto, necesita la versión de Cygwin <a href='http://MarginalHacks.com/Hacks/album/tools/jhead.exe'>jhead</a>
+
+
+<b>Método ActivePerl</b>
+-----------------
+1) Instale <a href='http://MarginalHacks.com/redir.cgi?ImageMagick.org/'>ImageMagick</a> para Windows
+2) Instale <a href='http://MarginalHacks.com/redir.cgi?www.activestate.com/Products/ActivePerl/'>ActivePerl</a>, instalación completa (no se necesita un perfil para PPM)
+   Escoja: "Add perl to PATH" y "Create Perl file extension association"
+3) En Win98: Instale <a href='http://MarginalHacks.com/redir.cgi?www.simtel.net/pub/pd/11141.html'>tcap</a> en la ruta
+4) Guarde 'album' como album.pl en la ruta de Windows
+5) Use una terminal de DOS para ejecutar:
+   <tt>C:> album.pl C:\some\path\to\photos</tt>
+
+<b><i>Atención:</i></b> Algunas versiones de Windows (por lo menos 2000/NT) tienen su
+propio "convert.exe" en el directorio c:\windows\system32 (¿una utilidad para NTFS?).
+Si lo tiene, entonces necesito editar el variable de la ruta,
+or solamente especifique la ruta absoluta de 'convert' en el script de 'album'.
+
+ITEM: ¿Cómo edito la ruta de Windows?
+
+<b>Usuarios de Windows NT4</b>
+  Oprima el botón derecho en "My Computer", seleccione "Properties".
+  Seleccione la pestaña "Environment".
+  En "System Variables" seleccione "Path".
+  En "Value" agregue las rutas nuevas separados por puntos y coma
+  Oprima "OK/Set", oprima "OK" de nuevo.
+
+<b>Usuarios de Windows 2000</b>
+  Oprima el botón derecho en "My Computer", seleccione "Properties".
+  Seleccione la pestaña "Advanced".
+  Oprima "Environment Variables".
+  En "System Variables" oprima dos veces en "Path"
+  En "Value" agregue las rutas nuevas separados por puntos y coma
+  Oprima "OK/Set", oprima "OK" de nuevo.
+
+<b>Windows XP Users</b>
+  Abra "My Computer" y seleccione "Change a Setting".
+  Oprima dos veces "System".
+  Seleccione la pestaña "Advanced".
+  Seleccione "Environment Variables".
+  En "System Variables" oprima dos veces en "Path"
+  En "Value" agregue las rutas nuevas separados por puntos y coma
+  Oprima "OK".
+
+
+ITEM: Macintosh OS9
+
+No tengo planes de transferir 'album' a OS9 - no se en que estado están
+las consolas y perl en pre-OSX.  Si logra hacer que funcione
+en OS9, avíseme.
+
+ITEM: Traducido por:
+
+Stewart Goodman (goodman.stewart gmail com)
+</span>

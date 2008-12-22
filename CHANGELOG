@@ -2,6 +2,24 @@
 - : deprecated feature
 * : bugfix
 
+Version 4.05, 2008/12/21
+------------------------
++ WINDOWS GUI (galbum)
++ Windows ActiveState Perl theme support!
++ New hooks added for media style plugins (like media/flv)
++ Added media/flv plugin for FLV support!
++ Added album:: routines for plugins add_head, add_header, add_footer
++ Added piclens plugin for piclens slideshow support!
+  (Thanks Reidar D. Midtun, reidar midtun dyndns org)
++ Added exif/gps plugin for gps exif support
+  (Thanks Andreas K Huettel, http://www.akhuettel.de/)
++ New plugin: format/google_analytics
++ Added Hungarian docs (Thanks György Károly http://www.me.bme.hu/~karolyi/indexe.html)
+* digikam.alp fix for finding top directory (Thanks Kevin Barter)
+* Overlay type (Thanks again Laura Baldwin, boojum mit edu)
+* Now checking for -medium changes to deciding if we need to rewrite img pages
+  (Thanks Rick Baartman, baartman lin12 triumf ca)
++ Added -crf and -license options for GUI support
 
 Version 4.04, 2008/03/13
 ------------------------

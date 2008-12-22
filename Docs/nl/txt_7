@@ -256,6 +256,16 @@ If your plugin needs to load modules that are not part of the
 standard Perl distribution, please do this conditionally.  For
 an example of this, see plugins/extra/rss.alp.
 
+You can also call any of the routines found in the album script
+using the album:: namespace.  Make sure you know what you are doing.
+Some useful routines are:
+
+<tt>
+  album::add_head($opt,$data, "&lt;meta name='add_this' content='to the &lt;head&gt;'&gt;");
+  album::add_header($opt,$data, "&lt;p&gt;This gets added to the album header");
+  album::add_footer($opt,$data, "&lt;p&gt;This gets added to the album footer");
+</tt>
+
 The best way to figure out how to write plugins is to look at other
 plugins, possibly copying one that is similar to yours and working
 off of that.  Plugin development tools may be created in the future.
