@@ -2,6 +2,15 @@
 - : deprecated feature
 * : bugfix
 
++ Can specify clip time for movies in captions.txt (i.e. "[thumb=3.2s]");
+  (May need to use -force and -force_html)
+
+Version 4.06, 2009/08/12
+------------------------
++ No longer fatals out on corrupted images
+  (Thanks Alex Roper, alexr ugcs caltech edu)
+* Fixed missing files in packages
+
 Version 4.05, 2008/12/21
 ------------------------
 + WINDOWS GUI (galbum)

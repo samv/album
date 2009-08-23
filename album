@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '4.05';
+  my $VERSION=  '4.06';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -185,6 +185,7 @@ add_option(1,'dir',OPTION_STR, default=>'tn', usage=>"Thumbnail directory");
 add_option(2,'force',OPTION_BOOL, one_time=>1, usage=>["Force overwrite of existing thumbnails and HTML",
            "otherwise they are only written when changed"]);
 add_option(2,'force_html',OPTION_BOOL, one_time=>1, usage=>"Force rewrite of HTML");
+add_option(9,'force_subalbum',OPTION_BOOL, one_time=>1, usage=>"Ignore 'You have moved a subalbum' error.");
 add_option(2,'sample',OPTION_BOOL, usage=>"Use 'convert -sample' for thumbnails (faster, low quality)");
 add_option(2,'sharpen', OPTION_STR, args=>'<radius>x<sigma>', usage=>"Sharpen after scaling");
 add_option(1,'animated_gifs',OPTION_BOOL, usage=>"Take first frame of animated gifs (only some systems)");
@@ -1504,7 +1505,7 @@ sub scrub_opts {
     }
 
     # ffmpeg can handle AVI, MOV (see 'is_movie()')
-    $IMAGE_TYPES.="|AVI|MOV|MOOV|MP4|3GP|WMV" if $opt->{ffmpeg};
+    $IMAGE_TYPES.="|AVI|MOV|MOOV|MP4|3GP|WMV|FLV" if $opt->{ffmpeg};
 
     #########################
     # Windows crap
@@ -4009,6 +4010,12 @@ sub url_quote {
 sub read_captions {
   my ($opt,$dir) = @_;
 
+  # $dir may actually be $data, get $data->{paths}{$dir}
+  $dir = $dir->{paths}{dir} if ref $dir eq "HASH";
+
+  # Cache the data
+  return $opt->{_captions}{$dir} if $opt->{_captions}{$dir};
+
   my $val = do_hook($opt,undef, 'read_captions', $dir);
   # Description: Read captions for a given album directory.
   # Returns: hash reference.  Keys are filenames which point to caption hashes:
@@ -4016,12 +4023,6 @@ sub read_captions {
   plugin_warn($opt,trans($opt,"Didn't return a hash."))
     if $val && ref $val ne 'HASH' && !$MAIN::WARN_PLUGIN_READ_CAPTIONS++;
   return $val if defined $val && ref $val eq 'HASH';
-
-  # $dir may actually be $data, get $data->{paths}{$dir}
-  $dir = $dir->{paths}{dir} if ref $dir eq "HASH";
-
-  # Cache the data
-  return $opt->{_captions}{$dir} if $opt->{_captions}{$dir};
 
   my %caps;
   $opt->{_captions}{$dir} = \%caps;
@@ -4041,6 +4042,10 @@ sub read_captions {
     $name=$file if (!$name && $cap);
     next unless $file;
     $file =~ s/#\s*/#/g;		# Allow '# commented files'
+
+		# Allow for clip times in caption file
+		$caps{$file}{clip_time} = $1
+			if $cap =~ s/\s*\[thumb=([\d\.]+)s\]// || $name =~ s/\s*\[thumb=([\d\.]+)s\]//;
 
     $caps{$file}{name}=$name;
     $caps{$file}{cap}=$cap if $cap;
@@ -4164,6 +4169,17 @@ sub get_dir_caption {
 #########################
 # Get pics/dirs caption info
 #########################
+# Get a caption for a single file when we don't have the object
+# (useful for plugins that use hints in captions file)
+sub get_caption {
+	my ($opt,$path) = @_;
+	my ($dir,$file) = split_path($opt,$path);
+	# These should be (or will become) cached
+	my $cap = read_captions($opt,$dir);
+	wantarray ? ($cap->{$file}{name},$cap->{$file}{cap}) : $cap->{$file};
+}
+
+# Get all caption info using captions.txt, subdirectories, plugins, etc..
 sub get_captions {
   my ($opt,$data) = @_;
 
@@ -6242,7 +6258,7 @@ sub is_movie {
   # Returns: 1 for image, 0 for not, undef for letting default code decide.
 	return $ret if defined $ret;
 
-  $pic =~ /\.(mpe?g|moo?v|avi|mp4|3gp|wmv)$/i ? 1 : 0;
+  $pic =~ /\.(mpe?g|moo?v|avi|mp4|3gp|wmv|flv)$/i ? 1 : 0;
 }
 
 # Deal with each image/picture/file/whatever
@@ -6396,7 +6412,7 @@ sub handle_file {
 }
 
 # Pick an image to use for the directory thumbnail
-# Returns:  thumbnail path, full path to image, local path to image, image filename.
+# Returns:  thumbnail path, full path to image, local path to image, image filename, obj
 # (See hook below for more info)
 sub dir_info {
   my ($opt,$data,$child) = @_;
@@ -6510,7 +6526,7 @@ sub figure_depth {
   my $alb_path = $data->{paths}{album_path};
 	$WINDOWS ? ($alb_path =~ s|^[A-Z]:/||) : ($alb_path =~ s|^/||);
   # If we're starting with a subalbum, update @dir_pieces based on parse_index()
-  if (!$#dir_pieces && $alb_path) {
+  if (!$opt->{force_subalbum} && !$#dir_pieces && $alb_path) {
     # Can we find the album_path in this directory?
     if ($dir !~ s|/\Q$alb_path\E$||) {
       # They've moved something!  Damn!
@@ -6813,7 +6829,8 @@ sub get_xy {
     if -f "/etc/gentoo-release";
   prterr($opt,"\tWindows users may have an easier time with Cygwin installed!\n")
     if $opt->{windows} && !$opt->{cygwin};
-  fatal($opt);	#NOTRANS
+	return (0,0);	# Keep going, just ignore the image
+	#fatal($opt);	#NOTRANS
 }
 
 # Get a size for an image or for an obj given a type (thumb, medium, full)
@@ -6947,8 +6964,11 @@ sub movie_frame {
 	#my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f singlejpeg $qimg";
 	# 'singlejpeg' has been replaced by 'mjpeg'??  Don't know when..  *grrr*
   my $cmd = "$opt->{ffmpeg} -y -t 00:00:00.01 $format -i $qmovie -f mjpeg $qimg";
-# consider:  Option to use "-ss <sec>" to take something besides the first frame
-# [though note that it doesn't work on .flv unless we first convert to another format!  Augh!
+
+	# Check if they specified a clip time, such as "[thumb=3.1s]"
+	my $cap = get_caption($opt,$movie);
+	$cmd .= " -ss $cap->{clip_time}" if $cap->{clip_time};
+
   print STDERR "movie_frame() run: $cmd\n" if $opt->{d};
   system("$cmd > $opt->{dev_null} 2>&1");
   return $img unless $?;
@@ -7040,13 +7060,13 @@ sub thumbnail {
 
   $obj->{has_thumb} = $opt->{thumbs};
 
-  return if do_hook($opt,undef, 'pre_thumbnail', $dir, $obj);
+  return 1 if do_hook($opt,undef, 'pre_thumbnail', $dir, $obj);
   # Description: Hook before we do any thumbnail() processing
   # Description: so check in your hook for the types you can read.
   # Returns: 1 to skip further thumbnail processing.
 
   snapshot($opt,$dir,$obj);	# In case we need a snapshot
-  return unless $obj->{has_thumb};	# Snapshot might fail our thumbing..
+  return 1 unless $obj->{has_thumb};	# Snapshot might fail our thumbing..
 
   my $file = $obj->{full}{file};
   # Based off of full, unless we have a snapshot image.
@@ -7067,7 +7087,8 @@ sub thumbnail {
   if ($obj->{thumb}{path}) {
     $obj->{thumb}{file} = $obj->{thumb}{path};
     $obj->{thumb}{file} =~ s|.*$opt->{slash}||g;
-    return get_size($opt,'thumb',$obj);
+    $obj->{has_thumb}=0 unless get_size($opt,'thumb',$obj);
+		return $obj->{has_thumb};
   }
 
   ($obj->{thumb}{file},$obj->{thumb}{path}) = ($default_file,$default);
@@ -7081,6 +7102,7 @@ sub thumbnail {
 
   # In case we didn't get the size yet
   my ($x,$y) = get_size($opt,$base,$obj);
+  return $obj->{has_thumb}=0 unless $x && $y;
 
   # Which way do we need to shrink?  convert will scale down w/ aspect
   # as much as is needed to *fit* inside the geometry we give it
@@ -7096,7 +7118,7 @@ sub thumbnail {
   }
   my ($fx,$fy,$tx,$ty) = scale($opt,$full_path,$scale_x."x".$scale_y,$obj->{thumb}{path},0);
 
-  return 0 unless $tx;
+  return $obj->{has_thumb}=0 unless $tx;
 
   ($obj->{thumb}{x},$obj->{thumb}{y}) = ($tx,$ty);
   return 1 unless $opt->{crop};

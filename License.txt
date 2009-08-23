@@ -1,7 +1,6 @@
-
              License for programs at DaveSource Marginal Hacks:
                         [1]http://MarginalHacks.com/
-     _________________________________________________________________
+     __________________________________________________________________
 
    Disclaimer:
           These programs aren't packaged in any sort of user-friendly
@@ -13,39 +12,39 @@
           If you don't program, tough noogies for you.
           I recognize that this license is not [3]OpenSource, this is
           quite [4]deliberate
-            __________________________________________________________
+            ___________________________________________________________
 
    Non-Warranty:
           These programs come with absolutely no warranty.
-          The 'Rating' and 'Works (Y/N)' columns in the software index
-          are no indication of the quality or ability of the programs.
+          The 'Rating' and 'Works (Y/N)' columns in the software index are
+          no indication of the quality or ability of the programs.
           Use at your own risk!
-            __________________________________________________________
+            ___________________________________________________________
 
    License for use:
           The programs may be used for [5]free.
-          They may be redistributed in their original format and with
-          this license for [6]free as well.
+          They may be redistributed in their original format and with this
+          license for [6]free as well.
           The programs may be modified for personal use as long as they
           retain the original license and author, copyright information.
           If you modify any of these programs, please e-mail patches to
           the the author.
-          (If you think the patch isn't of general use, you can just
-          email me about it first to check)
+          (If you think the patch isn't of general use, you can just email
+          me about it first to check)
           None of the programs can be sold or included in a product that
           is sold without prior written permisson [7]from the author.
           (Free for non-commercial use)
-            __________________________________________________________
+            ___________________________________________________________
 
    album:
           You may not modify album to remove the credit line from any
           pages that are posted on the internet without permission from
           the author.
-            __________________________________________________________
+            ___________________________________________________________
 
    Copyright:
           All these programs are copyright David Ljung Madison
-            __________________________________________________________
+            ___________________________________________________________
 
    Why:
           I've made this software freely available for the following
@@ -57,7 +56,7 @@
             me, so enjoy it.
          3. I use [8]free software, and wanted to give something back.
          4. But if you want to help, you can [9]send money
-     _________________________________________________________________
+     __________________________________________________________________
 
    This information is subject to change.
 
