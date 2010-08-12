@@ -5,6 +5,15 @@
 + Can specify clip time for movies in captions.txt (i.e. "[thumb=3.2s]");
   (May need to use -force and -force_html)
 
+Version 4.07, 2010/08/12
+------------------------
++ New plugin: images/annotate-medium (Thanks Joe Botha)
++ Plugins can call back the function that hooked them without a recursive loop
+* jhead used for 'JPG' as well as 'jpg' (Thanks Kevin Barter)
++ Russian language support (Thanks Stas Degteff)
++ New theme: hover (Thanks Todd Foster)
+* Fixed man page missing NAME (Thanks Eriberto, debian maintainer!)
+
 Version 4.06, 2009/08/12
 ------------------------
 + No longer fatals out on corrupted images

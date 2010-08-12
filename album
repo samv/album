@@ -2,7 +2,7 @@
 # Filename:	album
 # Author:	David Ljung Madison <DaveSource.com>
 # See License:	http://MarginalHacks.com/License/
-  my $VERSION=  '4.06';
+  my $VERSION=  '4.07';
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
@@ -262,7 +262,7 @@ add_option(99,'screen_width',OPTION_NUM, default=>78, usage=>"Width of screen (f
 # As of "ImageMagick 4.2.9 99/09/01"
 # May not be the same as your version of convert, but damn it's alot!
 my $IMAGE_TYPES	=
-	"AVS|BMP|BMP24|CMYK|DCM|DCX|DIB|EPDF|EPI|EPS|EPS2|EPSF|EPSI|EPT|FAX|".
+	"AVS|BMP|BMP24|CR2|CMYK|DCM|DCX|DIB|EPDF|EPI|EPS|EPS2|EPSF|EPSI|EPT|FAX|".
 	"FITS|G3|GIF|GIF87|GRADATION|GRANITE|GRAY|HDF|HISTOGRAM|ICB|ICC|ICO|".
 	"IPTC|JPG|JPEG|JPEG24|LABEL|LOGO|MAP|MATTE|MIFF|MNG|MONO|MPG|MPEG|MTV|NULL|P7|".
 	"PBM|PCD|PCDS|PCL|PCT|PCX|PDF|PIC|PICT|PICT24|PIX|PLASMA|PGM|PM|PNG|".
@@ -3663,6 +3663,7 @@ sub hook {
 }
 
 # Temp turn a plugin on/off.
+### These should be no longer necessary now that cancall_plugin checks the stack
 sub uncall_plugin {
 	my ($opt,$from) = @_;
 	$from ||= curr_plugin($opt);
@@ -3674,7 +3675,14 @@ sub recall_plugin {
 	pop(@{$opt->{_plugins}{off}});
 }
 sub cancall_plugin {
-	my ($opt,$from) = @_;
+	my ($opt,$from,$name) = @_;
+
+	# Avoid recursive plugin calls
+	if (@{$opt->{_curr_plugin}}) {
+		foreach my $c ( @{$opt->{_curr_plugin}} ) {
+			return 0 if $from eq $c->[0] && $name eq $c->[1];
+		}
+	}
 
 	return 1 unless $opt->{_plugins}{off};
 
@@ -3720,7 +3728,7 @@ sub do_hooks_loop {
   my $got_something = undef;
   foreach my $hook ( @{$opt->{_plugin_hooks}{$name}} ) {
     my ($sub,$from) = @$hook;
-    next unless cancall_plugin($opt,$from);
+    next unless cancall_plugin($opt,$from,$name);
     my @call_args = $data ? ($opt,$data,$name,@args) : ($opt,$name,@args);
     enter_plugin($opt, $from, $name);
     my @got = $sub->(@call_args);	# Do the hook
@@ -5231,7 +5239,14 @@ sub Border {
     # Medium or full if not thumb?
     \$type = Get(\$img,'medium','x') ? 'medium' : 'full' if \$type ne 'thumb';
     # Lookup href
-    \$href = Get(\$img,'href',\$href_type) if \$href_type;
+		if (\$href_type) {
+			if (lc(\$href_type) eq 'next') {
+				my \$next = Next(\$img);
+    		\$href = Get(\$next,'href','image_page','image_page') if \$next;
+			} else {
+    		\$href = Get(\$img,'href',\$href_type);
+			}
+		}
     \$x = Get(\$img,\$type,'x');
     \$y = Get(\$img,\$type,'y');
     my \$str = Image(\$img,\$type);
@@ -6778,7 +6793,7 @@ sub get_xy {
   my $qimg = file_quote($opt,$img);
 
   # if image is a jpeg, try "jhead" first (faster)
-  if ($opt->{jhead} && $img=~/.jpe?g$/) {
+  if ($opt->{jhead} && $img=~/.jpe?g$/i) {
     return ($1,$2) if (qx/$opt->{jhead} -c $qimg 2>$opt->{dev_null}/=~/\s(\d+)x(\d+)(\s)/);
     undef $opt->{jhead};	# jhead didn't work, don't keep trying...
   }
@@ -6999,6 +7014,7 @@ sub snapshot {
 sub medium {
   my ($opt,$dir,$obj) = @_;
 
+
   my $file = $obj->{full}{file};
   # Based off of full, unless we have a snapshot image.
   my $base = $obj->{snapshot} ? 'snapshot' : 'full';
@@ -7007,21 +7023,22 @@ sub medium {
   return 0 unless $opt->{medium};
   return 0 if $obj->{is_movie} && $opt->{embed};
 
-  $obj->{medium}{path} = do_hook($opt,undef, 'medium', $dir, $obj, $file, $full_path);
-  # Description: Create a medium image using an image object or path.
-  # Description: This might be called with "non-image" types (such as movies)
-  # Description: so check in your hook for the types you can read.
-  # Returns: Full path to medium image
-  if ($obj->{medium}{path}) {
-    $obj->{medium}{file} = $obj->{medium}{path};
-    $obj->{medium}{file} =~ s|.*$opt->{slash}||g;
-    return get_size($opt,'medium',$obj)
-  }
-
   my $type = $opt->{medium_type};
   $type = $opt->{type} if $obj->{is_movie} && !$type;
   ($obj->{medium}{file},$obj->{medium}{path})
     = new_image_path($opt,$dir,$file,$type,'.med','.med');
+
+  my $ret = do_hook($opt,undef, 'medium', $dir, $obj, $file, $full_path);
+  # Description: Create a medium image using an image object or path.
+  # Description: This might be called with "non-image" types (such as movies)
+  # Description: so check in your hook for the types you can read.
+  # Returns: Full path to medium image
+  if ($ret) {
+    $obj->{medium}{path} = $ret;
+    $obj->{medium}{file} = $ret;
+    $obj->{medium}{file} =~ s|.*$opt->{slash}||g;
+    return get_size($opt,'medium',$obj)
+  }
 
   # Don't regenerate mediums unless the image has changed
   return get_size($opt,'medium',$obj)
@@ -7191,6 +7208,7 @@ END { all_done(); }
 __END__
 
 =pod
+
 =head1 NAME
 
 album - Make a web photo album
