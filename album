@@ -7209,7 +7209,7 @@ sub main {
   }
 
 }
-main();
+main() unless $threads::tbb::worker;
 
 END { all_done(); }
 
