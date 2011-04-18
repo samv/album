@@ -6665,6 +6665,10 @@ sub do_album {
   $data->{pics} = [];
   my $hashes = $#pics+1 + $#{$data->{dirs}}+1;
 
+  $data->{opt} = $opt;
+  $data->{my_pics} = \@pics;
+  bless $data, "album";
+
   foreach my $pic ( @pics ) {
     handle_file($opt,$data,$pic);
     show_hashes($opt, $data->{obj}{$pic}{num}+1, $hashes);
