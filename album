@@ -4116,7 +4116,7 @@ sub exif_replace {
   my ($exif,@str) = @_;
   my $ret;
   foreach my $str ( @str ) {
-    $str =~ s/%([^%]+)%/$exif->{$1} ? $exif->{$1} : "% %"/eg;
+    $str =~ s{%([^%]+)%}{$exif->{$1} ? $exif->{$1} : "% %"}eg;
     # Ignore this EXIF caption if we missed any keys.
     $ret .= $str unless $str =~ /% %/;
   }
