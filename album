@@ -6278,12 +6278,25 @@ sub is_movie {
 }
 
 # Deal with each image/picture/file/whatever
+sub handle_file_chunk {
+  my $data = shift;
+  my $opt = $data->{opt};
+  my $pics_a = $data->{my_pics};
+  my $range = shift;
+  #print STDERR "Worker $threads::tbb::worker/[".$range->begin.",".$range->end.") processing\n";
+  for my $i ( $range->begin .. $range->end - 1 ) {
+    my $pic = $pics_a->[$i];
+    my $obj = $data->{obj}{$pic};
+    handle_file($opt,$data,$pic, $obj);
+    $data->{obj}{$pic} = $obj;
+    #show_hashes($opt, $data->{obj}{$pic}{num}+1, $hashes);
+  }
+}
 sub handle_file {
-  my ($opt,$data,$pic) = @_;
+  my ($opt,$data,$pic, $obj) = @_;
 
   # Paths
   my $dir = $data->{paths}{dir};
-  my $obj = $data->{obj}{$pic};
   my $path = $obj->{full}{path};
 
   # Figure out type
