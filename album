@@ -6,6 +6,7 @@
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
+use threads::tbb;
 umask 022;	# 0755
 
 package album;	# For plugins
