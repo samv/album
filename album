@@ -6693,10 +6693,8 @@ sub do_album {
   my $tbb = threads::tbb->new( requires => [$0] );
   my $body = $tbb->for_int_method( $data, "handle_file_chunk" );
 
-  foreach my $pic ( @pics ) {
-    handle_file($opt,$data,$pic);
-    show_hashes($opt, $data->{obj}{$pic}{num}+1, $hashes);
-  }
+  $body->parallel_for( threads::tbb::blocked_int->new(0, $#pics+1, 1) );
+
   obj_count($opt,$data,'pics');	# We may have lost some
   foreach my $child ( @{$data->{dirs}} ) {
     handle_child($opt,$data,$child);
