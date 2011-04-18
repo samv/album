@@ -6678,6 +6678,7 @@ sub do_album {
   $data->{obj} = \%objs;
 
   my $tbb = threads::tbb->new( requires => [$0] );
+  my $body = $tbb->for_int_method( $data, "handle_file_chunk" );
 
   foreach my $pic ( @pics ) {
     handle_file($opt,$data,$pic);
