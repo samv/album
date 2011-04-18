@@ -6,6 +6,7 @@
 # Description:	Makes a photo album.
 use strict;
 use IO::File;
+use threads::tbb;
 umask 022;	# 0755
 
 package album;	# For plugins
@@ -6277,12 +6278,25 @@ sub is_movie {
 }
 
 # Deal with each image/picture/file/whatever
+sub handle_file_chunk {
+  my $data = shift;
+  my $opt = $data->{opt};
+  my $pics_a = $data->{my_pics};
+  my $range = shift;
+  #print STDERR "Worker $threads::tbb::worker/[".$range->begin.",".$range->end.") processing\n";
+  for my $i ( $range->begin .. $range->end - 1 ) {
+    my $pic = $pics_a->[$i];
+    my $obj = $data->{obj}{$pic};
+    $data->{obj}{$pic} = $obj;  # mine!
+    handle_file($opt,$data,$pic, $obj);
+    #show_hashes($opt, $data->{obj}{$pic}{num}+1, $hashes);
+  }
+}
 sub handle_file {
-  my ($opt,$data,$pic) = @_;
+  my ($opt,$data,$pic, $obj) = @_;
 
   # Paths
   my $dir = $data->{paths}{dir};
-  my $obj = $data->{obj}{$pic};
   my $path = $obj->{full}{path};
 
   # Figure out type
@@ -6660,14 +6674,26 @@ sub do_album {
   #########################
   # Handle images (make thumbnails, get info, etc..)
   #########################
-  my @pics = @{$data->{pics}};
-  $data->{pics} = [];
+  tie my @pics, "threads::tbb::concurrent::array";
+  push @pics, @{$data->{pics}};
   my $hashes = $#pics+1 + $#{$data->{dirs}}+1;
+  $data->{opt} = $opt;
+  $data->{my_pics} = \@pics;
+  tie my @pics_new, "threads::tbb::concurrent::array";
+  $data->{pics} = \@pics_new;
+  bless $data, __PACKAGE__;
 
-  foreach my $pic ( @pics ) {
-    handle_file($opt,$data,$pic);
-    show_hashes($opt, $data->{obj}{$pic}{num}+1, $hashes);
+  my $tbb = threads::tbb->new( requires => [$0] );
+  my $range = threads::tbb::blocked_int->new(0, $#pics+1, 1);
+
+  tie my %objs, "threads::tbb::concurrent::hash";
+  while ( my ($k, $v) = each %{ $data->{obj} } ) {
+    $objs{$k} = $v;
   }
+  $data->{obj} = \%objs;
+  my $body = $tbb->for_int_method( $data, "handle_file_chunk" );
+  $body->parallel_for( $range );
+
   obj_count($opt,$data,'pics');	# We may have lost some
   foreach my $child ( @{$data->{dirs}} ) {
     handle_child($opt,$data,$child);
@@ -7194,7 +7220,7 @@ sub main {
   }
 
 }
-main();
+main() unless $threads::tbb::worker;
 
 END { all_done(); }
 
