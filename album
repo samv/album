@@ -6661,13 +6661,21 @@ sub do_album {
   #########################
   # Handle images (make thumbnails, get info, etc..)
   #########################
-  my @pics = @{$data->{pics}};
-  $data->{pics} = [];
+  tie my @pics, "threads::tbb::concurrent::array";
+  push @pics, @{$data->{pics}};
   my $hashes = $#pics+1 + $#{$data->{dirs}}+1;
 
   $data->{opt} = $opt;
   $data->{my_pics} = \@pics;
+  tie my @pics_new, "threads::tbb::concurrent::array";
+  $data->{pics} = \@pics_new;
   bless $data, "album";
+
+  tie my %objs, "threads::tbb::concurrent::hash";
+  while ( my ($k, $v) = each %{ $data->{obj} } ) {
+    $objs{$k} = $v;
+  }
+  $data->{obj} = \%objs;
 
   foreach my $pic ( @pics ) {
     handle_file($opt,$data,$pic);
