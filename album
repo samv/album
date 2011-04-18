@@ -6677,6 +6677,8 @@ sub do_album {
   }
   $data->{obj} = \%objs;
 
+  my $tbb = threads::tbb->new( requires => [$0] );
+
   foreach my $pic ( @pics ) {
     handle_file($opt,$data,$pic);
     show_hashes($opt, $data->{obj}{$pic}{num}+1, $hashes);
